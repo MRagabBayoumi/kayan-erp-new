@@ -39,7 +39,7 @@
     @endif
 
     <!-- Warehouses Grid -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; margin-bottom: 24px;">
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 16px; margin-bottom: 24px;">
         @forelse($warehouses as $warehouse)
             <div class="erp-card" style="display: flex; flex-direction: column; justify-content: space-between; border-top: 3px solid {{ $warehouse->is_default ? 'var(--primary)' : 'var(--border-color)' }};">
                 <div style="padding: 16px;">

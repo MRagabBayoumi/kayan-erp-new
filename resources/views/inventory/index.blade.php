@@ -47,10 +47,10 @@
     @endif
 
     <!-- KPI Metric Cards -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 20px;">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 14px; margin-bottom: 20px;">
         <!-- Total Stock Units -->
         <div class="erp-card" style="padding: 16px; display: flex; align-items: center; gap: 14px;">
-            <div style="width: 44px; height: 44px; border-radius: 10px; background: rgba(13, 148, 136, 0.1); color: var(--primary, #0d9488); display: flex; align-items: center; justify-content: center;">
+            <div style="width: 44px; height: 44px; border-radius: 10px; background: rgba(13, 148, 136, 0.1); color: var(--primary, #0d9488); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                 <x-icon name="package" size="22" />
             </div>
             <div>
@@ -63,7 +63,7 @@
 
         <!-- FIFO Inventory Valuation -->
         <div class="erp-card" style="padding: 16px; display: flex; align-items: center; gap: 14px;">
-            <div style="width: 44px; height: 44px; border-radius: 10px; background: rgba(59, 130, 246, 0.1); color: #3b82f6; display: flex; align-items: center; justify-content: center;">
+            <div style="width: 44px; height: 44px; border-radius: 10px; background: rgba(59, 130, 246, 0.1); color: #3b82f6; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                 <x-icon name="banknote" size="22" />
             </div>
             <div>
@@ -76,7 +76,7 @@
 
         <!-- Low Stock Items -->
         <div class="erp-card" style="padding: 16px; display: flex; align-items: center; gap: 14px;">
-            <div style="width: 44px; height: 44px; border-radius: 10px; background: rgba(245, 158, 11, 0.1); color: #f59e0b; display: flex; align-items: center; justify-content: center;">
+            <div style="width: 44px; height: 44px; border-radius: 10px; background: rgba(245, 158, 11, 0.1); color: #f59e0b; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                 <x-icon name="alert-triangle" size="22" />
             </div>
             <div>
@@ -89,7 +89,7 @@
 
         <!-- Out of Stock Items -->
         <div class="erp-card" style="padding: 16px; display: flex; align-items: center; gap: 14px;">
-            <div style="width: 44px; height: 44px; border-radius: 10px; background: rgba(239, 68, 68, 0.1); color: #ef4444; display: flex; align-items: center; justify-content: center;">
+            <div style="width: 44px; height: 44px; border-radius: 10px; background: rgba(239, 68, 68, 0.1); color: #ef4444; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                 <x-icon name="x" size="22" />
             </div>
             <div>
@@ -103,16 +103,24 @@
 
     <!-- Filters & Search Bar -->
     <div class="erp-card" style="margin-bottom: 16px; padding: 12px 16px;">
-        <form action="{{ route('inventory.index') }}" method="GET" class="flex flex-wrap items-center gap-3">
-            <!-- Search -->
-            <div style="flex: 1; min-width: 220px;">
+        <form action="{{ route('inventory.index') }}" method="GET" class="erp-filter-form">
+            <!-- Search with Camera Scanner -->
+            <div style="flex: 1; min-width: 220px; position: relative; display: flex; align-items: center;">
                 <input 
                     type="search" 
+                    id="inventorySearchInput"
                     name="search" 
                     value="{{ $searchTerm }}" 
                     class="erp-input font-numeric" 
                     placeholder="بحث باسم الصنف، كود SKU، أو الباركود..."
-                    style="width: 100%;">
+                    style="width: 100%; padding-left: 38px;">
+                <button 
+                    type="button" 
+                    onclick="openKayanBarcodeScanner('inventorySearchInput')" 
+                    title="مسح الباركود بالكاميرا للبحث السريع"
+                    style="position: absolute; left: 4px; height: 28px; width: 30px; border: none; background: var(--primary-soft); color: var(--primary); border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer;">
+                    <x-icon name="camera" size="15" />
+                </button>
             </div>
 
             <!-- Warehouse Filter -->
@@ -275,7 +283,7 @@
                     <!-- Movement Type Selector -->
                     <div style="margin-bottom: 16px;">
                         <label class="erp-label" style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600;">نوع الحركة *</label>
-                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;">
+                        <div class="erp-movement-type-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;">
                             <label style="border: 1px solid var(--border-light); padding: 8px; border-radius: 6px; text-align: center; cursor: pointer; font-size: 12px; font-weight: 600;" id="type_label_in">
                                 <input type="radio" name="movement_type" value="in" checked onchange="updateMovementFields()" style="display: none;">
                                 إيداع / وارد
@@ -321,7 +329,7 @@
                     </div>
 
                     <!-- Transfer Warehouses Selection (From -> To) -->
-                    <div id="transfer_warehouses_box" style="display: none; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;">
+                    <div id="transfer_warehouses_box" class="erp-form-row-2col" style="display: none; margin-bottom: 14px;">
                         <div>
                             <label class="erp-label" style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600;">من مستودع *</label>
                             <select name="from_warehouse_id" class="erp-input" style="width: 100%;">
@@ -341,7 +349,7 @@
                     </div>
 
                     <!-- Quantity & Unit Cost -->
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;">
+                    <div class="erp-form-row-2col" style="margin-bottom: 14px;">
                         <div>
                             <label id="qty_label" class="erp-label" style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600;">الكمية *</label>
                             <input type="number" step="0.01" min="0.01" name="quantity" class="erp-input font-numeric" placeholder="مثال: 50" required style="width: 100%;">
@@ -455,4 +463,6 @@
             }
         });
     </script>
+
+    <x-barcode-scanner-modal target-input-id="inventorySearchInput" />
 @endsection

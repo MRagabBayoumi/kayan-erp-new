@@ -218,3 +218,48 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* Responsive 2-Column Form Row */
+.erp-form-row-2col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+@media (max-width: 640px) {
+    .erp-form-row-2col {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+}
+
+/* Universal Filter & Search Form */
+.erp-filter-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+}
+
+@media (max-width: 640px) {
+    .erp-filter-form {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+
+    .erp-filter-form > div,
+    .erp-filter-form .erp-input,
+    .erp-filter-form .erp-select,
+    .erp-filter-form select,
+    .erp-filter-form button,
+    .erp-filter-form a {
+        width: 100% !important;
+        min-width: 100% !important;
+    }
+
+    .erp-filter-form .erp-btn {
+        justify-content: center;
+    }
+}

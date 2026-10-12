@@ -29,7 +29,7 @@
 @section('content')
     <!-- Search & Filters Bar -->
     <div class="erp-card" style="margin-bottom: 16px; padding: 12px 16px;">
-        <form action="{{ route('inventory.movements') }}" method="GET" class="flex flex-wrap items-center gap-3">
+        <form action="{{ route('inventory.movements') }}" method="GET" class="erp-filter-form">
             <!-- Search -->
             <div style="flex: 1; min-width: 220px;">
                 <input 

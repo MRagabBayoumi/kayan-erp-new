@@ -6,7 +6,7 @@
 /* Multi-Column Form Card Grid */
 .erp-form-card-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
     gap: 20px;
 }
 
@@ -130,7 +130,7 @@
     font-weight: 600;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
     .erp-pricing-grid {
         grid-template-columns: 1fr;
     }

@@ -216,3 +216,40 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* Responsive Modal Dialogs */
+@media (max-width: 640px) {
+    .erp-modal-overlay {
+        padding: 8px;
+    }
+
+    .erp-modal-container {
+        width: 100%;
+        max-width: 100%;
+        max-height: 94vh;
+        border-radius: var(--border-radius);
+    }
+
+    .erp-modal-header {
+        padding: 12px 14px;
+    }
+
+    .erp-modal-body {
+        padding: 14px;
+    }
+
+    .erp-modal-footer {
+        padding: 10px 14px;
+        flex-direction: column-reverse;
+        gap: 8px;
+    }
+
+    .erp-modal-footer .erp-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .erp-movement-type-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+}

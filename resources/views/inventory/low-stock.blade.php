@@ -33,7 +33,7 @@
 
     <!-- Category Filter -->
     <div class="erp-card" style="margin-bottom: 16px; padding: 12px 16px;">
-        <form action="{{ route('inventory.low-stock') }}" method="GET" class="flex flex-wrap items-center gap-3">
+        <form action="{{ route('inventory.low-stock') }}" method="GET" class="erp-filter-form">
             <div style="min-width: 200px;">
                 <select name="category_id" class="erp-input" onchange="this.form.submit()">
                     <option value="">جميع التصنيفات</option>

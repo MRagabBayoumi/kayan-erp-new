@@ -245,3 +245,13 @@
         display: none;
     }
 }
+
+@media (max-width: 480px) {
+    .erp-brand span:not(.erp-brand-badge) {
+        display: none;
+    }
+
+    #kayanDensityToggle {
+        display: none;
+    }
+}

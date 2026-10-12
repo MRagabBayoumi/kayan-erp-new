@@ -48,20 +48,28 @@
 
     <!-- Search & Filter Bar -->
     <div class="erp-card" style="margin-bottom: 16px; padding: 12px 16px;">
-        <form action="{{ route('products.index') }}" method="GET" class="flex flex-wrap items-center gap-3">
-            <!-- Search Input -->
-            <div style="flex: 1; min-width: 220px; position: relative;">
+        <form action="{{ route('products.index') }}" method="GET" class="erp-filter-form">
+            <!-- Search Input with Camera Barcode Scanner -->
+            <div style="flex: 1; min-width: 220px; position: relative; display: flex; align-items: center;">
                 <input 
                     type="search" 
+                    id="productSearchInput"
                     name="search" 
                     value="{{ $currentSearch }}" 
                     class="erp-input font-numeric" 
                     placeholder="بحث باسم المنتج، كود SKU، أو الباركود..."
-                    style="width: 100%; padding-right: 36px;"
+                    style="width: 100%; padding-right: 36px; padding-left: 38px;"
                 >
-                <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); opacity: 0.6; display: flex; align-items: center; pointer-events: none;">
+                <span style="position: absolute; right: 10px; opacity: 0.6; display: flex; align-items: center; pointer-events: none;">
                     <x-icon name="search" size="16" />
                 </span>
+                <button 
+                    type="button" 
+                    onclick="openKayanBarcodeScanner('productSearchInput')" 
+                    title="مسح الباركود بالكاميرا للبحث السريع"
+                    style="position: absolute; left: 4px; height: 28px; width: 30px; border: none; background: var(--primary-soft); color: var(--primary); border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer;">
+                    <x-icon name="camera" size="15" />
+                </button>
             </div>
 
             <!-- Category Filter -->
@@ -681,6 +689,8 @@
 
     <!-- Hidden Iframe for Direct Silent Printing -->
     <iframe id="directPrintIframe" name="directPrintIframe" style="display: none; position: fixed; width: 0; height: 0; border: 0; opacity: 0; pointer-events: none;"></iframe>
+
+    <x-barcode-scanner-modal target-input-id="productSearchInput" />
 
     <!-- Toast Notification for Direct Print Feedback -->
     <div id="printNotificationToast" class="erp-toast" style="display: none;">

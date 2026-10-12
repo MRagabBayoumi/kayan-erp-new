@@ -65,7 +65,7 @@
                     </div>
 
                     <!-- SKU & Category Row -->
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <div class="erp-form-row-2col">
                         <div class="erp-form-group">
                             <label for="productSku" class="erp-form-label">
                                 كود الصنف (SKU) <span style="color: var(--danger);">*</span>
@@ -113,23 +113,39 @@
                         </select>
                     </div>
 
-                    <!-- Barcode Section -->
+                    <!-- Barcode Section with Camera Scanner Integration -->
                     <div class="erp-form-group">
-                        <label for="productBarcode" class="erp-form-label flex items-center justify-between">
-                            <span>الباركود (Barcode)</span>
-                            <button type="button" id="btnGenBarcode" class="erp-btn erp-btn-ghost font-numeric" style="font-size: 11px; padding: 2px 8px; color: var(--primary); display: inline-flex; align-items: center; gap: 4px;">
-                                <x-icon name="zap" size="13" />
-                                <span>توليد كود جديد</span>
+                        <div class="erp-form-label flex items-center justify-between" style="flex-wrap: wrap; gap: 6px;">
+                            <label for="productBarcode" style="margin: 0; cursor: pointer;">الباركود (Barcode)</label>
+                            <div style="display: inline-flex; align-items: center; gap: 6px;">
+                                <button type="button" onclick="openKayanBarcodeScanner('productBarcode')" class="erp-btn erp-btn-secondary" style="font-size: 11px; padding: 3px 8px; color: var(--primary); display: inline-flex; align-items: center; gap: 4px;" title="تشغيل الكاميرا لمسح باركود الصنف مباشرة">
+                                    <x-icon name="camera" size="14" />
+                                    <span>مسح بالكاميرا</span>
+                                </button>
+                                <button type="button" id="btnGenBarcode" class="erp-btn erp-btn-ghost font-numeric" style="font-size: 11px; padding: 2px 8px; color: var(--text-muted); display: inline-flex; align-items: center; gap: 4px;">
+                                    <x-icon name="zap" size="13" />
+                                    <span>توليد كود جديد</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div style="position: relative; display: flex; align-items: center;">
+                            <input 
+                                type="text" 
+                                id="productBarcode" 
+                                name="barcode" 
+                                value="{{ old('barcode', $product->barcode) }}" 
+                                class="erp-input font-numeric @error('barcode') erp-input-error @enderror" 
+                                placeholder="امسح بالكاميرا أو اكتب الباركود..."
+                                style="padding-left: 42px;"
+                            >
+                            <button 
+                                type="button" 
+                                onclick="openKayanBarcodeScanner('productBarcode')" 
+                                title="تشغيل الكاميرا لمسح الباركود"
+                                style="position: absolute; left: 5px; height: 30px; width: 32px; border: none; background: var(--primary-soft); color: var(--primary); border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.15s ease;">
+                                <x-icon name="camera" size="16" />
                             </button>
-                        </label>
-                        <input 
-                            type="text" 
-                            id="productBarcode" 
-                            name="barcode" 
-                            value="{{ old('barcode', $product->barcode) }}" 
-                            class="erp-input font-numeric @error('barcode') erp-input-error @enderror" 
-                            placeholder="اتركه فارغاً إذا لم يتوفر باركود"
-                        >
+                        </div>
                     </div>
                 </div>
             </div>
@@ -249,6 +265,8 @@
             </div>
         </div>
     </form>
+
+    <x-barcode-scanner-modal target-input-id="productBarcode" />
 @endsection
 
 @push('scripts')

@@ -137,33 +137,47 @@
 }
 
 /* Responsive Adaptations */
-@media (max-width: 600px) {
+@media (max-width: 768px) {
     .erp-control-panel {
-        padding: 10px 12px;
+        padding: 10px 14px;
     }
 
     .erp-cp-top,
     .erp-cp-bottom {
         flex-direction: column;
         align-items: stretch;
-        gap: 8px;
+        gap: 10px;
+    }
+
+    .erp-breadcrumb {
+        flex-wrap: wrap;
+        font-size: 12px;
     }
 
     .erp-actions-bar {
         width: 100%;
         display: flex;
         flex-wrap: wrap;
-        gap: 6px;
+        gap: 8px;
     }
 
     .erp-actions-bar .erp-btn {
-        flex: 1 1 auto;
-        font-size: 11px;
-        padding: 6px 8px;
+        flex: 1 1 calc(50% - 6px);
+        min-width: 130px;
+        font-size: 12px;
+        padding: 8px 10px;
         justify-content: center;
     }
 
     .erp-cp-search {
         max-width: 100%;
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .erp-actions-bar .erp-btn {
+        flex: 1 1 100%;
+        min-width: 100%;
     }
 }
