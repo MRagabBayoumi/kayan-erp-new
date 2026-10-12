@@ -4,11 +4,11 @@
     <x-control-panel title="تصنيفات المنتجات" :breadcrumbs="['المنتجات والأصناف' => route('products.index'), 'التصنيفات' => '#']">
         <x-slot:actions>
             <a href="{{ route('products.create') }}" class="erp-btn erp-btn-secondary">
-                <span>➕</span>
+                <x-icon name="plus" size="16" />
                 <span>إضافة منتج جديد</span>
             </a>
             <a href="{{ route('products.index') }}" class="erp-btn erp-btn-secondary">
-                <span>💍</span>
+                <x-icon name="package" size="16" />
                 <span>قائمة المنتجات</span>
             </a>
         </x-slot:actions>
@@ -26,21 +26,21 @@
     <!-- Flash Messages -->
     @if(session('status') === 'success')
         <div class="erp-alert erp-alert-success" role="alert" style="margin-bottom: 16px;">
-            <span style="font-size: 16px;">✓</span>
+            <x-icon name="check" size="16" />
             <div>{{ session('message', 'تمت العملية بنجاح.') }}</div>
         </div>
     @endif
 
     @if(session('status') === 'error')
         <div class="erp-alert erp-alert-danger" role="alert" style="margin-bottom: 16px;">
-            <span style="font-size: 16px;">⚠️</span>
+            <x-icon name="alert-triangle" size="16" />
             <div>{{ session('message', 'حدث خطأ أثناء تنفيذ العملية.') }}</div>
         </div>
     @endif
 
     @if($errors->any())
         <div class="erp-alert erp-alert-danger" role="alert" style="margin-bottom: 16px;">
-            <span style="font-size: 16px;">⚠️</span>
+            <x-icon name="alert-triangle" size="16" />
             <div>
                 <strong>يرجى تصحيح الأخطاء التالية:</strong>
                 <ul style="margin: 6px 20px 0; font-size: 12px;">
@@ -57,7 +57,7 @@
         <div class="erp-card">
             <div class="erp-card-header">
                 <div class="erp-card-title">
-                    <span>➕</span>
+                    <x-icon name="plus" size="18" />
                     <span>إضافة تصنيف جديد</span>
                 </div>
             </div>
@@ -99,13 +99,14 @@
 
                     <div style="margin-bottom: 16px;">
                         <label class="flex items-center gap-2" style="cursor: pointer;">
-                            <input type="checkbox" name="is_active" value="1" checked style="width: 16px; height: 16px; accent-color: var(--primary);">
+                            <input type="checkbox" name="is_active" value="1" checked style="width: 16px; height: 16px; accent-color: var(--primary);" />
                             <span style="font-size: 13px; color: var(--text-main);">تفعيل التصنيف</span>
                         </label>
                     </div>
 
-                    <button type="submit" class="erp-btn erp-btn-primary" style="width: 100%; justify-content: center;">
-                        <span>💾 حفظ التصنيف</span>
+                    <button type="submit" class="erp-btn erp-btn-primary" style="width: 100%; justify-content: center; display: inline-flex; align-items: center; gap: 6px;">
+                        <x-icon name="save" size="16" />
+                        <span>حفظ التصنيف</span>
                     </button>
                 </form>
             </div>
@@ -115,14 +116,16 @@
         <div class="erp-card" style="padding: 0; overflow: hidden;">
             <div class="erp-card-header" style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
                 <div class="erp-card-title">
-                    <span>🏷️</span>
+                    <x-icon name="tag" size="18" />
                     <span>قائمة التصنيفات الحالية</span>
                 </div>
             </div>
 
             @if($categories->isEmpty())
                 <div style="text-align: center; padding: 40px 20px;">
-                    <div style="font-size: 36px; margin-bottom: 8px; opacity: 0.5;">🏷️</div>
+                    <div style="margin-bottom: 12px; opacity: 0.4; display: flex; justify-content: center;">
+                        <x-icon name="tag" size="42" />
+                    </div>
                     <h3 style="font-size: 15px; font-weight: 700; color: var(--text-main);">لا توجد تصنيفات مسجلة حتى الآن</h3>
                     <p style="font-size: 12px; color: var(--text-muted);">استخدم النموذج على اليمين لإضافة أول تصنيف لمخزونك.</p>
                 </div>
@@ -181,7 +184,7 @@
                                                 title="{{ $category->products_count > 0 ? 'لا يمكن حذفه لاحتوائه على منتجات' : 'حذف التصنيف' }}"
                                                 {{ $category->products_count > 0 ? 'disabled' : '' }}
                                             >
-                                                <span>🗑️</span>
+                                                <x-icon name="trash" size="15" />
                                             </button>
                                         </form>
                                     </td>

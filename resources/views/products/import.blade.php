@@ -5,20 +5,20 @@
         <x-slot:actions>
             @if(!empty($reviewData))
                 <button type="submit" form="confirmImportForm" class="erp-btn erp-btn-primary">
-                    <span>✓</span>
+                    <x-icon name="check" size="16" />
                     <span>تأكيد الاستيراد الفعلي وحفظ البيانات</span>
                 </button>
                 <a href="{{ route('products.import.cancel') }}" class="erp-btn erp-btn-secondary">
-                    <span>✕</span>
+                    <x-icon name="x" size="16" />
                     <span>إلغاء ورفع ملف آخر</span>
                 </a>
             @else
                 <a href="{{ route('products.import.template') }}" class="erp-btn erp-btn-secondary" style="border-color: var(--primary); color: var(--primary);">
-                    <span>📥</span>
+                    <x-icon name="download" size="16" />
                     <span>تحميل قالب إكسيل الجاهز (اختياري)</span>
                 </a>
                 <a href="{{ route('products.index') }}" class="erp-btn erp-btn-secondary">
-                    <span>←</span>
+                    <x-icon name="arrow-left" size="16" />
                     <span>العودة لقائمة المنتجات</span>
                 </a>
             @endif
@@ -39,7 +39,7 @@
     <!-- Flash Messages -->
     @if(session('status') === 'error')
         <div class="erp-alert erp-alert-danger" role="alert" style="margin-bottom: 20px;">
-            <span style="font-size: 16px;">⚠️</span>
+            <x-icon name="alert-triangle" size="16" />
             <div>{{ session('message', 'حدث خطأ أثناء معالجة الملف.') }}</div>
         </div>
     @endif
@@ -53,7 +53,7 @@
             <div class="erp-card">
                 <div class="erp-card-header">
                     <div class="erp-card-title">
-                        <span>📤</span>
+                        <x-icon name="upload" size="18" />
                         <span>رفع ملف البيانات للمراجعة والتدقيق</span>
                     </div>
                 </div>
@@ -86,7 +86,7 @@
 
                         <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--border-color); padding-top: 16px;">
                             <button type="submit" class="erp-btn erp-btn-primary" style="padding: 10px 24px; font-weight: 700;">
-                                <span>🔍</span>
+                                <x-icon name="search" size="16" />
                                 <span>فحص ومراجعة محتويات الملف</span>
                             </button>
                             <small style="color: var(--text-muted); font-size: 11px;">الحد الأقصى لحجم الملف: 10MB</small>
@@ -99,18 +99,19 @@
             <div class="erp-card">
                 <div class="erp-card-header">
                     <div class="erp-card-title">
-                        <span>📥</span>
+                        <x-icon name="download" size="18" />
                         <span>قالب البيانات الجاهز</span>
                     </div>
                 </div>
                 <div class="erp-card-body" style="display: flex; flex-direction: column; gap: 14px;">
                     <div class="erp-alert erp-alert-info" style="margin: 0; padding: 10px 12px; font-size: 12px;">
-                        <span>💡</span>
+                        <x-icon name="info" size="16" />
                         <div>تنزيل القالب <strong>اختياري (Option)</strong> وليس فرضاً، والغرض منه مساعدتك في معرفة التنسيق الأمثل للأعمدة.</div>
                     </div>
 
-                    <a href="{{ route('products.import.template') }}" class="erp-btn erp-btn-secondary" style="width: 100%; justify-content: center; padding: 10px; font-weight: 700; border-color: var(--primary); color: var(--primary);">
-                        <span>📥 تحميل القالب المنسق (CSV)</span>
+                    <a href="{{ route('products.import.template') }}" class="erp-btn erp-btn-secondary" style="width: 100%; justify-content: center; padding: 10px; font-weight: 700; border-color: var(--primary); color: var(--primary); display: inline-flex; align-items: center; gap: 6px;">
+                        <x-icon name="download" size="16" />
+                        <span>تحميل القالب المنسق (CSV)</span>
                     </a>
 
                     <div>
@@ -139,7 +140,7 @@
             <div class="kpi-card" style="padding: 14px;">
                 <div class="kpi-header">
                     <span class="kpi-label">إجمالي السطور المقروءة</span>
-                    <span class="kpi-icon">📊</span>
+                    <span class="kpi-icon"><x-icon name="trending-up" size="20" /></span>
                 </div>
                 <div class="kpi-value font-numeric">{{ $reviewData['stats']['total'] }}</div>
                 <div class="kpi-note font-numeric">سطر في الملف المرفوع</div>
@@ -149,7 +150,7 @@
             <div class="kpi-card" style="padding: 14px; border-top: 3px solid var(--success);">
                 <div class="kpi-header">
                     <span class="kpi-label" style="color: var(--success-text);">أصناف جديدة للإدراج</span>
-                    <span class="kpi-icon">✨</span>
+                    <span class="kpi-icon"><x-icon name="plus" size="20" /></span>
                 </div>
                 <div class="kpi-value font-numeric" style="color: var(--success-text);">{{ $reviewData['stats']['new_count'] }}</div>
                 <div class="kpi-note font-numeric">غير مسجلة بقاعدة البيانات</div>
@@ -159,7 +160,7 @@
             <div class="kpi-card" style="padding: 14px; border-top: 3px solid var(--warning);">
                 <div class="kpi-header">
                     <span class="kpi-label" style="color: var(--warning);">أصناف قائمة للتحديث</span>
-                    <span class="kpi-icon">🔄</span>
+                    <span class="kpi-icon"><x-icon name="refresh-cw" size="20" /></span>
                 </div>
                 <div class="kpi-value font-numeric" style="color: var(--warning);">{{ $reviewData['stats']['update_count'] }}</div>
                 <div class="kpi-note font-numeric">موجودة بالكود أو الباركود</div>
@@ -169,7 +170,7 @@
             <div class="kpi-card" style="padding: 14px; border-top: 3px solid var(--danger);">
                 <div class="kpi-header">
                     <span class="kpi-label" style="color: var(--danger);">سطور تحتوي على أخطاء</span>
-                    <span class="kpi-icon">⚠️</span>
+                    <span class="kpi-icon"><x-icon name="alert-triangle" size="20" /></span>
                 </div>
                 <div class="kpi-value font-numeric" style="color: var(--danger);">{{ $reviewData['stats']['invalid_count'] }}</div>
                 <div class="kpi-note font-numeric">سيتم تخطيها أو تصحيحها</div>
@@ -195,11 +196,11 @@
 
                 <div class="flex items-center gap-2">
                     <button type="submit" class="erp-btn erp-btn-primary" style="padding: 9px 22px; font-weight: 700;">
-                        <span>✓</span>
+                        <x-icon name="check" size="16" />
                         <span>تأكيد الاستيراد الفعلي وحفظ البيانات</span>
                     </button>
                     <a href="{{ route('products.import.cancel') }}" class="erp-btn erp-btn-secondary" style="padding: 9px 16px;">
-                        <span>✕</span>
+                        <x-icon name="x" size="16" />
                         <span>إلغاء</span>
                     </a>
                 </div>
@@ -210,7 +211,7 @@
         <div class="erp-card" style="padding: 0; overflow: hidden;">
             <div class="erp-card-header" style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
                 <div class="erp-card-title">
-                    <span>📋</span>
+                    <x-icon name="clipboard" size="18" />
                     <span>جدول معاينة وتدقيق السطور ومقارنتها بقاعدة البيانات</span>
                 </div>
             </div>
@@ -240,11 +241,20 @@
                                 <!-- Status Badge -->
                                 <td style="text-align: center;">
                                     @if($row['action'] === 'new')
-                                        <span class="erp-badge erp-badge-success" style="font-size: 11px;">✨ جديد</span>
+                                        <span class="erp-badge erp-badge-success" style="font-size: 11px; display: inline-flex; align-items: center; gap: 4px;">
+                                            <x-icon name="plus" size="11" />
+                                            <span>جديد</span>
+                                        </span>
                                     @elseif($row['action'] === 'update')
-                                        <span class="erp-badge erp-badge-warning" style="font-size: 11px;">🔄 تحديث</span>
+                                        <span class="erp-badge erp-badge-warning" style="font-size: 11px; display: inline-flex; align-items: center; gap: 4px;">
+                                            <x-icon name="refresh-cw" size="11" />
+                                            <span>تحديث</span>
+                                        </span>
                                     @else
-                                        <span class="erp-badge erp-badge-danger" style="font-size: 11px;">⚠️ خطأ</span>
+                                        <span class="erp-badge erp-badge-danger" style="font-size: 11px; display: inline-flex; align-items: center; gap: 4px;">
+                                            <x-icon name="alert-triangle" size="11" />
+                                            <span>خطأ</span>
+                                        </span>
                                     @endif
                                 </td>
 

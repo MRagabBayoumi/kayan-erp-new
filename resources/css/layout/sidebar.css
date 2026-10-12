@@ -1,0 +1,275 @@
+/* ==========================================================================
+   Kayan ERP — Sidebar Navigation (Odoo Multi-Module Hierarchy)
+   Desktop Collapsible Tree & Mobile Responsive Sliding Drawer
+   ========================================================================== */
+
+.erp-sidebar {
+    width: var(--sidebar-width);
+    flex-shrink: 0;
+    background-color: var(--bg-surface);
+    border-left: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+    transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s ease;
+    z-index: 90;
+}
+
+.erp-sidebar.collapsed {
+    width: var(--sidebar-collapsed-width);
+}
+
+.erp-sidebar-header {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border-light);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.erp-company-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.erp-company-logo {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--border-radius-sm);
+    background-color: var(--primary-soft);
+    color: var(--primary);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 15px;
+    flex-shrink: 0;
+}
+
+.erp-company-info {
+    min-width: 0;
+    line-height: 1.25;
+}
+
+.erp-company-name {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.erp-company-sub {
+    font-size: 11px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.erp-sidebar-toggle-btn {
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--border-radius-sm);
+    color: var(--text-secondary);
+    background-color: var(--bg-hover);
+    border: 1px solid var(--border-color);
+    transition: all 0.15s ease;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.erp-sidebar-toggle-btn:hover {
+    background-color: var(--primary-soft);
+    color: var(--primary);
+    border-color: var(--primary-border);
+}
+
+.erp-topbar .erp-sidebar-toggle-btn {
+    width: 32px;
+    height: 32px;
+    background-color: rgba(255, 255, 255, 0.14);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    color: #FFFFFF;
+}
+
+.erp-topbar .erp-sidebar-toggle-btn:hover {
+    background-color: rgba(255, 255, 255, 0.24);
+    color: #FFFFFF;
+    border-color: rgba(255, 255, 255, 0.38);
+}
+
+.erp-sidebar.collapsed .erp-company-card,
+.erp-sidebar.collapsed .erp-nav-section-title,
+.erp-sidebar.collapsed .erp-nav-label,
+.erp-sidebar.collapsed .erp-nav-badge {
+    display: none;
+}
+
+.erp-sidebar.collapsed .erp-sidebar-header {
+    padding: 12px 6px;
+    justify-content: center;
+}
+
+.erp-sidebar.collapsed .erp-sidebar-toggle-btn {
+    width: 38px;
+    height: 38px;
+    display: inline-flex;
+    margin: 0 auto;
+    background-color: var(--primary-soft);
+    color: var(--primary);
+    border: 1px solid var(--primary-border);
+}
+
+.erp-sidebar.collapsed .erp-sidebar-toggle-btn:hover {
+    background-color: var(--primary);
+    color: #FFFFFF;
+    border-color: var(--primary);
+}
+
+.erp-sidebar.collapsed .erp-sidebar-toggle-btn svg {
+    transform: rotate(180deg);
+}
+
+.erp-sidebar-nav {
+    padding: 8px 6px;
+    flex: 1;
+}
+
+.erp-nav-section {
+    margin-bottom: 10px;
+}
+
+.erp-nav-section-title {
+    padding: 8px 10px 4px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-light);
+}
+
+.erp-nav-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--density-padding-y) 10px;
+    margin: 1px 0;
+    border-radius: var(--border-radius-sm);
+    color: var(--text-secondary);
+    font-size: var(--density-font-size);
+    font-weight: 500;
+    transition: all 0.12s ease;
+    user-select: none;
+}
+
+.erp-nav-item:hover {
+    background-color: var(--bg-hover);
+    color: var(--text-main);
+}
+
+.erp-nav-item.active {
+    background-color: var(--primary-soft);
+    color: var(--primary);
+    font-weight: 700;
+}
+
+[data-theme="dark"] .erp-nav-item.active {
+    background-color: var(--primary-soft);
+    color: #E2B9D9;
+}
+
+.erp-nav-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.erp-nav-icon {
+    font-size: var(--density-icon-size);
+    width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: var(--text-muted);
+    transition: color 0.12s ease;
+}
+
+.erp-nav-item.active .erp-nav-icon {
+    color: var(--primary);
+}
+
+[data-theme="dark"] .erp-nav-item.active .erp-nav-icon {
+    color: #E2B9D9;
+}
+
+.erp-nav-label {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.erp-nav-badge {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 10px;
+    background-color: var(--bg-active);
+    color: var(--text-muted);
+}
+
+.erp-nav-badge.warning {
+    background-color: var(--warning-soft);
+    color: var(--warning-text);
+}
+
+.erp-nav-badge.danger {
+    background-color: var(--danger-soft);
+    color: var(--danger-text);
+}
+
+/* Mobile Sidebar & Drawer Overlay */
+.erp-sidebar-overlay {
+    position: fixed;
+    top: var(--topbar-height);
+    right: 0;
+    bottom: 0;
+    left: 0;
+    background-color: rgba(18, 19, 22, 0.45);
+    backdrop-filter: blur(2px);
+    z-index: 150;
+    display: none;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.erp-sidebar-overlay.active {
+    display: block;
+    opacity: 1;
+}
+
+@media (max-width: 900px) {
+    .erp-sidebar {
+        position: fixed;
+        top: var(--topbar-height);
+        bottom: 0;
+        right: 0;
+        transform: translateX(100%);
+        box-shadow: var(--shadow-lg);
+        z-index: 160;
+    }
+
+    .erp-sidebar.open-mobile {
+        transform: translateX(0);
+    }
+}

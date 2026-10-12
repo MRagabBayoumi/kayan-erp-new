@@ -30,9 +30,9 @@
 
         <!-- View Switchers (Odoo Style) -->
         <div class="erp-view-switchers">
-            <button type="button" class="erp-view-btn active" title="عرض القائمة (List View)">☰</button>
-            <button type="button" class="erp-view-btn" title="عرض البطاقات (Kanban View)">▦</button>
-            <button type="button" class="erp-view-btn" title="عرض الرسم البياني (Graph View)">📈</button>
+            <button type="button" class="erp-view-btn active" title="عرض القائمة (List View)"><x-icon name="list" size="14" /></button>
+            <button type="button" class="erp-view-btn" title="عرض البطاقات (Kanban View)"><x-icon name="layout-grid" size="14" /></button>
+            <button type="button" class="erp-view-btn" title="عرض الرسم البياني (Graph View)"><x-icon name="trending-up" size="14" /></button>
         </div>
     </div>
 
@@ -47,7 +47,7 @@
             <div class="erp-cp-search">
                 <div class="erp-search-box">
                     <input type="search" class="erp-search-input" placeholder="{{ $searchPlaceholder }}">
-                    <span class="erp-search-icon">🔍</span>
+                    <span class="erp-search-icon"><x-icon name="search" size="14" /></span>
                 </div>
                 {{ $filters ?? '' }}
             </div>

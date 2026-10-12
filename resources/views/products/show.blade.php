@@ -5,7 +5,7 @@
         <x-slot:actions>
             <div style="display: flex; align-items: center; gap: 6px;">
                 <button type="button" onclick="directPrintFromShow()" class="erp-btn erp-btn-secondary" style="color: var(--primary);" title="طباعة فورية للملصق (38×25 مم) بدون نوافذ">
-                    <span>🖨️</span>
+                    <x-icon name="printer" size="16" />
                     <span>طباعة ملصق الباركود</span>
                 </button>
                 <div style="display: inline-flex; align-items: center; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); padding: 2px;" title="عدد النسخ المطلوبة">
@@ -15,11 +15,11 @@
                 </div>
             </div>
             <a href="{{ route('products.edit', $product) }}" class="erp-btn erp-btn-primary">
-                <span>✏️</span>
+                <x-icon name="pencil" size="16" />
                 <span>تعديل الصنف</span>
             </a>
             <a href="{{ route('products.index') }}" class="erp-btn erp-btn-secondary">
-                <span>←</span>
+                <x-icon name="arrow-left" size="16" />
                 <span>العودة للقائمة</span>
             </a>
         </x-slot:actions>
@@ -27,12 +27,12 @@
         <x-slot:extra>
             @if($product->is_active)
                 <span class="erp-badge erp-badge-success" style="padding: 4px 10px; font-size: 12px;">
-                    <span>✓</span>
+                    <x-icon name="check" size="12" />
                     <span>الحالة: نشط</span>
                 </span>
             @else
                 <span class="erp-badge erp-badge-danger" style="padding: 4px 10px; font-size: 12px;">
-                    <span>✕</span>
+                    <x-icon name="x" size="12" />
                     <span>الحالة: معطل</span>
                 </span>
             @endif
@@ -49,7 +49,7 @@
                     <img src="{{ $product->image_url }}" alt="{{ $product->name }}" style="max-width: 100%; max-height: 240px; object-fit: contain; margin: 0 auto; border-radius: var(--border-radius-sm);">
                 @else
                     <div style="width: 100%; height: 180px; background-color: var(--bg-surface-alt); border-radius: var(--border-radius-sm); display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px dashed var(--border-color);">
-                        <span style="font-size: 48px; opacity: 0.4;">💍</span>
+                        <x-icon name="package" size="48" style="opacity: 0.35;" />
                         <small style="color: var(--text-muted); margin-top: 8px;">لا توجد صورة مسجلة</small>
                     </div>
                 @endif
@@ -62,7 +62,8 @@
 
                     <div style="margin-top: 12px;">
                         <button type="button" onclick="directPrintFromShow()" class="erp-btn erp-btn-primary" style="width: 100%; justify-content: center; font-size: 13px;" title="طباعة فورية على الطابعة بدون نوافذ">
-                            <span>🖨️ طباعة فورية على الطابعة</span>
+                            <x-icon name="printer" size="16" />
+                            <span>طباعة فورية على الطابعة</span>
                         </button>
                     </div>
                 </div>
@@ -74,7 +75,8 @@
                     @csrf
                     @method('DELETE')
                     <button type="submit" class="erp-btn erp-btn-ghost" style="width: 100%; color: var(--danger); justify-content: center;">
-                        <span>🗑️ حذف هذا المنتج</span>
+                        <x-icon name="trash" size="16" />
+                        <span>حذف هذا المنتج</span>
                     </button>
                 </form>
             </div>
@@ -86,7 +88,7 @@
             <div class="erp-card">
                 <div class="erp-card-header">
                     <div class="erp-card-title">
-                        <span>📋</span>
+                        <x-icon name="clipboard" size="18" />
                         <span>المواصفات والبيانات التجارية</span>
                     </div>
                     <span class="font-numeric" style="font-weight: 700; color: var(--primary); font-size: 14px;">
@@ -94,27 +96,27 @@
                     </span>
                 </div>
                 <div class="erp-card-body">
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
-                        <div>
-                            <small style="color: var(--text-muted); display: block; font-size: 11px;">اسم المنتج:</small>
-                            <strong style="color: var(--text-main); font-size: 15px;">{{ $product->name }}</strong>
+                    <div class="erp-specs-grid">
+                        <div class="erp-specs-item">
+                            <span class="erp-specs-label">اسم المنتج:</span>
+                            <strong class="erp-specs-value" style="font-size: 15px;">{{ $product->name }}</strong>
                         </div>
 
-                        <div>
-                            <small style="color: var(--text-muted); display: block; font-size: 11px;">التصنيف:</small>
+                        <div class="erp-specs-item">
+                            <span class="erp-specs-label">التصنيف:</span>
                             <span class="erp-badge erp-badge-neutral" style="margin-top: 4px;">
                                 {{ $product->category?->name ?? 'غير محدد' }}
                             </span>
                         </div>
 
-                        <div>
-                            <small style="color: var(--text-muted); display: block; font-size: 11px;">وحدة القياس:</small>
-                            <strong style="color: var(--text-main); font-size: 14px;">{{ $product->unit }}</strong>
+                        <div class="erp-specs-item">
+                            <span class="erp-specs-label">وحدة القياس:</span>
+                            <strong class="erp-specs-value">{{ $product->unit }}</strong>
                         </div>
 
-                        <div>
-                            <small style="color: var(--text-muted); display: block; font-size: 11px;">حد تنبيه النواقص:</small>
-                            <span class="font-numeric" style="font-weight: 700; color: var(--warning);">{{ $product->min_stock_alert }} {{ $product->unit }}</span>
+                        <div class="erp-specs-item">
+                            <span class="erp-specs-label">حد تنبيه النواقص:</span>
+                            <span class="font-numeric erp-specs-value" style="color: var(--warning);">{{ $product->min_stock_alert }} {{ $product->unit }}</span>
                         </div>
                     </div>
                 </div>
@@ -124,27 +126,27 @@
             <div class="erp-card">
                 <div class="erp-card-header">
                     <div class="erp-card-title">
-                        <span>💰</span>
+                        <x-icon name="banknote" size="18" />
                         <span>هيكل التسعير وهامش الربح</span>
                     </div>
                 </div>
                 <div class="erp-card-body">
-                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; text-align: center;">
+                    <div class="erp-pricing-grid">
                         <!-- Cost Price -->
-                        <div style="padding: 14px; background: var(--bg-surface-alt); border-radius: var(--border-radius-sm); border: 1px solid var(--border-color);">
-                            <small style="color: var(--text-muted); display: block; font-size: 11px; margin-bottom: 4px;">سعر التكلفة (استيراد الصين)</small>
-                            <div class="font-numeric" style="font-size: 18px; font-weight: 700; color: var(--text-main);">
+                        <div class="erp-pricing-card">
+                            <span class="erp-pricing-label">سعر التكلفة (استيراد الصين)</span>
+                            <div class="font-numeric erp-pricing-value">
                                 {{ number_format((float)$product->cost_price, 2) }}
-                                <span style="font-size: 11px; font-weight: normal; color: var(--text-muted);">ج.م</span>
+                                <span class="erp-pricing-unit">ج.م</span>
                             </div>
                         </div>
 
                         <!-- Wholesale Price -->
-                        <div style="padding: 14px; background: var(--success-soft); border-radius: var(--border-radius-sm); border: 1px solid var(--success-border);">
-                            <small style="color: var(--success-text); display: block; font-size: 11px; margin-bottom: 4px;">سعر الجملة لتجار الإكسسوارات</small>
-                            <div class="font-numeric" style="font-size: 20px; font-weight: 800; color: var(--success-text);">
+                        <div class="erp-pricing-card erp-pricing-card-highlight">
+                            <span class="erp-pricing-label">سعر الجملة لتجار الإكسسوارات</span>
+                            <div class="font-numeric erp-pricing-value">
                                 {{ number_format((float)$product->wholesale_price, 2) }}
-                                <span style="font-size: 11px; font-weight: normal;">ج.م</span>
+                                <span class="erp-pricing-unit">ج.م</span>
                             </div>
                             @php
                                 $wholesaleProfit = (float)$product->wholesale_price - (float)$product->cost_price;
@@ -156,11 +158,11 @@
                         </div>
 
                         <!-- Retail Price -->
-                        <div style="padding: 14px; background: var(--bg-surface-alt); border-radius: var(--border-radius-sm); border: 1px solid var(--border-color);">
-                            <small style="color: var(--text-muted); display: block; font-size: 11px; margin-bottom: 4px;">سعر بيع التجزئة المقترح</small>
-                            <div class="font-numeric" style="font-size: 18px; font-weight: 700; color: var(--text-main);">
+                        <div class="erp-pricing-card">
+                            <span class="erp-pricing-label">سعر بيع التجزئة المقترح</span>
+                            <div class="font-numeric erp-pricing-value">
                                 {{ number_format((float)$product->retail_price, 2) }}
-                                <span style="font-size: 11px; font-weight: normal; color: var(--text-muted);">ج.م</span>
+                                <span class="erp-pricing-unit">ج.م</span>
                             </div>
                         </div>
                     </div>
@@ -170,16 +172,16 @@
     </div>
 
     <!-- Print Barcode Modal (38x15mm Xprinter XP-233B) -->
-    <div id="printBarcodeModal" style="display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,0.5); backdrop-filter: blur(2px); align-items: center; justify-content: center; padding: 16px;">
-        <div class="erp-card" style="width: 100%; max-width: 480px; padding: 0; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+    <div id="printBarcodeModal" class="erp-modal-overlay" style="display: none;">
+        <div class="erp-card erp-modal-container" style="max-width: 480px;">
             <!-- Modal Header -->
-            <div class="erp-card-header" style="background: var(--bg-surface-alt); border-bottom: 1px solid var(--border-color); padding: 12px 18px;">
-                <div class="erp-card-title" style="font-size: 15px;">
-                    <span>🖨️</span>
+            <div class="erp-card-header erp-modal-header">
+                <div class="erp-card-title erp-modal-title">
+                    <x-icon name="printer" size="18" />
                     <span>طباعة ملصق الباركود الحراري</span>
                 </div>
-                <button type="button" onclick="closePrintModal()" class="erp-btn erp-btn-ghost erp-btn-icon" style="color: var(--text-muted);" title="إغلاق">
-                    <span>✕</span>
+                <button type="button" onclick="closePrintModal()" class="erp-btn erp-btn-ghost erp-btn-icon erp-modal-close" title="إغلاق">
+                    <x-icon name="x" size="16" />
                 </button>
             </div>
 
@@ -231,7 +233,10 @@
 
                 <!-- Notice -->
                 <div style="font-size: 11.5px; color: var(--text-muted); background: var(--bg-surface-alt); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); margin-bottom: 20px;">
-                    ℹ️ يتم إرسال أمر الطباعة بمقاس 38×15 مم المخصص لطابعات الباركود الحرارية (Xprinter XP-233B).
+                    <span style="display: inline-flex; align-items: center; gap: 6px;">
+                        <x-icon name="info" size="14" />
+                        <span>يتم إرسال أمر الطباعة بمقاس 38×15 مم المخصص لطابعات الباركود الحرارية (Xprinter XP-233B).</span>
+                    </span>
                 </div>
 
                 <!-- Actions -->
@@ -240,10 +245,12 @@
                         <span>إلغاء</span>
                     </button>
                     <button type="button" onclick="openPrintPreview(false)" class="erp-btn erp-btn-secondary" title="فتح صفحة المعاينة بدون طباعة فورية">
-                        <span>🔍 معاينة</span>
+                        <x-icon name="eye" size="16" />
+                        <span>معاينة</span>
                     </button>
                     <button type="button" onclick="openPrintPreview(true)" class="erp-btn erp-btn-primary">
-                        <span>🖨️ طباعة الآن</span>
+                        <x-icon name="printer" size="16" />
+                        <span>طباعة الآن</span>
                     </button>
                 </div>
             </div>
@@ -343,9 +350,9 @@
     <iframe id="directPrintIframe" name="directPrintIframe" style="display: none; position: fixed; width: 0; height: 0; border: 0; opacity: 0; pointer-events: none;"></iframe>
 
     <!-- Toast Notification for Direct Print Feedback -->
-    <div id="printNotificationToast" style="display: none; position: fixed; bottom: 24px; left: 24px; z-index: 99999; background: #0f172a; color: #ffffff; padding: 12px 20px; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); font-size: 13.5px; font-weight: 600; align-items: center; gap: 10px;">
-        <span style="font-size: 18px;">🖨️</span>
-        <span id="printToastMessage">جاري إرسال الملصق للطباعة...</span>
+    <div id="printNotificationToast" class="erp-toast" style="display: none;">
+        <span class="erp-toast-icon"><x-icon name="printer" size="18" /></span>
+        <span id="printToastMessage" class="erp-toast-message">جاري إرسال الملصق للطباعة...</span>
     </div>
 @endsection
 

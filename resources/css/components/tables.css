@@ -1,0 +1,60 @@
+/* ==========================================================================
+   Kayan ERP — Enterprise Data Tables
+   Responsive Wrappers, Density-Adaptive Rows & Clickable Row States
+   ========================================================================== */
+
+.erp-table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.erp-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--density-font-size);
+    text-align: right;
+}
+
+.erp-table th {
+    background-color: var(--bg-surface-alt);
+    color: var(--text-muted);
+    font-weight: 700;
+    font-size: var(--density-font-size-sm);
+    padding: var(--density-table-py) var(--density-table-px);
+    border-bottom: 1px solid var(--border-color);
+    white-space: nowrap;
+    user-select: none;
+}
+
+.erp-table td {
+    padding: var(--density-table-py) var(--density-table-px);
+    border-bottom: 1px solid var(--border-light);
+    color: var(--text-main);
+    vertical-align: middle;
+}
+
+.erp-table tbody tr {
+    transition: background-color 0.1s ease;
+}
+
+.erp-table tbody tr:hover {
+    background-color: var(--bg-hover);
+}
+
+.erp-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* Clickable Table Rows (Row Drilldown / Details View) */
+.erp-row-clickable,
+.product-row-clickable {
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.12s ease;
+}
+
+.erp-row-clickable:hover,
+.product-row-clickable:hover {
+    background-color: var(--bg-hover);
+}

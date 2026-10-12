@@ -1,0 +1,141 @@
+/* ==========================================================================
+   Kayan ERP — Products Module Styles
+   Pricing Grids, Specs Details, Image Previews, Batch Print Controls & Import
+   ========================================================================== */
+
+/* Multi-Column Form Card Grid */
+.erp-form-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    gap: 20px;
+}
+
+/* 3-Column Pricing Structure Grid */
+.erp-pricing-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.erp-pricing-card {
+    padding: 14px;
+    background-color: var(--bg-surface-alt);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    text-align: center;
+    transition: all 0.15s ease;
+}
+
+.erp-pricing-card-highlight {
+    background-color: var(--success-soft);
+    border-color: var(--success-border);
+}
+
+.erp-pricing-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    display: block;
+    margin-bottom: 4px;
+}
+
+.erp-pricing-card-highlight .erp-pricing-label {
+    color: var(--success-text);
+}
+
+.erp-pricing-value {
+    font-size: 19px;
+    font-weight: 700;
+    color: var(--text-main);
+    line-height: 1.2;
+}
+
+.erp-pricing-card-highlight .erp-pricing-value {
+    color: var(--success-text);
+    font-weight: 800;
+}
+
+.erp-pricing-unit {
+    font-size: 11px;
+    font-weight: normal;
+    color: var(--text-muted);
+    margin-right: 2px;
+}
+
+.erp-pricing-card-highlight .erp-pricing-unit {
+    color: var(--success-text);
+}
+
+/* Product Specifications Grid */
+.erp-specs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+}
+
+.erp-specs-item {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.erp-specs-label {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.erp-specs-value {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+/* Image Preview Container */
+.erp-image-preview-container {
+    margin-top: 10px;
+}
+
+.erp-image-preview-thumb {
+    max-height: 90px;
+    border-radius: var(--border-radius-sm);
+    border: 1px solid var(--border-color);
+    object-fit: contain;
+    background-color: var(--bg-surface);
+}
+
+/* Batch Quantity Control inside Modal */
+.erp-batch-qty-control {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.erp-batch-qty-input {
+    width: 60px;
+    height: 30px;
+    text-align: center;
+    padding: 4px;
+    font-weight: bold;
+    font-size: 13px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    background-color: var(--bg-surface);
+    color: var(--text-main);
+}
+
+.erp-batch-summary-box {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+@media (max-width: 640px) {
+    .erp-pricing-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .erp-form-card-grid {
+        grid-template-columns: 1fr;
+    }
+}

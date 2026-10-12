@@ -3,19 +3,19 @@
     <div class="erp-app-launcher-card" role="dialog" aria-modal="true" aria-labelledby="launcherTitle">
         <div class="erp-launcher-header">
             <div class="erp-launcher-title" id="launcherTitle">
-                <span>▦</span>
+                <x-icon name="layout-grid" size="18" />
                 <span>تطبيقات Kayan ERP</span>
             </div>
             <button id="appLauncherClose" type="button" class="erp-btn erp-btn-ghost erp-btn-icon" title="إغلاق (Esc)">
-                ✕
+                <x-icon name="x" size="16" />
             </button>
         </div>
 
         <div class="erp-launcher-grid">
             <!-- Dashboard -->
             <a href="{{ url('/') }}" class="erp-launcher-item">
-                <div class="erp-launcher-icon" style="background: linear-gradient(135deg, #714B67, #4A2E43);">
-                    📊
+                <div class="erp-launcher-icon" style="background-color: var(--primary-soft); color: var(--primary);">
+                    <x-icon name="layout-dashboard" size="26" strokeWidth="1.75" />
                 </div>
                 <div class="erp-launcher-label">لوحة التحكم</div>
                 <div class="erp-launcher-desc">المؤشرات العامة وملخص النشاط التجاري</div>
@@ -23,8 +23,8 @@
 
             <!-- Products & Inventory -->
             <a href="{{ url('/products') }}" class="erp-launcher-item">
-                <div class="erp-launcher-icon" style="background: linear-gradient(135deg, #0D9488, #115E59);">
-                    💍
+                <div class="erp-launcher-icon" style="background-color: var(--primary-soft); color: var(--primary);">
+                    <x-icon name="package" size="26" strokeWidth="1.75" />
                 </div>
                 <div class="erp-launcher-label">المخزون والمنتجات</div>
                 <div class="erp-launcher-desc">إكسسوارات حريمي، توك شعر، باركود، وجرد</div>
@@ -32,8 +32,8 @@
 
             <!-- Sales & Customers -->
             <a href="#" class="erp-launcher-item">
-                <div class="erp-launcher-icon" style="background: linear-gradient(135deg, #2563EB, #1E40AF);">
-                    🛍️
+                <div class="erp-launcher-icon" style="background-color: var(--primary-soft); color: var(--primary);">
+                    <x-icon name="shopping-cart" size="26" strokeWidth="1.75" />
                 </div>
                 <div class="erp-launcher-label">المبيعات وتجار الجملة</div>
                 <div class="erp-launcher-desc">عروض أسعار، فواتير بيع، وحسابات العملاء</div>
@@ -41,8 +41,8 @@
 
             <!-- Purchases & Imports -->
             <a href="#" class="erp-launcher-item">
-                <div class="erp-launcher-icon" style="background: linear-gradient(135deg, #D97706, #B45309);">
-                    🇨🇳
+                <div class="erp-launcher-icon" style="background-color: var(--primary-soft); color: var(--primary);">
+                    <x-icon name="shopping-bag" size="26" strokeWidth="1.75" />
                 </div>
                 <div class="erp-launcher-label">المشتريات والاستيراد</div>
                 <div class="erp-launcher-desc">طلبيات الصين، الشحن، الجمارك، والموردون</div>
@@ -50,8 +50,8 @@
 
             <!-- Finance & Cash -->
             <a href="#" class="erp-launcher-item">
-                <div class="erp-launcher-icon" style="background: linear-gradient(135deg, #059669, #047857);">
-                    💰
+                <div class="erp-launcher-icon" style="background-color: var(--primary-soft); color: var(--primary);">
+                    <x-icon name="banknote" size="26" strokeWidth="1.75" />
                 </div>
                 <div class="erp-launcher-label">الخزينة والمالية</div>
                 <div class="erp-launcher-desc">المقبوضات، المدفوعات، والمصروفات والأرباح</div>
@@ -59,8 +59,8 @@
 
             <!-- Settings -->
             <a href="{{ route('settings.index') }}" class="erp-launcher-item">
-                <div class="erp-launcher-icon" style="background: linear-gradient(135deg, #4B5563, #374151);">
-                    ⚙️
+                <div class="erp-launcher-icon" style="background-color: var(--primary-soft); color: var(--primary);">
+                    <x-icon name="settings" size="26" strokeWidth="1.75" />
                 </div>
                 <div class="erp-launcher-label">الإعدادات والصلاحيات</div>
                 <div class="erp-launcher-desc">بيانات الشركة، الفروع، والمستخدمين</div>

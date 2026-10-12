@@ -4,19 +4,19 @@
     <x-control-panel title="المنتجات والأصناف" :breadcrumbs="['المخزون والمنتجات' => route('products.index')]">
         <x-slot:actions>
             <a href="{{ route('products.create') }}" class="erp-btn erp-btn-primary">
-                <span>➕</span>
+                <x-icon name="plus" size="16" />
                 <span>إضافة منتج جديد</span>
             </a>
             <button type="button" id="topBatchPrintBtn" onclick="directPrintBatch(event)" class="erp-btn erp-btn-secondary" style="display: none; color: var(--primary);" title="طباعة فورية للأصناف المحددة بدون نوافذ">
-                <span>🖨️</span>
+                <x-icon name="printer" size="16" />
                 <span>طباعة ملصقات (<span id="topBatchCount" class="font-numeric">0</span>)</span>
             </button>
             <a href="{{ route('products.import.form') }}" class="erp-btn erp-btn-secondary">
-                <span>📥</span>
+                <x-icon name="upload" size="16" />
                 <span>استيراد من إكسيل</span>
             </a>
             <a href="{{ route('categories.index') }}" class="erp-btn erp-btn-secondary">
-                <span>🏷️</span>
+                <x-icon name="tag" size="16" />
                 <span>إدارة التصنيفات</span>
             </a>
         </x-slot:actions>
@@ -34,14 +34,14 @@
     <!-- Flash Messages -->
     @if(session('status') === 'success')
         <div class="erp-alert erp-alert-success" role="alert" style="margin-bottom: 16px;">
-            <span style="font-size: 16px;">✓</span>
+            <x-icon name="check" size="16" />
             <div>{{ session('message', 'تمت العملية بنجاح.') }}</div>
         </div>
     @endif
 
     @if(session('status') === 'error')
         <div class="erp-alert erp-alert-danger" role="alert" style="margin-bottom: 16px;">
-            <span style="font-size: 16px;">⚠️</span>
+            <x-icon name="alert-triangle" size="16" />
             <div>{{ session('message', 'حدث خطأ أثناء تنفيذ العملية.') }}</div>
         </div>
     @endif
@@ -59,7 +59,9 @@
                     placeholder="بحث باسم المنتج، كود SKU، أو الباركود..."
                     style="width: 100%; padding-right: 36px;"
                 >
-                <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); opacity: 0.6;">🔍</span>
+                <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); opacity: 0.6; display: flex; align-items: center; pointer-events: none;">
+                    <x-icon name="search" size="16" />
+                </span>
             </div>
 
             <!-- Category Filter -->
@@ -90,7 +92,7 @@
 
             @if($currentSearch || $currentCategoryId || $currentStatus)
                 <a href="{{ route('products.index') }}" class="erp-btn erp-btn-secondary" style="padding: 7px 12px;" title="إلغاء التصفية">
-                    <span>✕</span>
+                    <x-icon name="x" size="14" />
                     <span>إلغاء الفلترة</span>
                 </a>
             @endif
@@ -101,7 +103,9 @@
     <div class="erp-card" style="padding: 0; overflow: hidden;">
         @if($products->isEmpty())
             <div style="text-align: center; padding: 48px 20px;">
-                <div style="font-size: 42px; margin-bottom: 12px; opacity: 0.5;">💍</div>
+                <div style="margin-bottom: 12px; opacity: 0.4; display: flex; justify-content: center;">
+                    <x-icon name="package" size="48" />
+                </div>
                 <h3 style="font-size: 16px; font-weight: 700; margin-bottom: 6px; color: var(--text-main);">لم يتم العثور على أي منتجات</h3>
                 <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
                     @if($currentSearch || $currentCategoryId || $currentStatus)
@@ -112,7 +116,8 @@
                 </p>
                 @if(!($currentSearch || $currentCategoryId || $currentStatus))
                     <a href="{{ route('products.create') }}" class="erp-btn erp-btn-primary">
-                        <span>➕ إضافة أول منتج</span>
+                        <x-icon name="plus" size="16" />
+                        <span>إضافة أول منتج</span>
                     </a>
                 @endif
             </div>
@@ -157,8 +162,8 @@
                                     @if($product->image_url)
                                         <img src="{{ $product->image_url }}" alt="{{ $product->name }}" style="width: 36px; height: 36px; object-fit: cover; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); display: inline-block;">
                                     @else
-                                        <div style="width: 36px; height: 36px; background-color: var(--bg-surface-alt); border-radius: var(--border-radius-sm); display: inline-flex; align-items: center; justify-content: center; font-size: 16px; opacity: 0.6; border: 1px dashed var(--border-color);">
-                                            💍
+                                        <div style="width: 36px; height: 36px; background-color: var(--bg-surface-alt); border-radius: var(--border-radius-sm); display: inline-flex; align-items: center; justify-content: center; opacity: 0.6; border: 1px dashed var(--border-color);">
+                                            <x-icon name="package" size="18" />
                                         </div>
                                     @endif
                                 </td>
@@ -225,19 +230,19 @@
                                 <td style="text-align: center;">
                                     <div class="flex items-center justify-center gap-1">
                                         <button type="button" class="erp-btn erp-btn-ghost erp-btn-icon" title="طباعة فورية للملصق (38×15 مم) بدون نوافذ" onclick="directPrintProduct({{ $product->id }}, event)">
-                                            <span>🖨️</span>
+                                            <x-icon name="printer" size="15" />
                                         </button>
                                         <a href="{{ route('products.show', $product) }}" class="erp-btn erp-btn-ghost erp-btn-icon" title="عرض تفاصيل الصنف">
-                                            <span>👁️</span>
+                                            <x-icon name="eye" size="15" />
                                         </a>
                                         <a href="{{ route('products.edit', $product) }}" class="erp-btn erp-btn-ghost erp-btn-icon" title="تعديل">
-                                            <span>✏️</span>
+                                            <x-icon name="pencil" size="15" />
                                         </a>
                                         <form action="{{ route('products.destroy', $product) }}" method="POST" onsubmit="return confirm('هل أنت متأكد من حذف المنتج: {{ $product->name }}؟');" style="display: inline;">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="erp-btn erp-btn-ghost erp-btn-icon" style="color: var(--danger);" title="حذف">
-                                                <span>🗑️</span>
+                                                <x-icon name="trash" size="15" />
                                             </button>
                                         </form>
                                     </div>
@@ -263,7 +268,7 @@
     </div>
 
     <!-- Floating Batch Actions Bar -->
-    <div id="batchActionBar" style="display: none; position: sticky; bottom: 16px; z-index: 40; background: var(--bg-surface); border: 2px solid var(--primary); border-radius: var(--border-radius-md); box-shadow: 0 10px 25px rgba(0,0,0,0.15); padding: 12px 20px; margin-top: 16px; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+    <div id="batchActionBar" class="erp-batch-action-bar" style="display: none;">
         <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
             <span class="erp-badge erp-badge-primary" style="font-size: 13px; padding: 6px 12px;">
                 <span>تم تحديد:</span>
@@ -276,30 +281,31 @@
         </div>
         <div style="display: flex; align-items: center; gap: 8px;">
             <button type="button" onclick="directPrintBatch(event)" class="erp-btn erp-btn-primary" title="طباعة فورية للملصقات مباشرة بدون نوافذ">
-                <span>🖨️</span>
+                <x-icon name="printer" size="16" />
                 <span>طباعة فورية للمحددة</span>
             </button>
             <button type="button" onclick="openBatchPrintModal()" class="erp-btn erp-btn-secondary" title="تخصيص عدد النسخ لكل صنف">
-                <span>⚙️</span>
+                <x-icon name="sliders" size="16" />
                 <span>تخصيص الكميات</span>
             </button>
             <button type="button" onclick="clearAllSelections()" class="erp-btn erp-btn-secondary">
-                <span>✕ إلغاء التحديد</span>
+                <x-icon name="x" size="14" />
+                <span>إلغاء التحديد</span>
             </button>
         </div>
     </div>
 
     <!-- Batch Barcode Print Modal -->
-    <div id="batchPrintModal" style="display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,0.5); backdrop-filter: blur(2px); align-items: center; justify-content: center; padding: 16px;">
-        <div class="erp-card" style="width: 100%; max-width: 650px; max-height: 90vh; display: flex; flex-direction: column; padding: 0; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+    <div id="batchPrintModal" class="erp-modal-overlay" style="display: none;">
+        <div class="erp-card erp-modal-container" style="max-width: 650px;">
             <!-- Modal Header -->
-            <div class="erp-card-header" style="background: var(--bg-surface-alt); border-bottom: 1px solid var(--border-color); padding: 12px 18px; flex-shrink: 0;">
-                <div class="erp-card-title" style="font-size: 15px;">
-                    <span>🖨️</span>
+            <div class="erp-card-header erp-modal-header">
+                <div class="erp-card-title erp-modal-title">
+                    <x-icon name="printer" size="18" />
                     <span>طباعة ملصقات الباركود للمنتجات المحددة (38×15 مم)</span>
                 </div>
-                <button type="button" onclick="closeBatchPrintModal()" class="erp-btn erp-btn-ghost erp-btn-icon" style="color: var(--text-muted);" title="إغلاق">
-                    <span>✕</span>
+                <button type="button" onclick="closeBatchPrintModal()" class="erp-btn erp-btn-ghost erp-btn-icon erp-modal-close" title="إغلاق">
+                    <x-icon name="x" size="16" />
                 </button>
             </div>
 
@@ -352,10 +358,12 @@
                         <span>إلغاء</span>
                     </button>
                     <button type="button" onclick="submitBatchPrint(false)" class="erp-btn erp-btn-secondary" title="فتح المعاينة لجميع الملصقات">
-                        <span>🔍 معاينة الطباعة</span>
+                        <x-icon name="eye" size="16" />
+                        <span>معاينة الطباعة</span>
                     </button>
                     <button type="button" onclick="submitBatchPrint(true)" class="erp-btn erp-btn-primary">
-                        <span>🖨️ طباعة الكل الآن</span>
+                        <x-icon name="printer" size="16" />
+                        <span>طباعة الكل الآن</span>
                     </button>
                 </div>
             </div>
@@ -652,21 +660,9 @@
     <iframe id="directPrintIframe" name="directPrintIframe" style="display: none; position: fixed; width: 0; height: 0; border: 0; opacity: 0; pointer-events: none;"></iframe>
 
     <!-- Toast Notification for Direct Print Feedback -->
-    <div id="printNotificationToast" style="display: none; position: fixed; bottom: 24px; left: 24px; z-index: 99999; background: #0f172a; color: #ffffff; padding: 12px 20px; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); font-size: 13.5px; font-weight: 600; align-items: center; gap: 10px;">
-        <span style="font-size: 18px;">🖨️</span>
-        <span id="printToastMessage">جاري إرسال الملصق للطباعة...</span>
+    <div id="printNotificationToast" class="erp-toast" style="display: none;">
+        <span class="erp-toast-icon"><x-icon name="printer" size="18" /></span>
+        <span id="printToastMessage" class="erp-toast-message">جاري إرسال الملصق للطباعة...</span>
     </div>
-
-    <!-- Inline Style for Clickable Rows -->
-    <style>
-        .product-row-clickable {
-            cursor: pointer;
-            user-select: none;
-            transition: background-color 0.12s ease;
-        }
-        .product-row-clickable:hover {
-            background-color: var(--bg-surface-alt) !important;
-        }
-    </style>
 @endsection
 

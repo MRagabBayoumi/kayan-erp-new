@@ -4,11 +4,11 @@
     <x-control-panel title="إضافة منتج جديد" :breadcrumbs="['المنتجات والأصناف' => route('products.index'), 'إضافة منتج' => '#']">
         <x-slot:actions>
             <button type="submit" form="productForm" class="erp-btn erp-btn-primary">
-                <span>💾</span>
+                <x-icon name="save" size="16" />
                 <span>حفظ المنتج</span>
             </button>
             <a href="{{ route('products.index') }}" class="erp-btn erp-btn-secondary">
-                <span>✕</span>
+                <x-icon name="x" size="16" />
                 <span>إلغاء وعودة</span>
             </a>
         </x-slot:actions>
@@ -19,7 +19,7 @@
     <!-- Validation Errors Alert -->
     @if($errors->any())
         <div class="erp-alert erp-alert-danger" role="alert" style="margin-bottom: 20px;">
-            <span style="font-size: 16px;">⚠️</span>
+            <x-icon name="alert-triangle" size="16" />
             <div>
                 <strong>يرجى تصحيح الأخطاء التالية قبل حفظ المنتج:</strong>
                 <ul style="margin: 6px 20px 0; font-size: 12px;">
@@ -34,12 +34,12 @@
     <form id="productForm" action="{{ route('products.store') }}" method="POST" enctype="multipart/form-data">
         @csrf
 
-        <div class="erp-form-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 20px;">
+        <div class="erp-form-card-grid">
             <!-- Panel 1: Main Product Details -->
             <div class="erp-card">
                 <div class="erp-card-header">
                     <div class="erp-card-title">
-                        <span>💍</span>
+                        <x-icon name="package" size="18" />
                         <span>بيانات الصنف الأساسية</span>
                     </div>
                 </div>
@@ -115,8 +115,9 @@
                     <div class="erp-form-group">
                         <label for="productBarcode" class="erp-form-label flex items-center justify-between">
                             <span>الباركود (Barcode)</span>
-                            <button type="button" id="btnGenBarcode" class="erp-btn erp-btn-ghost font-numeric" style="font-size: 11px; padding: 2px 8px; color: var(--primary);">
-                                ⚡ توليد كود داخلي فريد
+                            <button type="button" id="btnGenBarcode" class="erp-btn erp-btn-ghost font-numeric" style="font-size: 11px; padding: 2px 8px; color: var(--primary); display: inline-flex; align-items: center; gap: 4px;">
+                                <x-icon name="zap" size="13" />
+                                <span>توليد كود داخلي فريد</span>
                             </button>
                         </label>
                         <input 
@@ -138,13 +139,13 @@
             <div class="erp-card">
                 <div class="erp-card-header">
                     <div class="erp-card-title">
-                        <span>💰</span>
+                        <x-icon name="banknote" size="18" />
                         <span>التسعير وإعدادات المخزون</span>
                     </div>
                 </div>
                 <div class="erp-card-body" style="display: flex; flex-direction: column; gap: 16px;">
                     <!-- Prices 3-Column Grid -->
-                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+                    <div class="erp-pricing-grid">
                         <div class="erp-form-group">
                             <label for="costPrice" class="erp-form-label">
                                 سعر التكلفة <span style="color: var(--danger);">*</span>
@@ -258,6 +259,7 @@
         const barcodeInput = document.getElementById('productBarcode');
 
         if (genBtn && barcodeInput) {
+            const originalHtml = genBtn.innerHTML;
             genBtn.addEventListener('click', async () => {
                 genBtn.disabled = true;
                 genBtn.innerText = 'جاري التوليد...';
@@ -274,7 +276,7 @@
                     barcodeInput.value = '20' + random;
                 } finally {
                     genBtn.disabled = false;
-                    genBtn.innerText = '⚡ توليد كود داخلي فريد';
+                    genBtn.innerHTML = originalHtml;
                 }
             });
         }

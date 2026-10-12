@@ -5,17 +5,17 @@
         <x-slot:actions>
             @if($activeTab === 'barcode')
                 <button type="submit" form="barcodeSettingsForm" class="erp-btn erp-btn-primary">
-                    <span>💾</span>
+                    <x-icon name="save" size="16" />
                     <span>حفظ إعدادات الباركود</span>
                 </button>
             @else
                 <button type="submit" form="settingsForm" class="erp-btn erp-btn-primary">
-                    <span>💾</span>
+                    <x-icon name="save" size="16" />
                     <span>حفظ الإعدادات</span>
                 </button>
             @endif
             <a href="{{ url('/') }}" class="erp-btn erp-btn-secondary">
-                <span>←</span>
+                <x-icon name="arrow-left" size="16" />
                 <span>العودة للرئيسية</span>
             </a>
         </x-slot:actions>
@@ -23,12 +23,12 @@
         <x-slot:extra>
             @if($settings->isMaintenance())
                 <span class="erp-badge erp-badge-warning" style="padding: 4px 10px; font-size: 12px;">
-                    <span>⚠️</span>
+                    <x-icon name="alert-triangle" size="14" />
                     <span>حالة البرنامج: صيانة</span>
                 </span>
             @else
                 <span class="erp-badge erp-badge-success" style="padding: 4px 10px; font-size: 12px;">
-                    <span>✓</span>
+                    <x-icon name="check" size="14" />
                     <span>حالة البرنامج: نشط</span>
                 </span>
             @endif
@@ -40,14 +40,14 @@
     <!-- Flash Messages -->
     @if(session('status') === 'success')
         <div class="erp-alert erp-alert-success" role="alert" style="margin-bottom: 16px;">
-            <span style="font-size: 16px;">✓</span>
+            <x-icon name="check" size="16" />
             <div>{{ session('message', 'تم حفظ الإعدادات بنجاح.') }}</div>
         </div>
     @endif
 
     @if($errors->any())
         <div class="erp-alert erp-alert-danger" role="alert" style="margin-bottom: 16px;">
-            <span style="font-size: 16px;">⚠️</span>
+            <x-icon name="alert-triangle" size="16" />
             <div>
                 <strong>يرجى تصحيح الأخطاء التالية قبل المتابعة:</strong>
                 <ul style="margin: 6px 20px 0; font-size: 12px;">
@@ -60,43 +60,43 @@
     @endif
 
     <!-- Settings Navigation Tabs (Matching Desktop App Tabs Layout) -->
-    <div class="erp-card" style="padding: 6px; margin-bottom: 20px; background: var(--bg-surface-alt); border-bottom: 2px solid var(--border-color);">
-        <nav class="erp-settings-tab-bar" style="display: flex; gap: 6px; flex-wrap: wrap;">
+    <div class="erp-card erp-tab-nav-card">
+        <nav class="erp-settings-tab-bar">
             <!-- Tab 1: Company Info -->
             <a href="{{ route('settings.index', ['tab' => 'company']) }}" 
                class="erp-tab-link {{ $activeTab === 'company' ? 'active' : '' }}">
-                <span>🏢</span>
+                <x-icon name="building-2" size="16" />
                 <span>بيانات وهوية الشركة</span>
             </a>
 
             <!-- Tab 2: Barcode Settings -->
             <a href="{{ route('settings.index', ['tab' => 'barcode']) }}" 
                class="erp-tab-link {{ $activeTab === 'barcode' ? 'active' : '' }}">
-                <span>🏷️</span>
+                <x-icon name="barcode" size="16" />
                 <span>إعدادات الباركود</span>
             </a>
 
             <!-- Future Tabs from Legacy Software -->
             <span class="erp-tab-link disabled" title="مرحلة قادمة في المخطط">
-                <span>🧾</span>
+                <x-icon name="receipt" size="16" />
                 <span>إعدادات الفاتورة</span>
                 <span class="erp-badge erp-badge-neutral" style="font-size: 10px; padding: 2px 6px;">قريباً</span>
             </span>
 
             <span class="erp-tab-link disabled" title="مرحلة قادمة في المخطط">
-                <span>🖨️</span>
+                <x-icon name="printer" size="16" />
                 <span>إعدادات الفاتورة - الطابعة الثانية</span>
                 <span class="erp-badge erp-badge-neutral" style="font-size: 10px; padding: 2px 6px;">قريباً</span>
             </span>
 
             <span class="erp-tab-link disabled" title="مرحلة قادمة في المخطط">
-                <span>📊</span>
+                <x-icon name="trending-up" size="16" />
                 <span>إعدادات التقارير</span>
                 <span class="erp-badge erp-badge-neutral" style="font-size: 10px; padding: 2px 6px;">قريباً</span>
             </span>
 
             <span class="erp-tab-link disabled" title="مرحلة قادمة في المخطط">
-                <span>🔒</span>
+                <x-icon name="shield" size="16" />
                 <span>صلاحيات الكاشير</span>
                 <span class="erp-badge erp-badge-neutral" style="font-size: 10px; padding: 2px 6px;">قريباً</span>
             </span>
@@ -117,7 +117,7 @@
                 <div class="erp-card" style="margin-bottom: 20px;">
                     <div class="erp-card-header">
                         <div class="erp-card-title">
-                            <span>🖨️</span>
+                            <x-icon name="printer" size="18" />
                             <span>أبعاد وملفات طابعة الباركود الحرارية</span>
                         </div>
                         <small style="color: var(--text-muted);">تطابق إعدادات طابعة Xprinter XP-233B وبكرات الاستيكر</small>
@@ -302,7 +302,10 @@
 
                         <!-- Presets Quick Bar -->
                         <div style="margin-top: 16px; padding: 12px; background: var(--bg-surface-alt); border-radius: var(--border-radius-sm); border: 1px dashed var(--border-color); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
-                            <span style="font-size: 12px; color: var(--text-muted); font-weight: 600;">⚡ قوالب جاهزة سريعة للأبعاد:</span>
+                            <span style="font-size: 12px; color: var(--text-muted); font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                                <x-icon name="zap" size="13" />
+                                <span>قوالب جاهزة سريعة للأبعاد:</span>
+                            </span>
                             <div style="display: flex; gap: 8px;">
                                 <button type="button" onclick="applyPreset(38, 25, 260, 80, 14, 8)" class="erp-btn erp-btn-secondary" style="font-size: 11.5px; padding: 4px 10px;">
                                     <span>بكرة 38×25 مم (الافتراضي)</span>
@@ -319,7 +322,7 @@
                 <div class="erp-card" style="margin-bottom: 20px;">
                     <div class="erp-card-header">
                         <div class="erp-card-title">
-                            <span>☑️</span>
+                            <x-icon name="sliders" size="18" />
                             <span>خيارات عناصر الطباعة الظاهرة على الاستيكر</span>
                         </div>
                         <small style="color: var(--text-muted);">حدد ما ترغب في إظهاره أو إخفائه على ملصق الباركود</small>
@@ -409,8 +412,9 @@
 
                             <!-- Price Option: Wholesale vs Retail -->
                             <div style="background: var(--bg-surface-alt); padding: 12px 16px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color);">
-                                <strong style="display: block; color: var(--text-main); font-size: 13.5px; margin-bottom: 8px;">
-                                    💰 خيار طباعة سعر البيع (جملة ولا تجزئة):
+                                <strong style="display: flex; align-items: center; gap: 6px; color: var(--text-main); font-size: 13.5px; margin-bottom: 8px;">
+                                    <x-icon name="banknote" size="16" />
+                                    <span>خيار طباعة سعر البيع (جملة ولا تجزئة):</span>
                                 </strong>
                                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px;">
                                     <!-- None -->
@@ -445,7 +449,7 @@
                 <!-- Submit Bar -->
                 <div style="display: flex; align-items: center; gap: 12px; margin-top: 10px;">
                     <button type="submit" class="erp-btn erp-btn-primary" style="padding: 10px 24px; font-size: 14px;">
-                        <span>💾</span>
+                        <x-icon name="save" size="16" />
                         <span>حفظ إعدادات الباركود</span>
                     </button>
                     <a href="{{ url('/') }}" class="erp-btn erp-btn-secondary" style="padding: 10px 20px;">
@@ -459,7 +463,7 @@
                 <div class="erp-card" style="padding: 16px; text-align: center;">
                     <div class="erp-card-header" style="padding: 0 0 12px; border-bottom: 1px solid var(--border-color); margin-bottom: 14px;">
                         <div class="erp-card-title" style="font-size: 14px;">
-                            <span>👁️</span>
+                            <x-icon name="eye" size="16" />
                             <span>معاينة حية للملصق</span>
                         </div>
                         <span id="previewDimensionsBadge" class="erp-badge erp-badge-neutral font-numeric" style="font-size: 11px;">
@@ -468,20 +472,20 @@
                     </div>
 
                     <!-- Thermal Sticker Live Display Box -->
-                    <div style="background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 20px; display: flex; align-items: center; justify-content: center; min-height: 220px;">
-                        <div id="liveStickerFrame" style="background: #ffffff; border: 1px solid #94a3b8; border-radius: 3px; box-shadow: 0 4px 10px rgba(0,0,0,0.12); padding: 4px; box-sizing: border-box; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: space-between; transition: all 0.2s ease;">
+                    <div class="erp-sticker-preview-box">
+                        <div id="liveStickerFrame" class="erp-live-sticker-frame">
                             <!-- Top: Company Name -->
-                            <div id="previewCompanyText" style="font-size: 10px; font-weight: 700; color: #1e293b; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;">
+                            <div id="previewCompanyText" class="erp-preview-company-text">
                                 {{ $barcodeSettings->getEffectiveCompanyName() }}
                             </div>
 
                             <!-- Middle Top: Product Name -->
-                            <div id="previewProductText" style="font-size: 14px; font-weight: 800; color: #000000; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;">
+                            <div id="previewProductText" class="erp-preview-product-name">
                                 فرشاة شعر كوري راقية
                             </div>
 
                             <!-- Barcode Bars -->
-                            <div id="previewBarcodeBars" style="width: 100%; display: flex; justify-content: center; margin: 4px 0;">
+                            <div id="previewBarcodeBars" class="erp-preview-barcode-container">
                                 <svg id="previewBarcodeSvg" viewBox="0 0 200 40" width="85%" height="35" preserveAspectRatio="none">
                                     <g fill="#000000">
                                         <!-- Realistic Code 128 Bars Simulation -->
@@ -523,15 +527,16 @@
                             </div>
 
                             <!-- Bottom: SKU & Price -->
-                            <div id="previewBottomDetails" style="font-size: 8px; font-weight: 700; color: #000000; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;">
+                            <div id="previewBottomDetails" class="erp-preview-item-code">
                                 <span id="previewSkuSpan">ITEM-NO: HB-262</span>
                                 <span id="previewPriceSpan" style="margin-inline-start: 6px;"></span>
                             </div>
                         </div>
                     </div>
 
-                    <div style="margin-top: 12px; font-size: 11px; color: var(--text-muted);">
-                        💡 تتغير المعاينة أعلاه تلقائياً بمجرد تعديل أي مقاس أو خيار.
+                    <div style="margin-top: 12px; font-size: 11px; color: var(--text-muted); display: flex; align-items: center; justify-content: center; gap: 6px;">
+                        <x-icon name="info" size="13" />
+                        <span>تتغير المعاينة أعلاه تلقائياً بمجرد تعديل أي مقاس أو خيار.</span>
                     </div>
                 </div>
             </div>
@@ -549,7 +554,7 @@
             <div class="erp-card" style="margin-bottom: 20px;">
                 <div class="erp-card-header">
                     <div class="erp-card-title">
-                        <span>🏢</span>
+                        <x-icon name="building-2" size="18" />
                         <span>بيانات وهوية الشركة</span>
                     </div>
                     <small style="color: var(--text-muted);">المعلومات الرسمية التي تظهر في الترويسة والقوائم</small>
@@ -644,7 +649,7 @@
             <div class="erp-card" style="margin-bottom: 20px;">
                 <div class="erp-card-header">
                     <div class="erp-card-title">
-                        <span>⚡</span>
+                        <x-icon name="zap" size="18" />
                         <span>حالة وتشغيل البرنامج (Program Status)</span>
                     </div>
                     <small style="color: var(--text-muted);">التحكم في وسم وتنبيه وضع تشغيل النظام</small>
@@ -705,7 +710,7 @@
             <!-- Form Submit Bar -->
             <div style="display: flex; align-items: center; justify-content: flex-start; gap: 12px; margin-top: 10px;">
                 <button type="submit" class="erp-btn erp-btn-primary" style="padding: 10px 24px; font-size: 14px;">
-                    <span>💾</span>
+                    <x-icon name="save" size="16" />
                     <span>حفظ الإعدادات</span>
                 </button>
                 <a href="{{ url('/') }}" class="erp-btn erp-btn-secondary" style="padding: 10px 20px;">
@@ -880,60 +885,4 @@
         }
     }
 </script>
-
-<style>
-    /* Tabs Navigation Styling */
-    .erp-tab-link {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 9px 18px;
-        border-radius: var(--border-radius-sm);
-        font-size: 13.5px;
-        font-weight: 700;
-        text-decoration: none;
-        color: var(--text-secondary);
-        background: transparent;
-        transition: all 0.15s ease;
-        border: 1px solid transparent;
-    }
-    .erp-tab-link:hover:not(.disabled) {
-        background: var(--bg-hover);
-        color: var(--text-main);
-    }
-    .erp-tab-link.active {
-        background: var(--bg-surface);
-        color: var(--primary);
-        border-color: var(--border-color);
-        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-    }
-    .erp-tab-link.disabled {
-        opacity: 0.55;
-        cursor: not-allowed;
-    }
-
-    /* Radio Pill Options */
-    .erp-radio-pill {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 12px;
-        background: var(--bg-surface);
-        border: 1px solid var(--border-color);
-        border-radius: var(--border-radius-sm);
-        cursor: pointer;
-        font-size: 12.5px;
-        font-weight: 600;
-        color: var(--text-main);
-        transition: all 0.15s ease;
-    }
-    .erp-radio-pill:has(input:checked) {
-        border-color: var(--primary);
-        background: var(--primary-soft);
-        color: var(--primary);
-    }
-    .erp-radio-pill input {
-        accent-color: var(--primary);
-    }
-</style>
 @endpush
