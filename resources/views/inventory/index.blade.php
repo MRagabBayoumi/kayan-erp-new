@@ -256,106 +256,110 @@
     @endif
 
     <!-- Modal: Stock Movement (Dynamic In / Out / Transfer / Adjustment) -->
-    <div id="stockMovementModal" class="erp-modal-backdrop" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 999; align-items: center; justify-content: center;">
-        <div class="erp-card" style="max-width: 540px; width: 92%; max-height: 90vh; overflow-y: auto; padding: 24px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--border, #e2e8f0); padding-bottom: 12px;">
+    <div id="stockMovementModal" class="erp-modal-overlay">
+        <div class="erp-modal-container" style="max-width: 540px;">
+            <div class="erp-modal-header">
                 <div>
-                    <h3 style="margin: 0; font-size: 18px; font-weight: 700;">تسجيل حركة مخزون</h3>
+                    <h3 class="erp-modal-title" style="margin: 0;">
+                        <x-icon name="arrow-left-right" size="18" />
+                        <span>تسجيل حركة مخزون</span>
+                    </h3>
                     <div id="modal_product_subtitle" style="font-size: 12px; color: var(--text-muted); margin-top: 2px;"></div>
                 </div>
-                <button type="button" onclick="closeStockMovementModal()" class="erp-btn erp-btn-sm erp-btn-secondary" style="border: none;">✕</button>
+                <button type="button" onclick="closeStockMovementModal()" class="erp-modal-close" title="إغلاق">✕</button>
             </div>
 
             <form action="{{ route('inventory.movements.store') }}" method="POST">
                 @csrf
-
-                <!-- Movement Type Selector -->
-                <div style="margin-bottom: 16px;">
-                    <label class="erp-label" style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600;">نوع الحركة *</label>
-                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;">
-                        <label style="border: 1px solid var(--border); padding: 8px; border-radius: 6px; text-align: center; cursor: pointer; font-size: 12px; font-weight: 600;" id="type_label_in">
-                            <input type="radio" name="movement_type" value="in" checked onchange="updateMovementFields()" style="display: none;">
-                            إيداع / وارد
-                        </label>
-                        <label style="border: 1px solid var(--border); padding: 8px; border-radius: 6px; text-align: center; cursor: pointer; font-size: 12px; font-weight: 600;" id="type_label_out">
-                            <input type="radio" name="movement_type" value="out" onchange="updateMovementFields()" style="display: none;">
-                            صرف (FIFO)
-                        </label>
-                        <label style="border: 1px solid var(--border); padding: 8px; border-radius: 6px; text-align: center; cursor: pointer; font-size: 12px; font-weight: 600;" id="type_label_transfer">
-                            <input type="radio" name="movement_type" value="transfer" onchange="updateMovementFields()" style="display: none;">
-                            تحويل مخزني
-                        </label>
-                        <label style="border: 1px solid var(--border); padding: 8px; border-radius: 6px; text-align: center; cursor: pointer; font-size: 12px; font-weight: 600;" id="type_label_adjustment">
-                            <input type="radio" name="movement_type" value="adjustment" onchange="updateMovementFields()" style="display: none;">
-                            تسوية جردية
-                        </label>
+                <div class="erp-modal-body">
+                    <!-- Movement Type Selector -->
+                    <div style="margin-bottom: 16px;">
+                        <label class="erp-label" style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600;">نوع الحركة *</label>
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;">
+                            <label style="border: 1px solid var(--border-light); padding: 8px; border-radius: 6px; text-align: center; cursor: pointer; font-size: 12px; font-weight: 600;" id="type_label_in">
+                                <input type="radio" name="movement_type" value="in" checked onchange="updateMovementFields()" style="display: none;">
+                                إيداع / وارد
+                            </label>
+                            <label style="border: 1px solid var(--border-light); padding: 8px; border-radius: 6px; text-align: center; cursor: pointer; font-size: 12px; font-weight: 600;" id="type_label_out">
+                                <input type="radio" name="movement_type" value="out" onchange="updateMovementFields()" style="display: none;">
+                                صرف (FIFO)
+                            </label>
+                            <label style="border: 1px solid var(--border-light); padding: 8px; border-radius: 6px; text-align: center; cursor: pointer; font-size: 12px; font-weight: 600;" id="type_label_transfer">
+                                <input type="radio" name="movement_type" value="transfer" onchange="updateMovementFields()" style="display: none;">
+                                تحويل مخزني
+                            </label>
+                            <label style="border: 1px solid var(--border-light); padding: 8px; border-radius: 6px; text-align: center; cursor: pointer; font-size: 12px; font-weight: 600;" id="type_label_adjustment">
+                                <input type="radio" name="movement_type" value="adjustment" onchange="updateMovementFields()" style="display: none;">
+                                تسوية جردية
+                            </label>
+                        </div>
                     </div>
-                </div>
 
-                <!-- Product Selection -->
-                <div style="margin-bottom: 14px;">
-                    <label class="erp-label" style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600;">الصنف *</label>
-                    <select id="modal_product_id" name="product_id" class="erp-input" required style="width: 100%;">
-                        <option value="">-- اختر الصنف --</option>
-                        @foreach($products as $prod)
-                            <option value="{{ $prod->id }}" data-cost="{{ $prod->cost_price }}">
-                                [{{ $prod->sku }}] {{ $prod->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-
-                <!-- Standard Warehouse Selection (For In, Out, Adjustment) -->
-                <div id="single_warehouse_box" style="margin-bottom: 14px;">
-                    <label class="erp-label" style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600;">المستودع *</label>
-                    <select name="warehouse_id" class="erp-input" style="width: 100%;">
-                        @foreach($warehouses as $wh)
-                            <option value="{{ $wh->id }}" {{ $wh->is_default ? 'selected' : '' }}>
-                                {{ $wh->name }} {{ $wh->is_default ? '(الافتراضي)' : '' }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-
-                <!-- Transfer Warehouses Selection (From -> To) -->
-                <div id="transfer_warehouses_box" style="display: none; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;">
-                    <div>
-                        <label class="erp-label" style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600;">من مستودع *</label>
-                        <select name="from_warehouse_id" class="erp-input" style="width: 100%;">
-                            @foreach($warehouses as $wh)
-                                <option value="{{ $wh->id }}">{{ $wh->name }}</option>
+                    <!-- Product Selection -->
+                    <div style="margin-bottom: 14px;">
+                        <label class="erp-label" style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600;">الصنف *</label>
+                        <select id="modal_product_id" name="product_id" class="erp-input" required style="width: 100%;">
+                            <option value="">-- اختر الصنف --</option>
+                            @foreach($products as $prod)
+                                <option value="{{ $prod->id }}" data-cost="{{ $prod->cost_price }}">
+                                    [{{ $prod->sku }}] {{ $prod->name }}
+                                </option>
                             @endforeach
                         </select>
                     </div>
-                    <div>
-                        <label class="erp-label" style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600;">إلى مستودع *</label>
-                        <select name="to_warehouse_id" class="erp-input" style="width: 100%;">
+
+                    <!-- Standard Warehouse Selection (For In, Out, Adjustment) -->
+                    <div id="single_warehouse_box" style="margin-bottom: 14px;">
+                        <label class="erp-label" style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600;">المستودع *</label>
+                        <select name="warehouse_id" class="erp-input" style="width: 100%;">
                             @foreach($warehouses as $wh)
-                                <option value="{{ $wh->id }}" {{ !$loop->first ? 'selected' : '' }}>{{ $wh->name }}</option>
+                                <option value="{{ $wh->id }}" {{ $wh->is_default ? 'selected' : '' }}>
+                                    {{ $wh->name }} {{ $wh->is_default ? '(الافتراضي)' : '' }}
+                                </option>
                             @endforeach
                         </select>
                     </div>
-                </div>
 
-                <!-- Quantity & Unit Cost -->
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;">
-                    <div>
-                        <label id="qty_label" class="erp-label" style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600;">الكمية *</label>
-                        <input type="number" step="0.01" min="0.01" name="quantity" class="erp-input font-numeric" placeholder="مثال: 50" required style="width: 100%;">
+                    <!-- Transfer Warehouses Selection (From -> To) -->
+                    <div id="transfer_warehouses_box" style="display: none; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;">
+                        <div>
+                            <label class="erp-label" style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600;">من مستودع *</label>
+                            <select name="from_warehouse_id" class="erp-input" style="width: 100%;">
+                                @foreach($warehouses as $wh)
+                                    <option value="{{ $wh->id }}">{{ $wh->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="erp-label" style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600;">إلى مستودع *</label>
+                            <select name="to_warehouse_id" class="erp-input" style="width: 100%;">
+                                @foreach($warehouses as $wh)
+                                    <option value="{{ $wh->id }}" {{ !$loop->first ? 'selected' : '' }}>{{ $wh->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
                     </div>
-                    <div id="cost_box">
-                        <label class="erp-label" style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600;">سعر التكلفة (ج.م)</label>
-                        <input type="number" step="0.01" min="0" id="modal_unit_cost" name="unit_cost" class="erp-input font-numeric" placeholder="التكلفة..." style="width: 100%;">
+
+                    <!-- Quantity & Unit Cost -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px;">
+                        <div>
+                            <label id="qty_label" class="erp-label" style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600;">الكمية *</label>
+                            <input type="number" step="0.01" min="0.01" name="quantity" class="erp-input font-numeric" placeholder="مثال: 50" required style="width: 100%;">
+                        </div>
+                        <div id="cost_box">
+                            <label class="erp-label" style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600;">سعر التكلفة (ج.م)</label>
+                            <input type="number" step="0.01" min="0" id="modal_unit_cost" name="unit_cost" class="erp-input font-numeric" placeholder="التكلفة..." style="width: 100%;">
+                        </div>
+                    </div>
+
+                    <!-- Notes / Reason -->
+                    <div style="margin-bottom: 10px;">
+                        <label class="erp-label" style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600;">ملاحظات / سبب الحركة</label>
+                        <textarea name="notes" class="erp-input" rows="2" placeholder="رقم الفاتورة، أو سبب التسوية أو التحويل..." style="width: 100%;"></textarea>
                     </div>
                 </div>
 
-                <!-- Notes / Reason -->
-                <div style="margin-bottom: 20px;">
-                    <label class="erp-label" style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600;">ملاحظات / سبب الحركة</label>
-                    <textarea name="notes" class="erp-input" rows="2" placeholder="رقم الفاتورة، أو سبب التسوية أو التحويل..." style="width: 100%;"></textarea>
-                </div>
-
-                <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <div class="erp-modal-footer">
                     <button type="button" onclick="closeStockMovementModal()" class="erp-btn erp-btn-secondary">إلغاء</button>
                     <button type="submit" class="erp-btn erp-btn-primary">تأكيد وتنفيذ الحركة</button>
                 </div>
@@ -365,13 +369,21 @@
 
     <script>
         function openStockMovementModal() {
-            document.getElementById('modal_product_subtitle').innerText = '';
-            document.getElementById('stockMovementModal').style.display = 'flex';
-            updateMovementFields();
+            const m = document.getElementById('stockMovementModal');
+            if (m) {
+                document.getElementById('modal_product_subtitle').innerText = '';
+                m.classList.add('open');
+                m.style.display = 'flex';
+                updateMovementFields();
+            }
         }
 
         function closeStockMovementModal() {
-            document.getElementById('stockMovementModal').style.display = 'none';
+            const m = document.getElementById('stockMovementModal');
+            if (m) {
+                m.classList.remove('open');
+                m.style.display = 'none';
+            }
         }
 
         function openQuickMovementModal(productId, productName, sku, cost) {
@@ -379,8 +391,13 @@
             select.value = productId;
             document.getElementById('modal_unit_cost').value = cost;
             document.getElementById('modal_product_subtitle').innerText = `الصنف المحدد: [${sku}] ${productName}`;
-            document.getElementById('stockMovementModal').style.display = 'flex';
-            updateMovementFields();
+            
+            const m = document.getElementById('stockMovementModal');
+            if (m) {
+                m.classList.add('open');
+                m.style.display = 'flex';
+                updateMovementFields();
+            }
         }
 
         function updateMovementFields() {
@@ -399,7 +416,7 @@
                 } else {
                     el.style.background = 'transparent';
                     el.style.color = 'var(--text-main)';
-                    el.style.borderColor = 'var(--border)';
+                    el.style.borderColor = 'var(--border-light)';
                 }
             });
 
@@ -425,5 +442,17 @@
                 qtyLabel.innerText = 'الكمية المضافة *';
             }
         }
+
+        document.getElementById('stockMovementModal')?.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeStockMovementModal();
+            }
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeStockMovementModal();
+            }
+        });
     </script>
 @endsection

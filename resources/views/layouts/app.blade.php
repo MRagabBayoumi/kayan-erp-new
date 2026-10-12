@@ -7,8 +7,11 @@
 
     <title>{{ $title ?? 'الرئيسية' }} | Kayan ERP</title>
 
-    <!-- Google Cairo Font for Arabic Typography -->
-    <link rel="icon" type="image/x-icon" href="{{ $globalCompanySetting?->logo_url }}">
+    @if(!empty($globalCompanySetting?->logo_url))
+        <link rel="icon" href="{{ $globalCompanySetting->logo_url }}">
+    @else
+        <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23714B67'/><text x='50%' y='55%' dominant-baseline='central' text-anchor='middle' fill='white' font-size='60' font-family='sans-serif' font-weight='bold'>K</text></svg>">
+    @endif
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">

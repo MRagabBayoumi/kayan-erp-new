@@ -49,9 +49,20 @@
     flex-shrink: 0;
 }
 
+.erp-company-logo-img {
+    object-fit: cover;
+    background-color: transparent;
+    border: 1px solid var(--border-light);
+}
+
 .erp-company-info {
     min-width: 0;
     line-height: 1.25;
+    transition: opacity 0.18s ease, max-width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    max-width: 150px;
+    opacity: 1;
+    white-space: nowrap;
+    overflow: hidden;
 }
 
 .erp-company-name {
@@ -106,21 +117,61 @@
     border-color: rgba(255, 255, 255, 0.38);
 }
 
-.erp-sidebar.collapsed .erp-company-card,
-.erp-sidebar.collapsed .erp-nav-section-title,
-.erp-sidebar.collapsed .erp-nav-label,
+/* Collapsed Sidebar Rules — Smooth 60fps Transition */
+.erp-sidebar.collapsed .erp-company-info {
+    max-width: 0;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.erp-sidebar.collapsed .erp-company-card {
+    gap: 0;
+    justify-content: center;
+}
+
+.erp-sidebar.collapsed .erp-nav-label {
+    max-width: 0;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.erp-sidebar.collapsed .erp-nav-section-title {
+    max-height: 0;
+    padding: 0;
+    opacity: 0;
+    pointer-events: none;
+}
+
 .erp-sidebar.collapsed .erp-nav-badge {
+    opacity: 0;
     display: none;
 }
 
 .erp-sidebar.collapsed .erp-sidebar-header {
-    padding: 12px 6px;
+    padding: 10px 6px;
+    flex-direction: column;
+    gap: 8px;
     justify-content: center;
 }
 
+.erp-sidebar.collapsed .erp-nav-item {
+    justify-content: center;
+    padding: var(--density-padding-y) 0;
+}
+
+.erp-sidebar.collapsed .erp-nav-content {
+    justify-content: center;
+    gap: 0;
+    width: 100%;
+}
+
+.erp-sidebar.collapsed .erp-nav-icon {
+    margin: 0 auto;
+}
+
 .erp-sidebar.collapsed .erp-sidebar-toggle-btn {
-    width: 38px;
-    height: 38px;
+    width: 34px;
+    height: 34px;
     display: inline-flex;
     margin: 0 auto;
     background-color: var(--primary-soft);

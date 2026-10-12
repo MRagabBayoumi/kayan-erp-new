@@ -32,13 +32,13 @@
         <!-- Overview -->
         <div class="erp-nav-section">
             <div class="erp-nav-section-title">نظرة عامة</div>
-            <a href="{{ url('/') }}" class="erp-nav-item {{ request()->is('/') ? 'active' : '' }}">
+            <a href="{{ url('/') }}" class="erp-nav-item {{ request()->is('/') ? 'active' : '' }}" title="لوحة التحكم">
                 <div class="erp-nav-content">
                     <span class="erp-nav-icon"><x-icon name="layout-dashboard" size="18" /></span>
                     <span class="erp-nav-label">لوحة التحكم</span>
                 </div>
             </a>
-            <a href="#" class="erp-nav-item">
+            <a href="#" class="erp-nav-item" title="الأنشطة والمهام">
                 <div class="erp-nav-content">
                     <span class="erp-nav-icon"><x-icon name="zap" size="18" /></span>
                     <span class="erp-nav-label">الأنشطة والمهام</span>
@@ -50,19 +50,19 @@
         <!-- Sales -->
         <div class="erp-nav-section">
             <div class="erp-nav-section-title">المبيعات</div>
-            <a href="#" class="erp-nav-item">
+            <a href="#" class="erp-nav-item" title="عروض الأسعار">
                 <div class="erp-nav-content">
                     <span class="erp-nav-icon"><x-icon name="file-text" size="18" /></span>
                     <span class="erp-nav-label">عروض الأسعار</span>
                 </div>
             </a>
-            <a href="#" class="erp-nav-item">
+            <a href="#" class="erp-nav-item" title="أوامر البيع">
                 <div class="erp-nav-content">
                     <span class="erp-nav-icon"><x-icon name="shopping-cart" size="18" /></span>
                     <span class="erp-nav-label">أوامر البيع</span>
                 </div>
             </a>
-            <a href="#" class="erp-nav-item">
+            <a href="#" class="erp-nav-item" title="العملاء">
                 <div class="erp-nav-content">
                     <span class="erp-nav-icon"><x-icon name="users" size="18" /></span>
                     <span class="erp-nav-label">العملاء</span>
@@ -73,13 +73,13 @@
         <!-- Purchases -->
         <div class="erp-nav-section">
             <div class="erp-nav-section-title">المشتريات والواردات</div>
-            <a href="#" class="erp-nav-item">
+            <a href="#" class="erp-nav-item" title="أوامر الشراء (الصين)">
                 <div class="erp-nav-content">
                     <span class="erp-nav-icon"><x-icon name="shopping-bag" size="18" /></span>
                     <span class="erp-nav-label">أوامر الشراء (الصين)</span>
                 </div>
             </a>
-            <a href="#" class="erp-nav-item">
+            <a href="#" class="erp-nav-item" title="الموردون ومكاتب الشحن">
                 <div class="erp-nav-content">
                     <span class="erp-nav-icon"><x-icon name="factory" size="18" /></span>
                     <span class="erp-nav-label">الموردون ومكاتب الشحن</span>
@@ -90,37 +90,37 @@
         <!-- Inventory -->
         <div class="erp-nav-section">
             <div class="erp-nav-section-title">المخزون والمنتجات</div>
-            <a href="{{ url('/products') }}" class="erp-nav-item {{ request()->is('products*') ? 'active' : '' }}">
+            <a href="{{ url('/products') }}" class="erp-nav-item {{ request()->is('products*') ? 'active' : '' }}" title="المنتجات والأصناف">
                 <div class="erp-nav-content">
                     <span class="erp-nav-icon"><x-icon name="package" size="18" /></span>
                     <span class="erp-nav-label">المنتجات والأصناف</span>
                 </div>
             </a>
-            <a href="{{ route('categories.index') }}" class="erp-nav-item {{ request()->is('categories*') ? 'active' : '' }}">
+            <a href="{{ route('categories.index') }}" class="erp-nav-item {{ request()->is('categories*') ? 'active' : '' }}" title="تصنيفات المنتجات">
                 <div class="erp-nav-content">
                     <span class="erp-nav-icon"><x-icon name="tag" size="18" /></span>
                     <span class="erp-nav-label">تصنيفات المنتجات</span>
                 </div>
             </a>
-            <a href="{{ route('inventory.index') }}" class="erp-nav-item {{ request()->routeIs('inventory.index') ? 'active' : '' }}">
+            <a href="{{ route('inventory.index') }}" class="erp-nav-item {{ request()->routeIs('inventory.index') ? 'active' : '' }}" title="نظرة عامة على المخزون">
                 <div class="erp-nav-content">
                     <span class="erp-nav-icon"><x-icon name="warehouse" size="18" /></span>
                     <span class="erp-nav-label">نظرة عامة على المخزون</span>
                 </div>
             </a>
-            <a href="{{ route('warehouses.index') }}" class="erp-nav-item {{ request()->routeIs('warehouses.*') ? 'active' : '' }}">
+            <a href="{{ route('warehouses.index') }}" class="erp-nav-item {{ request()->routeIs('warehouses.*') ? 'active' : '' }}" title="المستودعات والمخازن">
                 <div class="erp-nav-content">
                     <span class="erp-nav-icon"><x-icon name="home" size="18" /></span>
                     <span class="erp-nav-label">المستودعات والمخازن</span>
                 </div>
             </a>
-            <a href="{{ route('inventory.movements') }}" class="erp-nav-item {{ request()->routeIs('inventory.movements') ? 'active' : '' }}">
+            <a href="{{ route('inventory.movements') }}" class="erp-nav-item {{ request()->routeIs('inventory.movements') ? 'active' : '' }}" title="حركات المخزون">
                 <div class="erp-nav-content">
                     <span class="erp-nav-icon"><x-icon name="arrow-left-right" size="18" /></span>
                     <span class="erp-nav-label">حركات المخزون</span>
                 </div>
             </a>
-            <a href="{{ route('inventory.low-stock') }}" class="erp-nav-item {{ request()->routeIs('inventory.low-stock') ? 'active' : '' }}">
+            <a href="{{ route('inventory.low-stock') }}" class="erp-nav-item {{ request()->routeIs('inventory.low-stock') ? 'active' : '' }}" title="نواقص المخزون">
                 <div class="erp-nav-content">
                     <span class="erp-nav-icon"><x-icon name="alert-triangle" size="18" /></span>
                     <span class="erp-nav-label">نواقص المخزون</span>

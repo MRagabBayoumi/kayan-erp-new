@@ -463,13 +463,36 @@
             recalculateBatchTotal();
 
             var modal = document.getElementById('batchPrintModal');
-            if (modal) modal.style.display = 'flex';
+            if (modal) {
+                modal.classList.add('open');
+                modal.style.display = 'flex';
+            }
         }
 
         function closeBatchPrintModal() {
             var modal = document.getElementById('batchPrintModal');
-            if (modal) modal.style.display = 'none';
+            if (modal) {
+                modal.classList.remove('open');
+                modal.style.display = 'none';
+            }
         }
+
+        // Close on backdrop click or Escape key
+        document.addEventListener('DOMContentLoaded', function() {
+            var modal = document.getElementById('batchPrintModal');
+            if (modal) {
+                modal.addEventListener('click', function(e) {
+                    if (e.target === modal) {
+                        closeBatchPrintModal();
+                    }
+                });
+            }
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    closeBatchPrintModal();
+                }
+            });
+        });
 
         function adjustBatchItemQty(id, delta) {
             var input = document.getElementById('batch_qty_' + id);

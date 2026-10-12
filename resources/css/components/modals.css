@@ -17,11 +17,12 @@
     align-items: center;
     justify-content: center;
     padding: 16px;
-    opacity: 0;
+    opacity: 1;
     transition: opacity 0.2s ease;
 }
 
-.erp-modal-overlay.open {
+.erp-modal-overlay.open,
+.erp-modal-overlay[style*="display: flex"] {
     display: flex;
     opacity: 1;
 }
@@ -36,11 +37,12 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    transform: scale(0.96);
+    transform: scale(1);
     transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.erp-modal-overlay.open .erp-modal-container {
+.erp-modal-overlay.open .erp-modal-container,
+.erp-modal-overlay[style*="display: flex"] .erp-modal-container {
     transform: scale(1);
 }
 
