@@ -40,8 +40,32 @@
 <body>
 
 <div class="erp-app-wrapper">
+    <!-- Dynamic Module Name Resolver -->
+    @php
+        $activeModuleName = $moduleName ?? (trim($__env->yieldContent('module_name')) ?: null);
+        if (!$activeModuleName) {
+            if (request()->is('inventory/movements*')) {
+                $activeModuleName = 'سجل حركات المخزون';
+            } elseif (request()->is('inventory*') || request()->is('warehouses*')) {
+                $activeModuleName = 'المخزون والمستودعات';
+            } elseif (request()->is('products*') || request()->is('categories*')) {
+                $activeModuleName = 'المنتجات والأصناف';
+            } elseif (request()->is('settings*')) {
+                $activeModuleName = 'إعدادات النظام';
+            } elseif (request()->is('customers*')) {
+                $activeModuleName = 'المبيعات والعملاء';
+            } elseif (request()->is('suppliers*')) {
+                $activeModuleName = 'المشتريات والتوريدات';
+            } elseif (request()->is('expenses*') || request()->is('payments*')) {
+                $activeModuleName = 'المالية والحسابات';
+            } else {
+                $activeModuleName = 'لوحة التحكم';
+            }
+        }
+    @endphp
+
     <!-- Top Navigation Bar -->
-    <x-topbar :module-name="$moduleName ?? 'لوحة التحكم'" />
+    <x-topbar :module-name="$activeModuleName" />
 
     <!-- Application Body (Sidebar + Main View) -->
     <div class="erp-body-layout">

@@ -169,6 +169,17 @@
     color: #FFFFFF;
 }
 
+/* Sidebar toggle inside topbar: hidden on desktop, shown on mobile */
+.erp-topbar #sidebarToggleBtn {
+    display: none;
+}
+
+@media (max-width: 900px) {
+    .erp-topbar #sidebarToggleBtn {
+        display: inline-flex;
+    }
+}
+
 .erp-top-badge {
     position: absolute;
     top: 2px;

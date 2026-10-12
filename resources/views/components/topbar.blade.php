@@ -1,5 +1,14 @@
 <header class="erp-topbar">
     <div class="erp-topbar-start">
+        <!-- Sidebar Toggle (Mobile Off-canvas Drawer Trigger) -->
+        <button class="erp-top-btn erp-sidebar-toggle-btn" id="sidebarToggleBtn" type="button" title="القائمة الجانبية" aria-label="تبديل القائمة الجانبية">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+        </button>
+
         <!-- Odoo 3x3 App Launcher Trigger -->
         <button class="erp-app-launcher-btn" type="button" data-action="open-app-launcher" title="قائمة التطبيقات">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
@@ -24,15 +33,6 @@
         <div class="erp-topbar-divider"></div>
 
         <span class="erp-module-badge">{{ $moduleName ?? 'لوحة التحكم' }}</span>
-
-        <!-- Sidebar Toggle (Desktop & Mobile) -->
-        <button class="erp-top-btn erp-sidebar-toggle-btn" id="sidebarToggleBtn" type="button" title="القائمة الجانبية (طي / توسيع)" aria-label="تبديل القائمة الجانبية">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="3" y1="12" x2="21" y2="12"></line>
-                <line x1="3" y1="6" x2="21" y2="6"></line>
-                <line x1="3" y1="18" x2="21" y2="18"></line>
-            </svg>
-        </button>
     </div>
 
     <div class="erp-topbar-end">
@@ -45,11 +45,7 @@
 
         <!-- Density Switcher (Comfortable vs Enterprise Table View) -->
         <button class="erp-top-btn" id="kayanDensityToggle" type="button" title="تبديل كثافة العرض (مؤسسي / افتراضي)">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="3" y1="6" x2="21" y2="6"></line>
-                <line x1="3" y1="12" x2="21" y2="12"></line>
-                <line x1="3" y1="18" x2="21" y2="18"></line>
-            </svg>
+            <x-icon name="sliders-horizontal" size="14" />
             <span id="densityLabel" style="font-size: 11px;">افتراضي مريح</span>
         </button>
 

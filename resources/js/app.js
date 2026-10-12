@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initSidebar();
     initDropdowns();
     initKeyboardShortcuts();
+    initGlobalSearch();
 });
 
 /**
@@ -310,3 +311,22 @@ function initKeyboardShortcuts() {
         }
     });
 }
+
+/**
+ * Global Search in Topbar
+ */
+function initGlobalSearch() {
+    const searchInput = document.getElementById('globalSearchInput');
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const q = searchInput.value.trim();
+                if (q) {
+                    window.location.href = '/products?search=' + encodeURIComponent(q);
+                }
+            }
+        });
+    }
+}
+
