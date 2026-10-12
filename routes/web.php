@@ -32,3 +32,13 @@ Route::get('/products/{product}/print-label', [ProductController::class, 'printL
 Route::get('/products/{product}/barcode-svg', [ProductController::class, 'barcodeSvg'])->name('products.barcode-svg');
 Route::resource('products', ProductController::class);
 Route::resource('categories', CategoryController::class)->except(['create', 'show', 'edit']);
+
+// Warehouse & Inventory Management (Phase 5)
+use App\Http\Controllers\InventoryController;
+use App\Http\Controllers\WarehouseController;
+
+Route::resource('warehouses', WarehouseController::class)->except(['create', 'show', 'edit']);
+Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');
+Route::get('/inventory/movements', [InventoryController::class, 'movements'])->name('inventory.movements');
+Route::get('/inventory/low-stock', [InventoryController::class, 'lowStock'])->name('inventory.low-stock');
+Route::post('/inventory/movements', [InventoryController::class, 'storeMovement'])->name('inventory.movements.store');

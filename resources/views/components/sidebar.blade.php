@@ -102,19 +102,25 @@
                     <span class="erp-nav-label">تصنيفات المنتجات</span>
                 </div>
             </a>
-            <a href="#" class="erp-nav-item">
+            <a href="{{ route('inventory.index') }}" class="erp-nav-item {{ request()->routeIs('inventory.index') ? 'active' : '' }}">
                 <div class="erp-nav-content">
                     <span class="erp-nav-icon"><x-icon name="warehouse" size="18" /></span>
                     <span class="erp-nav-label">نظرة عامة على المخزون</span>
                 </div>
             </a>
-            <a href="#" class="erp-nav-item">
+            <a href="{{ route('warehouses.index') }}" class="erp-nav-item {{ request()->routeIs('warehouses.*') ? 'active' : '' }}">
+                <div class="erp-nav-content">
+                    <span class="erp-nav-icon"><x-icon name="home" size="18" /></span>
+                    <span class="erp-nav-label">المستودعات والمخازن</span>
+                </div>
+            </a>
+            <a href="{{ route('inventory.movements') }}" class="erp-nav-item {{ request()->routeIs('inventory.movements') ? 'active' : '' }}">
                 <div class="erp-nav-content">
                     <span class="erp-nav-icon"><x-icon name="arrow-left-right" size="18" /></span>
                     <span class="erp-nav-label">حركات المخزون</span>
                 </div>
             </a>
-            <a href="#" class="erp-nav-item">
+            <a href="{{ route('inventory.low-stock') }}" class="erp-nav-item {{ request()->routeIs('inventory.low-stock') ? 'active' : '' }}">
                 <div class="erp-nav-content">
                     <span class="erp-nav-icon"><x-icon name="alert-triangle" size="18" /></span>
                     <span class="erp-nav-label">نواقص المخزون</span>

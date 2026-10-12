@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Storage;
 
 class Product extends Model
@@ -53,6 +54,50 @@ class Product extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    /**
+     * Stock balances across all warehouses.
+     */
+    public function stockBalances(): HasMany
+    {
+        return $this->hasMany(StockBalance::class);
+    }
+
+    /**
+     * Inventory batches (FIFO).
+     */
+    public function batches(): HasMany
+    {
+        return $this->hasMany(InventoryBatch::class);
+    }
+
+    /**
+     * Stock movements history.
+     */
+    public function movements(): HasMany
+    {
+        return $this->hasMany(StockMovement::class);
+    }
+
+    /**
+     * Total stock quantity across all warehouses.
+     */
+    public function getTotalStockAttribute(): float
+    {
+        if ($this->relationLoaded('stockBalances')) {
+            return (float) $this->stockBalances->sum('quantity');
+        }
+
+        return (float) $this->stockBalances()->sum('quantity');
+    }
+
+    /**
+     * Check if product is low on stock based on min_stock_alert threshold.
+     */
+    public function getIsLowStockAttribute(): bool
+    {
+        return $this->total_stock <= (float) $this->min_stock_alert;
     }
 
     /**
