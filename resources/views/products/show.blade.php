@@ -3,14 +3,14 @@
 @section('control_panel')
     <x-control-panel title="{{ $product->name }}" :breadcrumbs="['المنتجات والأصناف' => route('products.index'), $product->sku => '#']">
         <x-slot:actions>
-            <div style="display: flex; align-items: center; gap: 6px;">
-                <button type="button" onclick="directPrintFromShow()" class="erp-btn erp-btn-secondary" style="color: var(--primary);" title="طباعة فورية للملصق (38×25 مم) بدون نوافذ">
+            <div class="erp-show-print-group">
+                <button type="button" onclick="directPrintFromShow()" class="erp-btn erp-btn-secondary" style="color: var(--primary); flex: 1; justify-content: center;" title="طباعة فورية للملصق (38×25 مم) بدون نوافذ">
                     <x-icon name="printer" size="16" />
                     <span>طباعة ملصق الباركود</span>
                 </button>
-                <div style="display: inline-flex; align-items: center; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); padding: 2px;" title="عدد النسخ المطلوبة">
+                <div style="display: inline-flex; align-items: center; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); padding: 2px; flex-shrink: 0;" title="عدد النسخ المطلوبة">
                     <button type="button" onclick="adjustShowQty(-1)" class="erp-btn erp-btn-ghost font-numeric" style="padding: 2px 8px; font-weight: bold; font-size: 14px;">−</button>
-                    <input type="number" id="showLabelQty" value="1" min="1" max="500" class="font-numeric" style="width: 44px; text-align: center; padding: 2px; font-weight: bold; border: none; background: transparent; color: var(--text-main);" title="عدد النسخ">
+                    <input type="number" id="showLabelQty" value="1" min="1" max="500" class="font-numeric" style="width: 38px; text-align: center; padding: 2px; font-weight: bold; border: none; background: transparent; color: var(--text-main);" title="عدد النسخ">
                     <button type="button" onclick="adjustShowQty(1)" class="erp-btn erp-btn-ghost font-numeric" style="padding: 2px 8px; font-weight: bold; font-size: 14px;">+</button>
                 </div>
             </div>
@@ -41,7 +41,7 @@
 @endsection
 
 @section('content')
-    <div style="display: grid; grid-template-columns: 280px 1fr; gap: 20px;">
+    <div class="erp-product-show-grid">
         <!-- Left Column: Product Image & Barcode Card -->
         <div style="display: flex; flex-direction: column; gap: 16px;">
             <div class="erp-card" style="text-align: center; padding: 20px;">

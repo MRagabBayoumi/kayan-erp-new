@@ -130,6 +130,35 @@
     font-weight: 600;
 }
 
+/* Product Show Details Layout */
+.erp-product-show-grid {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 20px;
+    align-items: start;
+}
+
+.erp-show-print-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+@media (max-width: 820px) {
+    .erp-product-show-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .erp-show-print-group {
+        width: 100%;
+    }
+
+    .erp-show-print-group .erp-btn {
+        flex: 1;
+    }
+}
+
 @media (max-width: 768px) {
     .erp-pricing-grid {
         grid-template-columns: 1fr;
