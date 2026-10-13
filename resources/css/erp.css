@@ -36,3 +36,6 @@
 @import './pages/inventory.css';
 @import './pages/warehouses.css';
 @import './pages/settings.css';
+@import './pages/customers.css';
+@import './pages/suppliers.css';
+@import './pages/shipping-offices.css';

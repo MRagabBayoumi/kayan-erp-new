@@ -62,7 +62,7 @@
                     <span class="erp-nav-label">أوامر البيع</span>
                 </div>
             </a>
-            <a href="#" class="erp-nav-item" title="العملاء">
+            <a href="{{ route('customers.index') }}" class="erp-nav-item {{ request()->is('customers*') ? 'active' : '' }}" title="العملاء وتجار الجملة">
                 <div class="erp-nav-content">
                     <span class="erp-nav-icon"><x-icon name="users" size="18" /></span>
                     <span class="erp-nav-label">العملاء</span>
@@ -79,7 +79,7 @@
                     <span class="erp-nav-label">أوامر الشراء (الصين)</span>
                 </div>
             </a>
-            <a href="#" class="erp-nav-item" title="الموردون ومكاتب الشحن">
+            <a href="{{ route('suppliers.index') }}" class="erp-nav-item {{ request()->is('suppliers*') || request()->is('shipping-offices*') ? 'active' : '' }}" title="الموردون ومكاتب الشحن">
                 <div class="erp-nav-content">
                     <span class="erp-nav-icon"><x-icon name="factory" size="18" /></span>
                     <span class="erp-nav-label">الموردون ومكاتب الشحن</span>

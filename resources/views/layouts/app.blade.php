@@ -35,7 +35,7 @@
                 $activeModuleName = 'إعدادات النظام';
             } elseif (request()->is('customers*')) {
                 $activeModuleName = 'المبيعات والعملاء';
-            } elseif (request()->is('suppliers*')) {
+            } elseif (request()->is('suppliers*') || request()->is('shipping-offices*')) {
                 $activeModuleName = 'المشتريات والتوريدات';
             } elseif (request()->is('expenses*') || request()->is('payments*')) {
                 $activeModuleName = 'المالية والحسابات';

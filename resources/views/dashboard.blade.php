@@ -62,11 +62,14 @@
         <div class="kpi-card">
             <div class="kpi-header">
                 <span class="kpi-label">مشتريات واستيراد</span>
-                <span class="kpi-icon"><x-icon name="shopping-bag" size="20" /></span>
+                <span class="kpi-icon"><x-icon name="truck" size="20" /></span>
             </div>
-            <div class="kpi-value font-numeric">— <span class="text-sm font-normal text-[var(--text-muted)]">ج.م</span></div>
+            <div class="kpi-value font-numeric">{{ number_format($metrics['suppliers_count'] ?? 0) }} <span class="text-sm font-normal text-[var(--text-muted)]">مورد / مصنع</span></div>
             <div class="kpi-note font-numeric">
-                <span class="text-[var(--text-muted)]">طلبيات الصين والموردين</span>
+                <a href="{{ route('suppliers.index') }}" class="text-[var(--primary)] font-semibold inline-flex items-center gap-1">
+                    <span>دليل الموردين ومصانع الصين</span>
+                    <x-icon name="arrow-left" size="14" />
+                </a>
             </div>
         </div>
 
@@ -75,7 +78,7 @@
                 <span class="kpi-label">الأصناف والمنتجات</span>
                 <span class="kpi-icon"><x-icon name="package" size="20" /></span>
             </div>
-            <div class="kpi-value font-numeric">— <span class="text-sm font-normal text-[var(--text-muted)]">صنف</span></div>
+            <div class="kpi-value font-numeric">{{ number_format($metrics['products_count'] ?? 0) }} <span class="text-sm font-normal text-[var(--text-muted)]">صنف</span></div>
             <div class="kpi-note">
                 <a href="{{ url('/products') }}" class="text-[var(--primary)] font-semibold inline-flex items-center gap-1">
                     <span>استعراض شاشة المنتجات</span>
@@ -89,9 +92,12 @@
                 <span class="kpi-label">تجار الجملة والعملاء</span>
                 <span class="kpi-icon"><x-icon name="users" size="20" /></span>
             </div>
-            <div class="kpi-value font-numeric">— <span class="text-sm font-normal text-[var(--text-muted)]">عميل</span></div>
+            <div class="kpi-value font-numeric">{{ number_format($metrics['customers_count'] ?? 0) }} <span class="text-sm font-normal text-[var(--text-muted)]">عميل</span></div>
             <div class="kpi-note">
-                <span class="text-[var(--text-muted)]">حسابات العملاء النشطة</span>
+                <a href="{{ route('customers.index') }}" class="text-[var(--primary)] font-semibold inline-flex items-center gap-1">
+                    <span>دليل عملاء الجملة والتجزئة</span>
+                    <x-icon name="arrow-left" size="14" />
+                </a>
             </div>
         </div>
     </section>

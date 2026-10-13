@@ -12,6 +12,9 @@ import { initInventoryPage } from './pages/inventory.js';
 import { initWarehousesPage } from './pages/warehouses.js';
 import { initSettingsPage } from './pages/settings.js';
 import { initPrintLabelPage } from './pages/print-label.js';
+import { initCustomersPage } from './pages/customers.js';
+import { initSuppliersPage } from './pages/suppliers.js';
+import { initShippingOfficesPage } from './pages/shipping-offices.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     initThemeAndDensity();
@@ -29,6 +32,9 @@ document.addEventListener('DOMContentLoaded', () => {
     initWarehousesPage();
     initSettingsPage();
     initPrintLabelPage();
+    initCustomersPage();
+    initSuppliersPage();
+    initShippingOfficesPage();
 });
 
 /**
