@@ -189,7 +189,8 @@
     justify-content: center;
     font-size: 24px;
     margin-bottom: 10px;
-    color: #FFFFFF;
+    background-color: var(--primary-soft);
+    color: var(--primary);
     box-shadow: var(--shadow-sm);
 }
 

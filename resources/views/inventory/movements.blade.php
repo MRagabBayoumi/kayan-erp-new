@@ -18,7 +18,7 @@
         </x-slot:actions>
 
         <x-slot:extra>
-            <span class="erp-badge erp-badge-neutral font-numeric" style="padding: 4px 10px; font-size: 12px;">
+            <span class="erp-badge erp-badge-neutral font-numeric px-2.5 py-1 text-xs">
                 <span>إجمالي الحركات:</span>
                 <strong>{{ $movements->total() }}</strong>
             </span>
@@ -28,22 +28,21 @@
 
 @section('content')
     <!-- Search & Filters Bar -->
-    <div class="erp-card" style="margin-bottom: 16px; padding: 12px 16px;">
+    <div class="erp-card mb-4 p-3">
         <form action="{{ route('inventory.movements') }}" method="GET" class="erp-filter-form">
             <!-- Search -->
-            <div style="flex: 1; min-width: 220px;">
+            <div class="flex-1 min-w-[220px]">
                 <input 
                     type="search" 
                     name="search" 
                     value="{{ $searchTerm }}" 
-                    class="erp-input font-numeric" 
-                    placeholder="بحث برقم الحركة، كود الصنف، أو اسم الصنف..."
-                    style="width: 100%;">
+                    class="erp-input font-numeric w-full" 
+                    placeholder="بحث برقم الحركة، كود الصنف، أو اسم الصنف...">
             </div>
 
             <!-- Type Filter -->
-            <div style="min-width: 160px;">
-                <select name="type" class="erp-input" onchange="this.form.submit()">
+            <div class="min-w-[160px]">
+                <select name="type" class="erp-input" data-action="auto-submit">
                     <option value="">جميع أنواع الحركات</option>
                     <option value="in" {{ $selectedType === 'in' ? 'selected' : '' }}>إيداع / وارد</option>
                     <option value="out" {{ $selectedType === 'out' ? 'selected' : '' }}>صرف / منصرف</option>
@@ -53,8 +52,8 @@
             </div>
 
             <!-- Warehouse Filter -->
-            <div style="min-width: 180px;">
-                <select name="warehouse_id" class="erp-input" onchange="this.form.submit()">
+            <div class="min-w-[180px]">
+                <select name="warehouse_id" class="erp-input" data-action="auto-submit">
                     <option value="">جميع المستودعات</option>
                     @foreach($warehouses as $wh)
                         <option value="{{ $wh->id }}" {{ $selectedWarehouseId == $wh->id ? 'selected' : '' }}>
@@ -78,11 +77,11 @@
     </div>
 
     <!-- Movements Table -->
-    <div class="erp-card" style="overflow-x: auto; margin-bottom: 20px;">
-        <table class="erp-table" style="width: 100%;">
+    <div class="erp-card overflow-x-auto mb-5">
+        <table class="erp-table w-full">
             <thead>
                 <tr>
-                    <th style="width: 50px;">#</th>
+                    <th class="w-[50px]">#</th>
                     <th>رقم الحركة</th>
                     <th>التاريخ والوقت</th>
                     <th class="text-center">نوع الحركة</th>
@@ -96,11 +95,11 @@
             <tbody>
                 @forelse($movements as $m)
                     <tr>
-                        <td class="font-numeric" style="color: var(--text-muted);">{{ $loop->iteration + ($movements->currentPage() - 1) * $movements->perPage() }}</td>
+                        <td class="font-numeric text-[var(--text-muted)]">{{ $loop->iteration + ($movements->currentPage() - 1) * $movements->perPage() }}</td>
                         <td>
-                            <span class="font-numeric" style="font-weight: 700; color: var(--text-main);">{{ $m->movement_number }}</span>
+                            <span class="font-numeric font-bold text-[var(--text-main)]">{{ $m->movement_number }}</span>
                         </td>
-                        <td class="font-numeric" style="font-size: 12px; color: var(--text-secondary);">
+                        <td class="font-numeric text-xs text-[var(--text-secondary)]">
                             {{ $m->created_at->format('Y-m-d H:i') }}
                         </td>
                         <td class="text-center">
@@ -109,39 +108,39 @@
                             </span>
                         </td>
                         <td>
-                            <div style="font-weight: 600; color: var(--text-main);">{{ $m->product?->name }}</div>
-                            <span class="font-numeric" style="font-size: 11px; color: var(--text-muted);">[{{ $m->product?->sku }}]</span>
+                            <div class="font-semibold text-[var(--text-main)]">{{ $m->product?->name }}</div>
+                            <span class="font-numeric text-[11px] text-[var(--text-muted)]">[{{ $m->product?->sku }}]</span>
                         </td>
                         <td>
                             @if($m->type === 'transfer')
-                                <div style="display: flex; align-items: center; gap: 6px; font-size: 13px;">
+                                <div class="flex items-center gap-1.5 text-xs">
                                     <span>{{ $m->fromWarehouse?->name ?: '—' }}</span>
-                                    <span style="color: var(--text-muted);">←</span>
+                                    <span class="text-[var(--text-muted)]">←</span>
                                     <strong>{{ $m->toWarehouse?->name ?: '—' }}</strong>
                                 </div>
                             @elseif($m->type === 'in')
-                                <span style="color: var(--primary, #0d9488); font-weight: 600;">{{ $m->toWarehouse?->name ?: '—' }}</span>
+                                <span class="text-movement-in font-semibold">{{ $m->toWarehouse?->name ?: '—' }}</span>
                             @else
-                                <span style="color: var(--danger, #ef4444); font-weight: 600;">{{ $m->fromWarehouse?->name ?: '—' }}</span>
+                                <span class="text-movement-out font-semibold">{{ $m->fromWarehouse?->name ?: '—' }}</span>
                             @endif
                         </td>
                         <td class="text-center">
-                            <span class="font-numeric" style="font-size: 14px; font-weight: 800; color: {{ $m->type === 'in' ? 'var(--primary, #0d9488)' : ($m->type === 'out' ? 'var(--danger, #ef4444)' : 'var(--text-main)') }};">
+                            <span class="font-numeric text-sm font-extrabold {{ $m->type === 'in' ? 'text-movement-in' : ($m->type === 'out' ? 'text-movement-out' : 'text-[var(--text-main)]') }}">
                                 {{ $m->type === 'in' ? '+' : ($m->type === 'out' ? '-' : '') }}{{ number_format($m->quantity) }}
                             </span>
-                            <span style="font-size: 11px; color: var(--text-muted);">{{ $m->product?->unit }}</span>
+                            <span class="text-[11px] text-[var(--text-muted)]">{{ $m->product?->unit }}</span>
                         </td>
-                        <td class="text-left font-numeric" style="font-size: 13px;">
+                        <td class="text-left font-numeric text-xs">
                             {{ number_format($m->unit_cost, 2) }} ج.م
                         </td>
-                        <td style="font-size: 12px; color: var(--text-secondary); max-width: 200px;">
+                        <td class="text-xs text-[var(--text-secondary)] max-w-[200px]">
                             {{ $m->notes ?: '—' }}
                         </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="9" style="text-align: center; padding: 36px; color: var(--text-muted);">
-                            <x-icon name="arrow-left-right" size="36" style="margin-bottom: 8px; opacity: 0.5;" />
+                        <td colspan="9" class="text-center p-9 text-[var(--text-muted)]">
+                            <x-icon name="arrow-left-right" size="36" class="mb-2 opacity-50 inline-block" />
                             <div>لا توجد حركات مخزنية مسجلة حتى الآن</div>
                         </td>
                     </tr>
@@ -152,7 +151,7 @@
 
     <!-- Pagination -->
     @if($movements->hasPages())
-        <div style="margin-top: 16px;">
+        <div class="mt-4">
             {{ $movements->links() }}
         </div>
     @endif

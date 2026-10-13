@@ -27,8 +27,12 @@
 @import './components/tabs.css';
 @import './components/toasts.css';
 @import './components/empty-states.css';
+@import './components/scanner.css';
 
 /* Page-Specific Styles */
 @import './pages/dashboard.css';
 @import './pages/products.css';
+@import './pages/categories.css';
+@import './pages/inventory.css';
+@import './pages/warehouses.css';
 @import './pages/settings.css';

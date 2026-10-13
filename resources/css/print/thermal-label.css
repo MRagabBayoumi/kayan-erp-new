@@ -4,6 +4,101 @@
    Screen Preview Toolbar + High Precision @media print Rules
    ========================================================================== */
 
+:root {
+    --label-width: 38mm;
+    --label-height: 25mm;
+}
+
+[data-size="38x25"] {
+    --label-width: 38mm;
+    --label-height: 25mm;
+}
+
+[data-size="38x15"] {
+    --label-width: 38mm;
+    --label-height: 15mm;
+}
+
+@page {
+    size: var(--label-width) var(--label-height);
+    margin: 0mm !important;
+}
+
+.thermal-label {
+    width: var(--label-width);
+    height: var(--label-height);
+    min-width: var(--label-width);
+    max-width: var(--label-width);
+    min-height: var(--label-height);
+    max-height: var(--label-height);
+}
+
+.thermal-label svg {
+    width: var(--label-width);
+    height: var(--label-height);
+    display: block;
+}
+
+.preview-title-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.preview-btn-group {
+    display: flex;
+    gap: 4px;
+}
+
+.btn-preset-size {
+    padding: 4px 10px;
+    font-size: 11.5px;
+    text-decoration: none;
+}
+
+.btn-preset-settings {
+    padding: 4px 10px;
+    font-size: 11.5px;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.preview-badge-qty {
+    font-weight: 700;
+    color: #166534;
+    background: #dcfce7;
+}
+
+.btn-inline-icon {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.preview-tips-content {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.preview-tips-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 700;
+}
+
+.preview-tips-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    color: #1e40af;
+}
+
 * {
     box-sizing: border-box;
     margin: 0;

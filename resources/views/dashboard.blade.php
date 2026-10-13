@@ -53,9 +53,9 @@
                 <span class="kpi-label">مبيعات اليوم</span>
                 <span class="kpi-icon"><x-icon name="banknote" size="20" /></span>
             </div>
-            <div class="kpi-value font-numeric">— <span style="font-size: 14px; font-weight: normal; color: var(--text-muted);">ج.م</span></div>
+            <div class="kpi-value font-numeric">— <span class="text-sm font-normal text-[var(--text-muted)]">ج.م</span></div>
             <div class="kpi-note font-numeric">
-                <span style="color: var(--text-muted);">إجمالي الفواتير الصادرة</span>
+                <span class="text-[var(--text-muted)]">إجمالي الفواتير الصادرة</span>
             </div>
         </div>
 
@@ -64,9 +64,9 @@
                 <span class="kpi-label">مشتريات واستيراد</span>
                 <span class="kpi-icon"><x-icon name="shopping-bag" size="20" /></span>
             </div>
-            <div class="kpi-value font-numeric">— <span style="font-size: 14px; font-weight: normal; color: var(--text-muted);">ج.م</span></div>
+            <div class="kpi-value font-numeric">— <span class="text-sm font-normal text-[var(--text-muted)]">ج.م</span></div>
             <div class="kpi-note font-numeric">
-                <span style="color: var(--text-muted);">طلبيات الصين والموردين</span>
+                <span class="text-[var(--text-muted)]">طلبيات الصين والموردين</span>
             </div>
         </div>
 
@@ -75,9 +75,9 @@
                 <span class="kpi-label">الأصناف والمنتجات</span>
                 <span class="kpi-icon"><x-icon name="package" size="20" /></span>
             </div>
-            <div class="kpi-value font-numeric">— <span style="font-size: 14px; font-weight: normal; color: var(--text-muted);">صنف</span></div>
+            <div class="kpi-value font-numeric">— <span class="text-sm font-normal text-[var(--text-muted)]">صنف</span></div>
             <div class="kpi-note">
-                <a href="{{ url('/products') }}" style="color: var(--primary); font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                <a href="{{ url('/products') }}" class="text-[var(--primary)] font-semibold inline-flex items-center gap-1">
                     <span>استعراض شاشة المنتجات</span>
                     <x-icon name="arrow-left" size="14" />
                 </a>
@@ -89,9 +89,9 @@
                 <span class="kpi-label">تجار الجملة والعملاء</span>
                 <span class="kpi-icon"><x-icon name="users" size="20" /></span>
             </div>
-            <div class="kpi-value font-numeric">— <span style="font-size: 14px; font-weight: normal; color: var(--text-muted);">عميل</span></div>
+            <div class="kpi-value font-numeric">— <span class="text-sm font-normal text-[var(--text-muted)]">عميل</span></div>
             <div class="kpi-note">
-                <span style="color: var(--text-muted);">حسابات العملاء النشطة</span>
+                <span class="text-[var(--text-muted)]">حسابات العملاء النشطة</span>
             </div>
         </div>
     </section>
@@ -110,7 +110,7 @@
             <div class="erp-card-body">
                 <div class="activity-list">
                     <div class="activity-item">
-                        <div class="activity-item-icon" style="background-color: var(--success-soft); color: var(--success);">
+                        <div class="activity-item-icon bg-[var(--success-soft)] text-[var(--success)]">
                             <x-icon name="check" size="14" />
                         </div>
                         <div>
@@ -120,7 +120,7 @@
                     </div>
 
                     <div class="activity-item">
-                        <div class="activity-item-icon" style="background-color: var(--primary-soft); color: var(--primary);">
+                        <div class="activity-item-icon bg-[var(--primary-soft)] text-[var(--primary)]">
                             <x-icon name="sliders" size="14" />
                         </div>
                         <div>
@@ -130,7 +130,7 @@
                     </div>
 
                     <div class="activity-item">
-                        <div class="activity-item-icon" style="background-color: var(--info-soft); color: var(--info);">
+                        <div class="activity-item-icon bg-[var(--info-soft)] text-[var(--info)]">
                             <x-icon name="package" size="14" />
                         </div>
                         <div>
@@ -152,7 +152,7 @@
             </div>
             <div class="erp-card-body">
                 <a href="{{ url('/products') }}" class="quick-action-link">
-                    <span style="display: inline-flex; align-items: center; gap: 8px;">
+                    <span class="inline-flex items-center gap-2">
                         <x-icon name="package" size="16" />
                         <span>إدارة قائمة المنتجات والأصناف</span>
                     </span>
@@ -160,7 +160,7 @@
                 </a>
 
                 <a href="#" class="quick-action-link">
-                    <span style="display: inline-flex; align-items: center; gap: 8px;">
+                    <span class="inline-flex items-center gap-2">
                         <x-icon name="shopping-cart" size="16" />
                         <span>تسجيل فاتورة بيع جملة</span>
                     </span>
@@ -168,7 +168,7 @@
                 </a>
 
                 <a href="#" class="quick-action-link">
-                    <span style="display: inline-flex; align-items: center; gap: 8px;">
+                    <span class="inline-flex items-center gap-2">
                         <x-icon name="shopping-bag" size="16" />
                         <span>تسجيل أمر شراء وشحن من الصين</span>
                     </span>
@@ -176,7 +176,7 @@
                 </a>
 
                 <a href="#" class="quick-action-link">
-                    <span style="display: inline-flex; align-items: center; gap: 8px;">
+                    <span class="inline-flex items-center gap-2">
                         <x-icon name="banknote" size="16" />
                         <span>تسجيل سند قبض من عميل</span>
                     </span>
@@ -184,7 +184,7 @@
                 </a>
 
                 <a href="#" class="quick-action-link">
-                    <span style="display: inline-flex; align-items: center; gap: 8px;">
+                    <span class="inline-flex items-center gap-2">
                         <x-icon name="alert-triangle" size="16" />
                         <span>تقرير نواقص المخزون وحد الطلب</span>
                     </span>

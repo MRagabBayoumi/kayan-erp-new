@@ -18,11 +18,11 @@
 @section('content')
     <!-- Validation Errors Alert -->
     @if($errors->any())
-        <div class="erp-alert erp-alert-danger" role="alert" style="margin-bottom: 20px;">
+        <div class="erp-alert erp-alert-danger mb-5" role="alert">
             <x-icon name="alert-triangle" size="16" />
             <div>
                 <strong>يرجى تصحيح الأخطاء التالية قبل حفظ المنتج:</strong>
-                <ul style="margin: 6px 20px 0; font-size: 12px;">
+                <ul class="my-1.5 mx-5 text-xs">
                     @foreach($errors->all() as $error)
                         <li>{{ $error }}</li>
                     @endforeach
@@ -31,7 +31,7 @@
         </div>
     @endif
 
-    <form id="productForm" action="{{ route('products.store') }}" method="POST" enctype="multipart/form-data">
+    <form id="productForm" action="{{ route('products.store') }}" method="POST" enctype="multipart/form-data" data-product-form>
         @csrf
 
         <div class="erp-form-card-grid">
@@ -43,11 +43,11 @@
                         <span>بيانات الصنف الأساسية</span>
                     </div>
                 </div>
-                <div class="erp-card-body" style="display: flex; flex-direction: column; gap: 16px;">
+                <div class="erp-card-body flex flex-col gap-4">
                     <!-- Product Name -->
                     <div class="erp-form-group">
                         <label for="productName" class="erp-form-label">
-                            اسم المنتج <span style="color: var(--danger);">*</span>
+                            اسم المنتج <span class="text-[var(--danger)]">*</span>
                         </label>
                         <input 
                             type="text" 
@@ -64,7 +64,7 @@
                     <div class="erp-form-row-2col">
                         <div class="erp-form-group">
                             <label for="productSku" class="erp-form-label">
-                                كود الصنف (SKU) <span style="color: var(--danger);">*</span>
+                                كود الصنف (SKU) <span class="text-[var(--danger)]">*</span>
                             </label>
                             <input 
                                 type="text" 
@@ -74,12 +74,12 @@
                                 class="erp-input font-numeric @error('sku') erp-input-error @enderror" 
                                 required
                             >
-                            <small style="font-size: 11px; color: var(--text-muted);">كود فريد لتمييز الموديل</small>
+                            <small class="text-[11px] text-[var(--text-muted)]">كود فريد لتمييز الموديل</small>
                         </div>
 
                         <div class="erp-form-group">
                             <label for="productCategory" class="erp-form-label">
-                                التصنيف <span style="color: var(--danger);">*</span>
+                                التصنيف <span class="text-[var(--danger)]">*</span>
                             </label>
                             <select 
                                 id="productCategory" 
@@ -100,7 +100,7 @@
                     <!-- Unit of Measure -->
                     <div class="erp-form-group">
                         <label for="productUnit" class="erp-form-label">
-                            وحدة القياس <span style="color: var(--danger);">*</span>
+                            وحدة القياس <span class="text-[var(--danger)]">*</span>
                         </label>
                         <select id="productUnit" name="unit" class="erp-input">
                             <option value="قطعة" {{ old('unit', 'قطعة') === 'قطعة' ? 'selected' : '' }}>قطعة (Piece)</option>
@@ -113,38 +113,38 @@
 
                     <!-- Barcode Section with Camera Scanner Integration -->
                     <div class="erp-form-group">
-                        <div class="erp-form-label flex items-center justify-between" style="flex-wrap: wrap; gap: 6px;">
-                            <label for="productBarcode" style="margin: 0; cursor: pointer;">الباركود (Barcode)</label>
-                            <div style="display: inline-flex; align-items: center; gap: 6px;">
-                                <button type="button" onclick="openKayanBarcodeScanner('productBarcode')" class="erp-btn erp-btn-secondary" style="font-size: 11px; padding: 3px 8px; color: var(--primary); display: inline-flex; align-items: center; gap: 4px;" title="تشغيل الكاميرا لمسح باركود الصنف مباشرة">
+                        <div class="erp-form-label flex items-center justify-between flex-wrap gap-1.5">
+                            <label for="productBarcode" class="m-0 cursor-pointer">الباركود (Barcode)</label>
+                            <div class="inline-flex items-center gap-1.5">
+                                <button type="button" data-action="open-barcode-scanner" data-target-input="productBarcode" class="erp-btn erp-btn-secondary text-[11px] py-1 px-2 text-[var(--primary)] inline-flex items-center gap-1" title="تشغيل الكاميرا لمسح باركود الصنف مباشرة">
                                     <x-icon name="camera" size="14" />
                                     <span>مسح بالكاميرا</span>
                                 </button>
-                                <button type="button" id="btnGenBarcode" class="erp-btn erp-btn-ghost font-numeric" style="font-size: 11px; padding: 2px 8px; color: var(--text-muted); display: inline-flex; align-items: center; gap: 4px;">
+                                <button type="button" data-action="generate-barcode" class="erp-btn erp-btn-ghost font-numeric text-[11px] py-0.5 px-2 text-[var(--text-muted)] inline-flex items-center gap-1">
                                     <x-icon name="zap" size="13" />
                                     <span>توليد كود</span>
                                 </button>
                             </div>
                         </div>
-                        <div style="position: relative; display: flex; align-items: center;">
+                        <div class="relative flex items-center">
                             <input 
                                 type="text" 
                                 id="productBarcode" 
                                 name="barcode" 
                                 value="{{ old('barcode') }}" 
-                                class="erp-input font-numeric @error('barcode') erp-input-error @enderror" 
+                                class="erp-input font-numeric pl-11 @error('barcode') erp-input-error @enderror" 
                                 placeholder="امسح بالكاميرا أو اكتب الباركود..."
-                                style="padding-left: 42px;"
                             >
                             <button 
                                 type="button" 
-                                onclick="openKayanBarcodeScanner('productBarcode')" 
+                                data-action="open-barcode-scanner"
+                                data-target-input="productBarcode"
                                 title="تشغيل الكاميرا لمسح الباركود"
-                                style="position: absolute; left: 5px; height: 30px; width: 32px; border: none; background: var(--primary-soft); color: var(--primary); border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.15s ease;">
+                                class="absolute left-1.5 h-7 w-8 border-0 bg-[var(--primary-soft)] text-[var(--primary)] rounded inline-flex items-center justify-center cursor-pointer transition-all">
                                 <x-icon name="camera" size="16" />
                             </button>
                         </div>
-                        <small style="font-size: 11px; color: var(--text-muted);">
+                        <small class="text-[11px] text-[var(--text-muted)]">
                             يمكنك توجيه كاميرا الهاتف لمسح باركود الصنف مباشرة، أو توليد كود داخلي خاص بكيان.
                         </small>
                     </div>
@@ -159,12 +159,12 @@
                         <span>التسعير وإعدادات المخزون</span>
                     </div>
                 </div>
-                <div class="erp-card-body" style="display: flex; flex-direction: column; gap: 16px;">
+                <div class="erp-card-body flex flex-col gap-4">
                     <!-- Prices 3-Column Grid -->
                     <div class="erp-pricing-grid">
                         <div class="erp-form-group">
                             <label for="costPrice" class="erp-form-label">
-                                سعر التكلفة <span style="color: var(--danger);">*</span>
+                                سعر التكلفة <span class="text-[var(--danger)]">*</span>
                             </label>
                             <input 
                                 type="number" 
@@ -176,12 +176,12 @@
                                 class="erp-input font-numeric @error('cost_price') erp-input-error @enderror" 
                                 required
                             >
-                            <small style="font-size: 10px; color: var(--text-muted);">تكلفة الصين والشحن</small>
+                            <small class="text-[10px] text-[var(--text-muted)]">تكلفة الصين والشحن</small>
                         </div>
 
                         <div class="erp-form-group">
                             <label for="wholesalePrice" class="erp-form-label">
-                                سعر الجملة <span style="color: var(--danger);">*</span>
+                                سعر الجملة <span class="text-[var(--danger)]">*</span>
                             </label>
                             <input 
                                 type="number" 
@@ -193,12 +193,12 @@
                                 class="erp-input font-numeric @error('wholesale_price') erp-input-error @enderror" 
                                 required
                             >
-                            <small style="font-size: 10px; color: var(--text-muted);">سعر بيع التجار</small>
+                            <small class="text-[10px] text-[var(--text-muted)]">سعر بيع التجار</small>
                         </div>
 
                         <div class="erp-form-group">
                             <label for="retailPrice" class="erp-form-label">
-                                سعر التجزئة <span style="color: var(--danger);">*</span>
+                                سعر التجزئة <span class="text-[var(--danger)]">*</span>
                             </label>
                             <input 
                                 type="number" 
@@ -210,14 +210,14 @@
                                 class="erp-input font-numeric @error('retail_price') erp-input-error @enderror" 
                                 required
                             >
-                            <small style="font-size: 10px; color: var(--text-muted);">المقترح للقطاعي</small>
+                            <small class="text-[10px] text-[var(--text-muted)]">المقترح للقطاعي</small>
                         </div>
                     </div>
 
                     <!-- Min Stock Alert -->
                     <div class="erp-form-group">
                         <label for="minStockAlert" class="erp-form-label">
-                            حد الطلب الأدنى (تنبيه النواقص) <span style="color: var(--danger);">*</span>
+                            حد الطلب الأدنى (تنبيه النواقص) <span class="text-[var(--danger)]">*</span>
                         </label>
                         <input 
                             type="number" 
@@ -228,7 +228,7 @@
                             class="erp-input font-numeric @error('min_stock_alert') erp-input-error @enderror" 
                             required
                         >
-                        <small style="font-size: 11px; color: var(--text-muted);">
+                        <small class="text-[11px] text-[var(--text-muted)]">
                             يتم إظهار تنبيه عندما يقل الرصيد المخزني عن هذا الحد لتجهيز طلبية استيراد جديدة من الصين.
                         </small>
                     </div>
@@ -243,22 +243,22 @@
                             accept="image/png,image/jpeg,image/webp" 
                             class="erp-input @error('product_image') erp-input-error @enderror"
                         >
-                        <div id="imagePreviewContainer" style="margin-top: 10px; display: none;">
-                            <img id="imagePreview" src="" alt="معاينة الصورة" style="max-height: 90px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); object-fit: contain;">
+                        <div id="imagePreviewContainer" class="mt-2.5 hidden">
+                            <img id="imagePreview" src="" alt="معاينة الصورة" class="max-h-[90px] rounded border border-[var(--border-color)] object-contain">
                         </div>
                     </div>
 
                     <!-- Active Status Toggle -->
-                    <div style="margin-top: 8px;">
-                        <label class="flex items-center gap-2" style="cursor: pointer;">
+                    <div class="mt-2">
+                        <label class="flex items-center gap-2 cursor-pointer">
                             <input 
                                 type="checkbox" 
                                 name="is_active" 
                                 value="1" 
                                 {{ old('is_active', '1') ? 'checked' : '' }} 
-                                style="width: 18px; height: 18px; accent-color: var(--primary);"
+                                class="w-4 h-4 accent-[var(--primary)]"
                             >
-                            <span style="font-size: 13px; font-weight: 600; color: var(--text-main);">تفعيل الصنف وإتاحته في النظام وقوائم المبيعات</span>
+                            <span class="text-xs font-semibold text-[var(--text-main)]">تفعيل الصنف وإتاحته في النظام وقوائم المبيعات</span>
                         </label>
                     </div>
                 </div>
@@ -268,51 +268,3 @@
 
     <x-barcode-scanner-modal target-input-id="productBarcode" />
 @endsection
-
-@push('scripts')
-<script>
-    document.addEventListener('DOMContentLoaded', () => {
-        // Barcode Generation Handler
-        const genBtn = document.getElementById('btnGenBarcode');
-        const barcodeInput = document.getElementById('productBarcode');
-
-        if (genBtn && barcodeInput) {
-            const originalHtml = genBtn.innerHTML;
-            genBtn.addEventListener('click', async () => {
-                genBtn.disabled = true;
-                genBtn.innerText = 'جاري التوليد...';
-
-                try {
-                    const response = await fetch('{{ route("products.generate-barcode") }}');
-                    const data = await response.json();
-                    if (data && data.barcode) {
-                        barcodeInput.value = data.barcode;
-                    }
-                } catch (e) {
-                    // Fallback client generation
-                    const random = Math.floor(1000000000 + Math.random() * 9000000000);
-                    barcodeInput.value = '20' + random;
-                } finally {
-                    genBtn.disabled = false;
-                    genBtn.innerHTML = originalHtml;
-                }
-            });
-        }
-
-        // Live Image Preview
-        const imgInput = document.getElementById('productImage');
-        const previewContainer = document.getElementById('imagePreviewContainer');
-        const previewImg = document.getElementById('imagePreview');
-
-        if (imgInput && previewImg) {
-            imgInput.addEventListener('change', function () {
-                const file = this.files && this.files[0];
-                if (file) {
-                    previewImg.src = URL.createObjectURL(file);
-                    previewContainer.style.display = 'block';
-                }
-            });
-        }
-    });
-</script>
-@endpush

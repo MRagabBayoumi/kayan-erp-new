@@ -14,7 +14,7 @@
         <div class="erp-launcher-grid">
             <!-- Dashboard -->
             <a href="{{ url('/') }}" class="erp-launcher-item">
-                <div class="erp-launcher-icon" style="background-color: var(--primary-soft); color: var(--primary);">
+                <div class="erp-launcher-icon">
                     <x-icon name="layout-dashboard" size="26" strokeWidth="1.75" />
                 </div>
                 <div class="erp-launcher-label">لوحة التحكم</div>
@@ -23,7 +23,7 @@
 
             <!-- Products & Inventory -->
             <a href="{{ url('/products') }}" class="erp-launcher-item">
-                <div class="erp-launcher-icon" style="background-color: var(--primary-soft); color: var(--primary);">
+                <div class="erp-launcher-icon">
                     <x-icon name="package" size="26" strokeWidth="1.75" />
                 </div>
                 <div class="erp-launcher-label">المخزون والمنتجات</div>
@@ -32,7 +32,7 @@
 
             <!-- Sales & Customers -->
             <a href="#" class="erp-launcher-item">
-                <div class="erp-launcher-icon" style="background-color: var(--primary-soft); color: var(--primary);">
+                <div class="erp-launcher-icon">
                     <x-icon name="shopping-cart" size="26" strokeWidth="1.75" />
                 </div>
                 <div class="erp-launcher-label">المبيعات وتجار الجملة</div>
@@ -41,7 +41,7 @@
 
             <!-- Purchases & Imports -->
             <a href="#" class="erp-launcher-item">
-                <div class="erp-launcher-icon" style="background-color: var(--primary-soft); color: var(--primary);">
+                <div class="erp-launcher-icon">
                     <x-icon name="shopping-bag" size="26" strokeWidth="1.75" />
                 </div>
                 <div class="erp-launcher-label">المشتريات والاستيراد</div>
@@ -50,7 +50,7 @@
 
             <!-- Finance & Cash -->
             <a href="#" class="erp-launcher-item">
-                <div class="erp-launcher-icon" style="background-color: var(--primary-soft); color: var(--primary);">
+                <div class="erp-launcher-icon">
                     <x-icon name="banknote" size="26" strokeWidth="1.75" />
                 </div>
                 <div class="erp-launcher-label">الخزينة والمالية</div>
@@ -59,7 +59,7 @@
 
             <!-- Settings -->
             <a href="{{ route('settings.index') }}" class="erp-launcher-item">
-                <div class="erp-launcher-icon" style="background-color: var(--primary-soft); color: var(--primary);">
+                <div class="erp-launcher-icon">
                     <x-icon name="settings" size="26" strokeWidth="1.75" />
                 </div>
                 <div class="erp-launcher-label">الإعدادات والصلاحيات</div>

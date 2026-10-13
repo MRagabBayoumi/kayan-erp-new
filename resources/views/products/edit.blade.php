@@ -7,7 +7,7 @@
                 <x-icon name="save" size="16" />
                 <span>حفظ التعديلات</span>
             </button>
-            <button type="button" onclick="directPrintFromEdit()" class="erp-btn erp-btn-secondary" title="طباعة فورية للملصق (38×25 مم) بدون نوافذ">
+            <button type="button" data-action="direct-print-edit" data-print-url="{{ route('products.print-label', $product) }}?quantity=1&autoprint=1" class="erp-btn erp-btn-secondary" title="طباعة فورية للملصق (38×25 مم) بدون نوافذ">
                 <x-icon name="printer" size="16" />
                 <span>طباعة الباركود</span>
             </button>
@@ -22,11 +22,11 @@
 @section('content')
     <!-- Validation Errors Alert -->
     @if($errors->any())
-        <div class="erp-alert erp-alert-danger" role="alert" style="margin-bottom: 20px;">
+        <div class="erp-alert erp-alert-danger mb-5" role="alert">
             <x-icon name="alert-triangle" size="16" />
             <div>
                 <strong>يرجى تصحيح الأخطاء التالية قبل حفظ التعديلات:</strong>
-                <ul style="margin: 6px 20px 0; font-size: 12px;">
+                <ul class="my-1.5 mx-5 text-xs">
                     @foreach($errors->all() as $error)
                         <li>{{ $error }}</li>
                     @endforeach
@@ -35,7 +35,7 @@
         </div>
     @endif
 
-    <form id="productEditForm" action="{{ route('products.update', $product) }}" method="POST" enctype="multipart/form-data">
+    <form id="productEditForm" action="{{ route('products.update', $product) }}" method="POST" enctype="multipart/form-data" data-product-form>
         @csrf
         @method('PUT')
 
@@ -48,11 +48,11 @@
                         <span>بيانات الصنف الأساسية</span>
                     </div>
                 </div>
-                <div class="erp-card-body" style="display: flex; flex-direction: column; gap: 16px;">
+                <div class="erp-card-body flex flex-col gap-4">
                     <!-- Product Name -->
                     <div class="erp-form-group">
                         <label for="productName" class="erp-form-label">
-                            اسم المنتج <span style="color: var(--danger);">*</span>
+                            اسم المنتج <span class="text-[var(--danger)]">*</span>
                         </label>
                         <input 
                             type="text" 
@@ -68,7 +68,7 @@
                     <div class="erp-form-row-2col">
                         <div class="erp-form-group">
                             <label for="productSku" class="erp-form-label">
-                                كود الصنف (SKU) <span style="color: var(--danger);">*</span>
+                                كود الصنف (SKU) <span class="text-[var(--danger)]">*</span>
                             </label>
                             <input 
                                 type="text" 
@@ -82,7 +82,7 @@
 
                         <div class="erp-form-group">
                             <label for="productCategory" class="erp-form-label">
-                                التصنيف <span style="color: var(--danger);">*</span>
+                                التصنيف <span class="text-[var(--danger)]">*</span>
                             </label>
                             <select 
                                 id="productCategory" 
@@ -102,7 +102,7 @@
                     <!-- Unit of Measure -->
                     <div class="erp-form-group">
                         <label for="productUnit" class="erp-form-label">
-                            وحدة القياس <span style="color: var(--danger);">*</span>
+                            وحدة القياس <span class="text-[var(--danger)]">*</span>
                         </label>
                         <select id="productUnit" name="unit" class="erp-input">
                             <option value="قطعة" {{ old('unit', $product->unit) === 'قطعة' ? 'selected' : '' }}>قطعة (Piece)</option>
@@ -115,34 +115,34 @@
 
                     <!-- Barcode Section with Camera Scanner Integration -->
                     <div class="erp-form-group">
-                        <div class="erp-form-label flex items-center justify-between" style="flex-wrap: wrap; gap: 6px;">
-                            <label for="productBarcode" style="margin: 0; cursor: pointer;">الباركود (Barcode)</label>
-                            <div style="display: inline-flex; align-items: center; gap: 6px;">
-                                <button type="button" onclick="openKayanBarcodeScanner('productBarcode')" class="erp-btn erp-btn-secondary" style="font-size: 11px; padding: 3px 8px; color: var(--primary); display: inline-flex; align-items: center; gap: 4px;" title="تشغيل الكاميرا لمسح باركود الصنف مباشرة">
+                        <div class="erp-form-label flex items-center justify-between flex-wrap gap-1.5">
+                            <label for="productBarcode" class="m-0 cursor-pointer">الباركود (Barcode)</label>
+                            <div class="inline-flex items-center gap-1.5">
+                                <button type="button" data-action="open-barcode-scanner" data-target-input="productBarcode" class="erp-btn erp-btn-secondary text-[11px] py-1 px-2 text-[var(--primary)] inline-flex items-center gap-1" title="تشغيل الكاميرا لمسح باركود الصنف مباشرة">
                                     <x-icon name="camera" size="14" />
                                     <span>مسح بالكاميرا</span>
                                 </button>
-                                <button type="button" id="btnGenBarcode" class="erp-btn erp-btn-ghost font-numeric" style="font-size: 11px; padding: 2px 8px; color: var(--text-muted); display: inline-flex; align-items: center; gap: 4px;">
+                                <button type="button" data-action="generate-barcode" class="erp-btn erp-btn-ghost font-numeric text-[11px] py-0.5 px-2 text-[var(--text-muted)] inline-flex items-center gap-1">
                                     <x-icon name="zap" size="13" />
-                                    <span>توليد كود جديد</span>
+                                    <span>توليد كود</span>
                                 </button>
                             </div>
                         </div>
-                        <div style="position: relative; display: flex; align-items: center;">
+                        <div class="relative flex items-center">
                             <input 
                                 type="text" 
                                 id="productBarcode" 
                                 name="barcode" 
                                 value="{{ old('barcode', $product->barcode) }}" 
-                                class="erp-input font-numeric @error('barcode') erp-input-error @enderror" 
+                                class="erp-input font-numeric pl-11 @error('barcode') erp-input-error @enderror" 
                                 placeholder="امسح بالكاميرا أو اكتب الباركود..."
-                                style="padding-left: 42px;"
                             >
                             <button 
                                 type="button" 
-                                onclick="openKayanBarcodeScanner('productBarcode')" 
+                                data-action="open-barcode-scanner" 
+                                data-target-input="productBarcode"
                                 title="تشغيل الكاميرا لمسح الباركود"
-                                style="position: absolute; left: 5px; height: 30px; width: 32px; border: none; background: var(--primary-soft); color: var(--primary); border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.15s ease;">
+                                class="absolute left-1.5 h-7 w-8 border-0 bg-[var(--primary-soft)] text-[var(--primary)] rounded inline-flex items-center justify-center cursor-pointer transition-all">
                                 <x-icon name="camera" size="16" />
                             </button>
                         </div>
@@ -158,12 +158,12 @@
                         <span>التسعير وإعدادات المخزون</span>
                     </div>
                 </div>
-                <div class="erp-card-body" style="display: flex; flex-direction: column; gap: 16px;">
+                <div class="erp-card-body flex flex-col gap-4">
                     <!-- Prices 3-Column Grid -->
                     <div class="erp-pricing-grid">
                         <div class="erp-form-group">
                             <label for="costPrice" class="erp-form-label">
-                                سعر التكلفة <span style="color: var(--danger);">*</span>
+                                سعر التكلفة <span class="text-[var(--danger)]">*</span>
                             </label>
                             <input 
                                 type="number" 
@@ -179,7 +179,7 @@
 
                         <div class="erp-form-group">
                             <label for="wholesalePrice" class="erp-form-label">
-                                سعر الجملة <span style="color: var(--danger);">*</span>
+                                سعر الجملة <span class="text-[var(--danger)]">*</span>
                             </label>
                             <input 
                                 type="number" 
@@ -195,7 +195,7 @@
 
                         <div class="erp-form-group">
                             <label for="retailPrice" class="erp-form-label">
-                                سعر التجزئة <span style="color: var(--danger);">*</span>
+                                سعر التجزئة <span class="text-[var(--danger)]">*</span>
                             </label>
                             <input 
                                 type="number" 
@@ -213,7 +213,7 @@
                     <!-- Min Stock Alert -->
                     <div class="erp-form-group">
                         <label for="minStockAlert" class="erp-form-label">
-                            حد الطلب الأدنى للتنبيه <span style="color: var(--danger);">*</span>
+                            حد الطلب الأدنى (تنبيه النواقص) <span class="text-[var(--danger)]">*</span>
                         </label>
                         <input 
                             type="number" 
@@ -226,13 +226,13 @@
                         >
                     </div>
 
-                    <!-- Current & New Image -->
+                    <!-- Product Image -->
                     <div class="erp-form-group">
                         <label for="productImage" class="erp-form-label">صورة المنتج</label>
-                        @if($product->image_url)
-                            <div style="margin-bottom: 8px;">
-                                <small style="display: block; color: var(--text-muted); margin-bottom: 4px;">الصورة الحالية:</small>
-                                <img src="{{ $product->image_url }}" alt="{{ $product->name }}" style="max-height: 80px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color);">
+                        @if($product->image_path)
+                            <div class="mb-2">
+                                <small class="block text-[var(--text-muted)] text-[11px] mb-1">الصورة الحالية:</small>
+                                <img src="{{ $product->image_url }}" alt="{{ $product->name }}" class="max-h-20 rounded border border-[var(--border-color)] object-contain">
                             </div>
                         @endif
                         <input 
@@ -242,23 +242,23 @@
                             accept="image/png,image/jpeg,image/webp" 
                             class="erp-input @error('product_image') erp-input-error @enderror"
                         >
-                        <div id="imagePreviewContainer" style="margin-top: 10px; display: none;">
-                            <small style="display: block; color: var(--text-muted); margin-bottom: 4px;">معاينة الصورة الجديدة:</small>
-                            <img id="imagePreview" src="" alt="معاينة جديدة" style="max-height: 80px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); object-fit: contain;">
+                        <div id="imagePreviewContainer" class="mt-2.5 hidden">
+                            <small class="block text-[var(--text-muted)] mb-1">معاينة الصورة الجديدة:</small>
+                            <img id="imagePreview" src="" alt="معاينة جديدة" class="max-h-20 rounded border border-[var(--border-color)] object-contain">
                         </div>
                     </div>
 
                     <!-- Active Status Toggle -->
-                    <div style="margin-top: 8px;">
-                        <label class="flex items-center gap-2" style="cursor: pointer;">
+                    <div class="mt-2">
+                        <label class="flex items-center gap-2 cursor-pointer">
                             <input 
                                 type="checkbox" 
                                 name="is_active" 
                                 value="1" 
                                 {{ old('is_active', $product->is_active) ? 'checked' : '' }} 
-                                style="width: 18px; height: 18px; accent-color: var(--primary);"
+                                class="w-4 h-4 accent-[var(--primary)]"
                             >
-                            <span style="font-size: 13px; font-weight: 600; color: var(--text-main);">تفعيل الصنف وإتاحته في النظام</span>
+                            <span class="text-xs font-semibold text-[var(--text-main)]">تفعيل الصنف وإتاحته في النظام</span>
                         </label>
                     </div>
                 </div>
@@ -266,62 +266,6 @@
         </div>
     </form>
 
+    <iframe id="editPrintIframe" class="hidden"></iframe>
     <x-barcode-scanner-modal target-input-id="productBarcode" />
 @endsection
-
-@push('scripts')
-<script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const genBtn = document.getElementById('btnGenBarcode');
-        const barcodeInput = document.getElementById('productBarcode');
-
-        if (genBtn && barcodeInput) {
-            const originalHtml = genBtn.innerHTML;
-            genBtn.addEventListener('click', async () => {
-                genBtn.disabled = true;
-                genBtn.innerText = 'جاري التوليد...';
-
-                try {
-                    const response = await fetch('{{ route("products.generate-barcode") }}');
-                    const data = await response.json();
-                    if (data && data.barcode) {
-                        barcodeInput.value = data.barcode;
-                    }
-                } catch (e) {
-                    const random = Math.floor(1000000000 + Math.random() * 9000000000);
-                    barcodeInput.value = '20' + random;
-                } finally {
-                    genBtn.disabled = false;
-                    genBtn.innerHTML = originalHtml;
-                }
-            });
-        }
-
-        const imgInput = document.getElementById('productImage');
-        const previewContainer = document.getElementById('imagePreviewContainer');
-        const previewImg = document.getElementById('imagePreview');
-
-        if (imgInput && previewImg) {
-            imgInput.addEventListener('change', function () {
-                const file = this.files && this.files[0];
-                if (file) {
-                    previewImg.src = URL.createObjectURL(file);
-                    previewContainer.style.display = 'block';
-                }
-            });
-        }
-    });
-
-    function directPrintFromEdit() {
-        let iframe = document.getElementById('editPrintIframe');
-        if (!iframe) {
-            iframe = document.createElement('iframe');
-            iframe.id = 'editPrintIframe';
-            iframe.style.display = 'none';
-            document.body.appendChild(iframe);
-        }
-        iframe.src = '{{ route("products.print-label", $product) }}?quantity=1&autoprint=1';
-    }
-</script>
-<iframe id="editPrintIframe" style="display: none; position: fixed; width: 0; height: 0; border: 0; opacity: 0; pointer-events: none;"></iframe>
-@endpush

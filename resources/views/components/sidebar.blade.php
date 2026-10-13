@@ -13,7 +13,7 @@
                 </div>
                 <div class="erp-company-sub">
                     @if(!empty($globalCompanySetting) && $globalCompanySetting->isMaintenance())
-                        <span class="erp-badge erp-badge-warning" style="font-size: 10px; padding: 1px 6px;">وضع الصيانة</span>
+                        <span class="erp-badge erp-badge-warning text-[10px] px-1.5 py-0.5">وضع الصيانة</span>
                     @else
                         <span>استيراد وتوزيع إكسسوارات حريمي</span>
                     @endif

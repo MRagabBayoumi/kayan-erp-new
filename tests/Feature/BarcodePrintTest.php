@@ -149,7 +149,7 @@ test('single product print label view triggers autoprint when requested', functi
     ]));
 
     $response->assertOk();
-    $response->assertSee('window.print()');
+    $response->assertSee('data-auto-print="true"', false);
 });
 
 test('batch print labels view handles multiple products with individual quantities', function () {
@@ -248,7 +248,7 @@ test('product show view displays direct print button and stepper', function () {
 
     $response->assertOk();
     $response->assertSee('طباعة ملصق الباركود');
-    $response->assertSee('directPrintFromShow');
+    $response->assertSee('data-action="direct-print-show"', false);
     $response->assertSee('directPrintIframe');
     $response->assertSee('38×25 مم');
 });
@@ -273,6 +273,6 @@ test('products index view includes row double click navigation and direct print 
     $response->assertOk();
     $response->assertSee('product-row-clickable');
     $response->assertSee(route('products.show', $product));
-    $response->assertSee('directPrintProduct');
+    $response->assertSee('data-action="direct-print-row"', false);
     $response->assertSee('directPrintIframe');
 });

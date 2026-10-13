@@ -8,8 +8,10 @@ export default defineConfig({
         laravel({
             input: [
                 'resources/css/app.css',
+                'resources/js/theme-init.js',
                 'resources/js/app.js',
                 'resources/css/print/thermal-label.css',
+                'resources/js/pages/print-label.js',
             ],
             refresh: true,
             fonts: [

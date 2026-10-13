@@ -13,7 +13,7 @@
                     <span>إلغاء ورفع ملف آخر</span>
                 </a>
             @else
-                <a href="{{ route('products.import.template') }}" class="erp-btn erp-btn-secondary" style="border-color: var(--primary); color: var(--primary);">
+                <a href="{{ route('products.import.template') }}" class="erp-btn erp-btn-secondary border-[var(--primary)] text-[var(--primary)]">
                     <x-icon name="download" size="16" />
                     <span>تحميل قالب إكسيل الجاهز (اختياري)</span>
                 </a>
@@ -26,7 +26,7 @@
 
         <x-slot:extra>
             @if(!empty($reviewData))
-                <span class="erp-badge erp-badge-info font-numeric" style="padding: 4px 10px; font-size: 12px;">
+                <span class="erp-badge erp-badge-info font-numeric px-2.5 py-1 text-xs">
                     <span>إجمالي السطور المفحوصة:</span>
                     <strong>{{ $reviewData['stats']['total'] }}</strong>
                 </span>
@@ -38,17 +38,15 @@
 @section('content')
     <!-- Flash Messages -->
     @if(session('status') === 'error')
-        <div class="erp-alert erp-alert-danger" role="alert" style="margin-bottom: 20px;">
+        <div class="erp-alert erp-alert-danger mb-5" role="alert">
             <x-icon name="alert-triangle" size="16" />
             <div>{{ session('message', 'حدث خطأ أثناء معالجة الملف.') }}</div>
         </div>
     @endif
 
     @if(empty($reviewData))
-        <!-- =========================================================================
-             STEP 1: UPLOAD FILE & TEMPLATE DOWNLOAD
-             ========================================================================= -->
-        <div style="display: grid; grid-template-columns: 1fr 340px; gap: 20px;">
+        <!-- STEP 1: UPLOAD FILE & TEMPLATE DOWNLOAD -->
+        <div class="grid grid-cols-[1fr_340px] gap-5">
             <!-- Upload Box -->
             <div class="erp-card">
                 <div class="erp-card-header">
@@ -58,7 +56,7 @@
                     </div>
                 </div>
                 <div class="erp-card-body">
-                    <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px; line-height: 1.6;">
+                    <p class="text-xs text-[var(--text-muted)] mb-4 leading-relaxed">
                         ارفع ملف إكسيل (<strong>.xlsx</strong>) أو ملف قيم مفصولة بفواصل (<strong>.csv</strong>). 
                         سيقوم النظام بفحص محتويات الملف سطر بسطر ومقارنتها بقاعدة البيانات الحالية <code>kayan_erp</code> لاكتشاف الأصناف الجديدة، والتحقق من الأسعار، وتمييز الأصناف الموجودة مسبقاً قبل تنفيذ أي عملية حفظ.
                     </p>
@@ -66,8 +64,8 @@
                     <form action="{{ route('products.import.review') }}" method="POST" enctype="multipart/form-data">
                         @csrf
 
-                        <div class="erp-form-group" style="margin-bottom: 20px;">
-                            <label for="importFile" class="erp-form-label" style="font-weight: 700; margin-bottom: 8px;">
+                        <div class="erp-form-group mb-5">
+                            <label for="importFile" class="erp-form-label font-bold mb-2">
                                 اختر ملف الإكسيل أو الـ CSV من جهازك:
                             </label>
                             <input 
@@ -75,21 +73,20 @@
                                 id="importFile" 
                                 name="import_file" 
                                 accept=".csv,.xlsx,.xls,text/csv" 
-                                class="erp-input @error('import_file') erp-input-error @enderror" 
+                                class="erp-input p-2.5 @error('import_file') erp-input-error @enderror" 
                                 required
-                                style="padding: 10px;"
                             >
                             @error('import_file')
-                                <small style="color: var(--danger); display: block; margin-top: 4px;">{{ $message }}</small>
+                                <small class="text-[var(--danger)] block mt-1">{{ $message }}</small>
                             @enderror
                         </div>
 
-                        <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--border-color); padding-top: 16px;">
-                            <button type="submit" class="erp-btn erp-btn-primary" style="padding: 10px 24px; font-weight: 700;">
+                        <div class="flex items-center justify-between border-t border-[var(--border-color)] pt-4">
+                            <button type="submit" class="erp-btn erp-btn-primary py-2.5 px-6 font-bold">
                                 <x-icon name="search" size="16" />
                                 <span>فحص ومراجعة محتويات الملف</span>
                             </button>
-                            <small style="color: var(--text-muted); font-size: 11px;">الحد الأقصى لحجم الملف: 10MB</small>
+                            <small class="text-[var(--text-muted)] text-[11px]">الحد الأقصى لحجم الملف: 10MB</small>
                         </div>
                     </form>
                 </div>
@@ -103,20 +100,20 @@
                         <span>قالب البيانات الجاهز</span>
                     </div>
                 </div>
-                <div class="erp-card-body" style="display: flex; flex-direction: column; gap: 14px;">
-                    <div class="erp-alert erp-alert-info" style="margin: 0; padding: 10px 12px; font-size: 12px;">
+                <div class="erp-card-body flex flex-col gap-3.5">
+                    <div class="erp-alert erp-alert-info m-0 py-2.5 px-3 text-xs">
                         <x-icon name="info" size="16" />
                         <div>تنزيل القالب <strong>اختياري (Option)</strong> وليس فرضاً، والغرض منه مساعدتك في معرفة التنسيق الأمثل للأعمدة.</div>
                     </div>
 
-                    <a href="{{ route('products.import.template') }}" class="erp-btn erp-btn-secondary" style="width: 100%; justify-content: center; padding: 10px; font-weight: 700; border-color: var(--primary); color: var(--primary); display: inline-flex; align-items: center; gap: 6px;">
+                    <a href="{{ route('products.import.template') }}" class="erp-btn erp-btn-secondary w-full justify-center p-2.5 font-bold border-[var(--primary)] text-[var(--primary)] inline-flex items-center gap-1.5">
                         <x-icon name="download" size="16" />
                         <span>تحميل القالب المنسق (CSV)</span>
                     </a>
 
                     <div>
-                        <strong style="display: block; font-size: 12px; color: var(--text-main); margin-bottom: 6px;">الأعمدة المدعومة في الملف:</strong>
-                        <ul style="font-size: 11px; color: var(--text-muted); margin: 0 16px; line-height: 1.8;">
+                        <strong class="block text-xs text-[var(--text-main)] mb-1.5 font-bold">الأعمدة المدعومة في الملف:</strong>
+                        <ul class="text-[11px] text-[var(--text-muted)] my-0 mx-4 leading-loose">
                             <li><strong>كود الصنف (SKU):</strong> إلزامي وفريد.</li>
                             <li><strong>اسم المنتج:</strong> إلزامي بالعربية.</li>
                             <li><strong>التصنيف:</strong> اختياري (يُنشأ تلقائياً إن لم يوجد).</li>
@@ -131,13 +128,11 @@
         </div>
 
     @else
-        <!-- =========================================================================
-             STEP 2: PRE-IMPORT REVIEW & COMPARISON AGAINST DATABASE
-             ========================================================================= -->
+        <!-- STEP 2: PRE-IMPORT REVIEW & COMPARISON AGAINST DATABASE -->
         <!-- KPI Summary Cards -->
-        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px;">
+        <div class="grid grid-cols-4 gap-4 mb-5">
             <!-- Total Rows -->
-            <div class="kpi-card" style="padding: 14px;">
+            <div class="kpi-card p-3.5">
                 <div class="kpi-header">
                     <span class="kpi-label">إجمالي السطور المقروءة</span>
                     <span class="kpi-icon"><x-icon name="trending-up" size="20" /></span>
@@ -147,59 +142,59 @@
             </div>
 
             <!-- New Items -->
-            <div class="kpi-card" style="padding: 14px; border-top: 3px solid var(--success);">
+            <div class="kpi-card p-3.5 border-t-[3px] border-t-[var(--success)]">
                 <div class="kpi-header">
-                    <span class="kpi-label" style="color: var(--success-text);">أصناف جديدة للإدراج</span>
+                    <span class="kpi-label text-[var(--success-text)]">أصناف جديدة للإدراج</span>
                     <span class="kpi-icon"><x-icon name="plus" size="20" /></span>
                 </div>
-                <div class="kpi-value font-numeric" style="color: var(--success-text);">{{ $reviewData['stats']['new_count'] }}</div>
+                <div class="kpi-value font-numeric text-[var(--success-text)]">{{ $reviewData['stats']['new_count'] }}</div>
                 <div class="kpi-note font-numeric">غير مسجلة بقاعدة البيانات</div>
             </div>
 
             <!-- Existing Items (Update) -->
-            <div class="kpi-card" style="padding: 14px; border-top: 3px solid var(--warning);">
+            <div class="kpi-card p-3.5 border-t-[3px] border-t-[var(--warning)]">
                 <div class="kpi-header">
-                    <span class="kpi-label" style="color: var(--warning);">أصناف قائمة للتحديث</span>
+                    <span class="kpi-label text-[var(--warning)]">أصناف قائمة للتحديث</span>
                     <span class="kpi-icon"><x-icon name="refresh-cw" size="20" /></span>
                 </div>
-                <div class="kpi-value font-numeric" style="color: var(--warning);">{{ $reviewData['stats']['update_count'] }}</div>
+                <div class="kpi-value font-numeric text-[var(--warning)]">{{ $reviewData['stats']['update_count'] }}</div>
                 <div class="kpi-note font-numeric">موجودة بالكود أو الباركود</div>
             </div>
 
             <!-- Invalid Rows -->
-            <div class="kpi-card" style="padding: 14px; border-top: 3px solid var(--danger);">
+            <div class="kpi-card p-3.5 border-t-[3px] border-t-[var(--danger)]">
                 <div class="kpi-header">
-                    <span class="kpi-label" style="color: var(--danger);">سطور تحتوي على أخطاء</span>
+                    <span class="kpi-label text-[var(--danger)]">سطور تحتوي على أخطاء</span>
                     <span class="kpi-icon"><x-icon name="alert-triangle" size="20" /></span>
                 </div>
-                <div class="kpi-value font-numeric" style="color: var(--danger);">{{ $reviewData['stats']['invalid_count'] }}</div>
+                <div class="kpi-value font-numeric text-[var(--danger)]">{{ $reviewData['stats']['invalid_count'] }}</div>
                 <div class="kpi-note font-numeric">سيتم تخطيها أو تصحيحها</div>
             </div>
         </div>
 
         <!-- Confirmation Form & Options -->
-        <form id="confirmImportForm" action="{{ route('products.import.confirm') }}" method="POST" class="erp-card" style="margin-bottom: 20px; padding: 14px 18px;">
+        <form id="confirmImportForm" action="{{ route('products.import.confirm') }}" method="POST" class="erp-card mb-5 py-3.5 px-4.5">
             @csrf
 
-            <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px;">
-                <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 20px;">
-                    <label class="flex items-center gap-2" style="cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text-main);">
-                        <input type="checkbox" name="update_existing" value="1" checked style="width: 17px; height: 17px; accent-color: var(--primary);">
+            <div class="flex flex-wrap items-center justify-between gap-3.5">
+                <div class="flex flex-wrap items-center gap-5">
+                    <label class="flex items-center gap-2 cursor-pointer text-xs font-semibold text-[var(--text-main)]">
+                        <input type="checkbox" name="update_existing" value="1" checked class="w-4 h-4 accent-[var(--primary)]">
                         <span>تحديث أسعار وبيانات الأصناف الموجودة مسبقاً</span>
                     </label>
 
-                    <label class="flex items-center gap-2" style="cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text-main);">
-                        <input type="checkbox" name="create_categories" value="1" checked style="width: 17px; height: 17px; accent-color: var(--primary);">
+                    <label class="flex items-center gap-2 cursor-pointer text-xs font-semibold text-[var(--text-main)]">
+                        <input type="checkbox" name="create_categories" value="1" checked class="w-4 h-4 accent-[var(--primary)]">
                         <span>إنشاء التصنيفات الجديدة تلقائياً إذا لم تكن موجودة</span>
                     </label>
                 </div>
 
                 <div class="flex items-center gap-2">
-                    <button type="submit" class="erp-btn erp-btn-primary" style="padding: 9px 22px; font-weight: 700;">
+                    <button type="submit" class="erp-btn erp-btn-primary py-2 px-5.5 font-bold">
                         <x-icon name="check" size="16" />
                         <span>تأكيد الاستيراد الفعلي وحفظ البيانات</span>
                     </button>
-                    <a href="{{ route('products.import.cancel') }}" class="erp-btn erp-btn-secondary" style="padding: 9px 16px;">
+                    <a href="{{ route('products.import.cancel') }}" class="erp-btn erp-btn-secondary py-2 px-4">
                         <x-icon name="x" size="16" />
                         <span>إلغاء</span>
                     </a>
@@ -208,50 +203,50 @@
         </form>
 
         <!-- Comparison Table -->
-        <div class="erp-card" style="padding: 0; overflow: hidden;">
-            <div class="erp-card-header" style="padding: 12px 16px; border-bottom: 1px solid var(--border-color);">
+        <div class="erp-card p-0 overflow-hidden">
+            <div class="erp-card-header py-3 px-4 border-b border-[var(--border-color)]">
                 <div class="erp-card-title">
                     <x-icon name="clipboard" size="18" />
                     <span>جدول معاينة وتدقيق السطور ومقارنتها بقاعدة البيانات</span>
                 </div>
             </div>
 
-            <div class="erp-table-responsive" style="max-height: 520px; overflow-y: auto;">
+            <div class="erp-table-responsive max-h-[520px] overflow-y-auto">
                 <table class="erp-table">
                     <thead>
-                        <tr style="position: sticky; top: 0; z-index: 2;">
-                            <th style="width: 45px; text-align: center;">#</th>
-                            <th style="width: 100px; text-align: center;">حالة السطر</th>
-                            <th style="width: 130px;">كود الصنف (SKU)</th>
+                        <tr class="sticky top-0 z-[2] bg-[var(--bg-surface)]">
+                            <th class="w-[45px] text-center">#</th>
+                            <th class="w-[100px] text-center">حالة السطر</th>
+                            <th class="w-[130px]">كود الصنف (SKU)</th>
                             <th>اسم المنتج</th>
-                            <th style="width: 120px;">التصنيف</th>
-                            <th style="width: 140px;">الباركود</th>
-                            <th style="width: 90px; text-align: left;">التكلفة</th>
-                            <th style="width: 130px; text-align: left;">سعر الجملة</th>
-                            <th style="width: 90px; text-align: left;">التجزئة</th>
-                            <th style="width: 70px; text-align: center;">الوحدة</th>
+                            <th class="w-[120px]">التصنيف</th>
+                            <th class="w-[140px]">الباركود</th>
+                            <th class="w-[90px] text-left">التكلفة</th>
+                            <th class="w-[130px] text-left">سعر الجملة</th>
+                            <th class="w-[90px] text-left">التجزئة</th>
+                            <th class="w-[70px] text-center">الوحدة</th>
                             <th>المطابقة وملاحظات التدقيق</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach($reviewData['rows'] as $row)
-                            <tr style="{{ $row['action'] === 'invalid' ? 'background-color: rgba(239, 68, 68, 0.05);' : ($row['action'] === 'update' ? 'background-color: rgba(245, 158, 11, 0.05);' : '') }}">
-                                <td style="text-align: center;" class="font-numeric">{{ $row['line'] }}</td>
+                            <tr class="{{ $row['action'] === 'invalid' ? 'bg-red-500/5' : ($row['action'] === 'update' ? 'bg-amber-500/5' : '') }}">
+                                <td class="text-center font-numeric">{{ $row['line'] }}</td>
 
                                 <!-- Status Badge -->
-                                <td style="text-align: center;">
+                                <td class="text-center">
                                     @if($row['action'] === 'new')
-                                        <span class="erp-badge erp-badge-success" style="font-size: 11px; display: inline-flex; align-items: center; gap: 4px;">
+                                        <span class="erp-badge erp-badge-success text-[11px] inline-flex items-center gap-1">
                                             <x-icon name="plus" size="11" />
                                             <span>جديد</span>
                                         </span>
                                     @elseif($row['action'] === 'update')
-                                        <span class="erp-badge erp-badge-warning" style="font-size: 11px; display: inline-flex; align-items: center; gap: 4px;">
+                                        <span class="erp-badge erp-badge-warning text-[11px] inline-flex items-center gap-1">
                                             <x-icon name="refresh-cw" size="11" />
                                             <span>تحديث</span>
                                         </span>
                                     @else
-                                        <span class="erp-badge erp-badge-danger" style="font-size: 11px; display: inline-flex; align-items: center; gap: 4px;">
+                                        <span class="erp-badge erp-badge-danger text-[11px] inline-flex items-center gap-1">
                                             <x-icon name="alert-triangle" size="11" />
                                             <span>خطأ</span>
                                         </span>
@@ -260,14 +255,14 @@
 
                                 <!-- SKU -->
                                 <td>
-                                    <span class="font-numeric" style="font-weight: 700; color: var(--primary);">
+                                    <span class="font-numeric font-bold text-[var(--primary)]">
                                         {{ $row['sku'] ?: '—' }}
                                     </span>
                                 </td>
 
                                 <!-- Name -->
                                 <td>
-                                    <strong style="color: var(--text-main);">{{ $row['name'] ?: '—' }}</strong>
+                                    <strong class="text-[var(--text-main)]">{{ $row['name'] ?: '—' }}</strong>
                                 </td>
 
                                 <!-- Category -->
@@ -278,49 +273,49 @@
                                 <!-- Barcode -->
                                 <td>
                                     @if($row['barcode'])
-                                        <span class="font-numeric" style="font-family: monospace; font-size: 11px; background: var(--bg-surface-alt); padding: 2px 5px; border-radius: 4px; border: 1px solid var(--border-color);">
+                                        <span class="font-numeric font-mono text-[11px] bg-[var(--bg-surface-alt)] py-0.5 px-1.5 rounded border border-[var(--border-color)]">
                                             {{ $row['barcode'] }}
                                         </span>
                                     @else
-                                        <span style="color: var(--text-light); font-size: 11px;">—</span>
+                                        <span class="text-[var(--text-light)] text-[11px]">—</span>
                                     @endif
                                 </td>
 
                                 <!-- Cost Price -->
-                                <td style="text-align: left;" class="font-numeric">
+                                <td class="text-left font-numeric">
                                     {{ number_format((float)$row['cost_price'], 2) }}
                                 </td>
 
                                 <!-- Wholesale Price with Comparison -->
-                                <td style="text-align: left;" class="font-numeric">
-                                    <strong style="color: var(--success-text);">{{ number_format((float)$row['wholesale_price'], 2) }}</strong>
+                                <td class="text-left font-numeric">
+                                    <strong class="text-[var(--success-text)]">{{ number_format((float)$row['wholesale_price'], 2) }}</strong>
                                     @if($row['existing_product'])
-                                        <small style="display: block; font-size: 10px; color: var(--text-muted);">
+                                        <small class="block text-[10px] text-[var(--text-muted)]">
                                             السابق: {{ number_format($row['existing_product']['old_wholesale_price'], 2) }}
                                         </small>
                                     @endif
                                 </td>
 
                                 <!-- Retail Price -->
-                                <td style="text-align: left;" class="font-numeric">
+                                <td class="text-left font-numeric">
                                     {{ number_format((float)$row['retail_price'], 2) }}
                                 </td>
 
                                 <!-- Unit -->
-                                <td style="text-align: center;">
-                                    <span style="font-size: 11px; color: var(--text-muted);">{{ $row['unit'] }}</span>
+                                <td class="text-center">
+                                    <span class="text-[11px] text-[var(--text-muted)]">{{ $row['unit'] }}</span>
                                 </td>
 
                                 <!-- Audit Notes -->
                                 <td>
                                     @if($row['action'] === 'new')
-                                        <span style="color: var(--success-text); font-size: 12px;">صنف جديد سيتم إدراجه في قاعدة البيانات.</span>
+                                        <span class="text-[var(--success-text)] text-xs">صنف جديد سيتم إدراجه في قاعدة البيانات.</span>
                                     @elseif($row['action'] === 'update')
-                                        <span style="color: var(--warning); font-size: 12px;">
+                                        <span class="text-[var(--warning)] text-xs">
                                             صنف مسجل مسبقاً (<strong>{{ $row['existing_product']['name'] }}</strong>) — سيتم تحديث الأسعار والمواصفات.
                                         </span>
                                     @else
-                                        <div style="color: var(--danger); font-size: 11px;">
+                                        <div class="text-[var(--danger)] text-[11px]">
                                             @foreach($row['errors'] as $err)
                                                 <div>• {{ $err }}</div>
                                             @endforeach

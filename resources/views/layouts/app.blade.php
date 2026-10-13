@@ -16,26 +16,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-    <!-- Pre-render Theme & Density Initializer (Prevents Theme Flicker) -->
-    <script>
-        (function() {
-            try {
-                const savedTheme = localStorage.getItem('kayan_theme');
-                if (savedTheme) {
-                    document.documentElement.setAttribute('data-theme', savedTheme);
-                } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-                    document.documentElement.setAttribute('data-theme', 'dark');
-                }
-
-                const savedDensity = localStorage.getItem('kayan_density');
-                if (savedDensity) {
-                    document.documentElement.setAttribute('data-density', savedDensity);
-                }
-            } catch (e) {}
-        })();
-    </script>
-
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @vite(['resources/js/theme-init.js', 'resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body>
 

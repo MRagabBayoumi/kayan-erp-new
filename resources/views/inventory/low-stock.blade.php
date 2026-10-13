@@ -14,7 +14,7 @@
         </x-slot:actions>
 
         <x-slot:extra>
-            <span class="erp-badge erp-badge-warning font-numeric" style="padding: 4px 10px; font-size: 12px;">
+            <span class="erp-badge erp-badge-warning font-numeric px-2.5 py-1 text-xs">
                 <span>أصناف تتطلب إعادة الطلب:</span>
                 <strong>{{ $products->total() }}</strong>
             </span>
@@ -24,7 +24,7 @@
 
 @section('content')
     <!-- Alert Notice -->
-    <div class="erp-alert erp-alert-warning" role="alert" style="margin-bottom: 16px;">
+    <div class="erp-alert erp-alert-warning mb-4" role="alert">
         <x-icon name="alert-triangle" size="18" />
         <div>
             <strong>تنبيه إعادة الطلب:</strong> تُعرض هنا كافة الأصناف التي وصل رصيدها الفعلي في جميع المستودعات إلى حد الأمان المحدد للصنف (الحد الأدنى للطلب) أو نفدت تماماً.
@@ -32,10 +32,10 @@
     </div>
 
     <!-- Category Filter -->
-    <div class="erp-card" style="margin-bottom: 16px; padding: 12px 16px;">
+    <div class="erp-card mb-4 p-3">
         <form action="{{ route('inventory.low-stock') }}" method="GET" class="erp-filter-form">
-            <div style="min-width: 200px;">
-                <select name="category_id" class="erp-input" onchange="this.form.submit()">
+            <div class="min-w-[200px]">
+                <select name="category_id" class="erp-input" data-action="auto-submit">
                     <option value="">جميع التصنيفات</option>
                     @foreach($categories as $cat)
                         <option value="{{ $cat->id }}" {{ $selectedCategoryId == $cat->id ? 'selected' : '' }}>
@@ -54,11 +54,11 @@
     </div>
 
     <!-- Low Stock Table -->
-    <div class="erp-card" style="overflow-x: auto; margin-bottom: 20px;">
-        <table class="erp-table" style="width: 100%;">
+    <div class="erp-card overflow-x-auto mb-5">
+        <table class="erp-table w-full">
             <thead>
                 <tr>
-                    <th style="width: 50px;">#</th>
+                    <th class="w-[50px]">#</th>
                     <th>كود الصنف (SKU)</th>
                     <th>اسم الصنف</th>
                     <th>التصنيف</th>
@@ -67,7 +67,7 @@
                     <th class="text-center">العجز / المطلوب</th>
                     <th class="text-center">الحالة</th>
                     <th class="text-left">سعر التكلفة</th>
-                    <th style="width: 120px; text-align: center;">إجراء سريع</th>
+                    <th class="w-[120px] text-center">إجراء سريع</th>
                 </tr>
             </thead>
             <tbody>
@@ -79,30 +79,30 @@
                         $isOut = $currentStock <= 0;
                     @endphp
                     <tr>
-                        <td class="font-numeric" style="color: var(--text-muted);">{{ $loop->iteration + ($products->currentPage() - 1) * $products->perPage() }}</td>
+                        <td class="font-numeric text-[var(--text-muted)]">{{ $loop->iteration + ($products->currentPage() - 1) * $products->perPage() }}</td>
                         <td>
-                            <span class="font-numeric" style="font-weight: 700; color: var(--text-main);">{{ $product->sku }}</span>
+                            <span class="font-numeric font-bold text-[var(--text-main)]">{{ $product->sku }}</span>
                             @if($product->barcode)
-                                <div class="font-numeric" style="font-size: 11px; color: var(--text-muted);">{{ $product->barcode }}</div>
+                                <div class="font-numeric text-[11px] text-[var(--text-muted)]">{{ $product->barcode }}</div>
                             @endif
                         </td>
                         <td>
-                            <div style="font-weight: 600; color: var(--text-main);">{{ $product->name }}</div>
-                            <span style="font-size: 11px; color: var(--text-muted);">الوحدة: {{ $product->unit }}</span>
+                            <div class="font-semibold text-[var(--text-main)]">{{ $product->name }}</div>
+                            <span class="text-[11px] text-[var(--text-muted)]">الوحدة: {{ $product->unit }}</span>
                         </td>
                         <td>
                             <span class="erp-badge erp-badge-neutral">{{ $product->category?->name ?? 'بدون تصنيف' }}</span>
                         </td>
                         <td class="text-center">
-                            <span class="font-numeric" style="font-size: 15px; font-weight: 800; color: {{ $isOut ? 'var(--danger, #ef4444)' : 'var(--warning, #f59e0b)' }};">
+                            <span class="font-numeric text-sm font-extrabold {{ $isOut ? 'text-[var(--danger,#ef4444)]' : 'text-[var(--warning,#f59e0b)]' }}">
                                 {{ number_format($currentStock) }}
                             </span>
                         </td>
-                        <td class="text-center font-numeric" style="font-size: 14px; color: var(--text-secondary);">
+                        <td class="text-center font-numeric text-sm text-[var(--text-secondary)]">
                             {{ $minAlert }}
                         </td>
                         <td class="text-center">
-                            <span class="font-numeric" style="font-weight: 700; color: var(--danger, #ef4444);">
+                            <span class="font-numeric font-bold text-[var(--danger,#ef4444)]">
                                 +{{ number_format($deficit > 0 ? $deficit : 1) }} قطعة
                             </span>
                         </td>
@@ -116,7 +116,7 @@
                         <td class="text-left font-numeric">
                             {{ number_format($product->cost_price, 2) }} ج.م
                         </td>
-                        <td style="text-align: center;">
+                        <td class="text-center">
                             <a href="{{ route('inventory.index') }}?search={{ urlencode($product->sku) }}" class="erp-btn erp-btn-sm erp-btn-secondary">
                                 <x-icon name="plus" size="13" />
                                 <span>إيداع</span>
@@ -125,10 +125,10 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="10" style="text-align: center; padding: 40px; color: var(--text-muted);">
-                            <x-icon name="check-circle" size="36" style="color: var(--success, #10b981); margin-bottom: 8px;" />
-                            <div style="font-size: 15px; font-weight: 600; color: var(--text-main);">ممتاز! لا توجد نواقص في المخزون حالياً</div>
-                            <div style="font-size: 13px; margin-top: 4px;">كافة الأصناف تتجاوز الحد الأدنى للأمان.</div>
+                        <td colspan="10" class="text-center p-10 text-[var(--text-muted)]">
+                            <x-icon name="check-circle" size="36" class="text-[var(--success,#10b981)] mb-2 inline-block" />
+                            <div class="text-sm font-semibold text-[var(--text-main)]">ممتاز! لا توجد نواقص في المخزون حالياً</div>
+                            <div class="text-xs mt-1">كافة الأصناف تتجاوز الحد الأدنى للأمان.</div>
                         </td>
                     </tr>
                 @endforelse
@@ -138,7 +138,7 @@
 
     <!-- Pagination -->
     @if($products->hasPages())
-        <div style="margin-top: 16px;">
+        <div class="mt-4">
             {{ $products->links() }}
         </div>
     @endif

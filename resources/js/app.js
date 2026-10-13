@@ -3,6 +3,16 @@
  * Odoo-Inspired Interactions, Theme & Density Engine
  */
 
+import { initCommonUI } from './common.js';
+import { initBarcodeScanner } from './components/barcode-scanner.js';
+import { initProductForm } from './pages/products-form.js';
+import { initProductsIndex } from './pages/products-index.js';
+import { initProductShow } from './pages/products-show.js';
+import { initInventoryPage } from './pages/inventory.js';
+import { initWarehousesPage } from './pages/warehouses.js';
+import { initSettingsPage } from './pages/settings.js';
+import { initPrintLabelPage } from './pages/print-label.js';
+
 document.addEventListener('DOMContentLoaded', () => {
     initThemeAndDensity();
     initAppLauncher();
@@ -10,6 +20,15 @@ document.addEventListener('DOMContentLoaded', () => {
     initDropdowns();
     initKeyboardShortcuts();
     initGlobalSearch();
+    initCommonUI();
+    initBarcodeScanner();
+    initProductForm();
+    initProductsIndex();
+    initProductShow();
+    initInventoryPage();
+    initWarehousesPage();
+    initSettingsPage();
+    initPrintLabelPage();
 });
 
 /**
