@@ -262,6 +262,22 @@ export function initProductsIndex() {
             iframe.src = '/products/print-labels/batch?' + params.toString();
         });
     });
+
+    // Row Click Navigation (Odoo List View Behavior: click anywhere on row to view product details)
+    const tableBody = page.querySelector('.erp-table tbody');
+    if (tableBody) {
+        tableBody.addEventListener('click', (e) => {
+            // Ignore if clicking on interactive controls (checkbox, button, modal trigger, delete form, direct link)
+            if (e.target.closest('input, button, select, textarea, form, .erp-btn, label, a')) {
+                return;
+            }
+
+            const row = e.target.closest('tr.product-row-clickable');
+            if (row && row.dataset.url) {
+                window.location.href = row.dataset.url;
+            }
+        });
+    }
 }
 
 function getOrCreatePrintIframe() {

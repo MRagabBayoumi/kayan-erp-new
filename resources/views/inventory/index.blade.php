@@ -188,13 +188,17 @@
                         <tr>
                             <td class="font-numeric text-[var(--text-muted)]">{{ $loop->iteration + ($products->currentPage() - 1) * $products->perPage() }}</td>
                             <td>
-                                <span class="font-numeric font-bold text-[var(--text-main)]">{{ $product->sku }}</span>
+                                <a href="{{ route('products.show', $product) }}" class="font-numeric font-bold text-[var(--primary)] hover:underline block" title="عرض تفاصيل الصنف">
+                                    {{ $product->sku }}
+                                </a>
                                 @if($product->barcode)
                                     <div class="font-numeric text-[11px] text-[var(--text-muted)]">{{ $product->barcode }}</div>
                                 @endif
                             </td>
                             <td>
-                                <div class="font-semibold text-[var(--text-main)]">{{ $product->name }}</div>
+                                <a href="{{ route('products.show', $product) }}" class="font-semibold text-[var(--text-main)] hover:text-[var(--primary)] block" title="عرض تفاصيل الصنف">
+                                    {{ $product->name }}
+                                </a>
                                 <span class="text-[11px] text-[var(--text-muted)]">الوحدة: {{ $product->unit }}</span>
                             </td>
                             <td>

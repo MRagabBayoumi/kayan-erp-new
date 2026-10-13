@@ -152,7 +152,7 @@
                         </thead>
                         <tbody>
                             @foreach($products as $product)
-                                <tr id="product-row-{{ $product->id }}" class="product-row-clickable" data-url="{{ route('products.show', $product) }}" title="انقر نقراً مزدوجاً (Double Click) لفتح تفاصيل الصنف">
+                                <tr id="product-row-{{ $product->id }}" class="product-row-clickable" data-url="{{ route('products.show', $product) }}" title="عرض تفاصيل الصنف: {{ $product->name }}">
                                     <!-- Checkbox -->
                                     <td class="text-center">
                                         <input type="checkbox" 
@@ -166,25 +166,27 @@
 
                                     <!-- Image Thumbnail -->
                                     <td class="text-center">
-                                        @if($product->image_url)
-                                            <img src="{{ $product->image_url }}" alt="{{ $product->name }}" class="w-9 h-9 object-cover rounded-sm border border-[var(--border-color)] inline-block">
-                                        @else
-                                            <div class="w-9 h-9 bg-[var(--bg-surface-alt)] rounded-sm inline-flex items-center justify-center opacity-60 border border-dashed border-[var(--border-color)]">
-                                                <x-icon name="package" size="18" />
-                                            </div>
-                                        @endif
+                                        <a href="{{ route('products.show', $product) }}" class="inline-block" title="عرض تفاصيل الصنف: {{ $product->name }}">
+                                            @if($product->image_url)
+                                                <img src="{{ $product->image_url }}" alt="{{ $product->name }}" class="w-9 h-9 object-cover rounded-sm border border-[var(--border-color)] inline-block">
+                                            @else
+                                                <div class="w-9 h-9 bg-[var(--bg-surface-alt)] rounded-sm inline-flex items-center justify-center opacity-60 border border-dashed border-[var(--border-color)]">
+                                                    <x-icon name="package" size="18" />
+                                                </div>
+                                            @endif
+                                        </a>
                                     </td>
 
                                     <!-- SKU -->
                                     <td>
-                                        <span class="font-numeric font-bold text-[var(--primary)]">
+                                        <a href="{{ route('products.show', $product) }}" class="font-numeric font-bold text-[var(--primary)] hover:underline inline-block" title="عرض تفاصيل الصنف">
                                             {{ $product->sku }}
-                                        </span>
+                                        </a>
                                     </td>
 
                                     <!-- Name -->
                                     <td>
-                                        <a href="{{ route('products.show', $product) }}" class="font-semibold text-[var(--text-main)] no-underline">
+                                        <a href="{{ route('products.show', $product) }}" class="font-semibold text-[var(--text-main)] hover:text-[var(--primary)] block" title="عرض تفاصيل الصنف">
                                             {{ $product->name }}
                                         </a>
                                     </td>
