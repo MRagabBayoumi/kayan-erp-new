@@ -3,7 +3,13 @@
    Light & Dark Theme Specific Overrides
    ========================================================================== */
 
+:root,
+[data-theme="light"] {
+    color-scheme: light;
+}
+
 [data-theme="dark"] {
+    color-scheme: dark;
     --primary: #9B6C90;
     --primary-hover: #B07DA4;
     --primary-active: #84577B;
