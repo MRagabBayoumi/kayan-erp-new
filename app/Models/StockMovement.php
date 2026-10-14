@@ -26,10 +26,13 @@ class StockMovement extends Model
         'to_warehouse_id',
         'batch_id',
         'quantity',
+        'running_balance',
         'unit_cost',
         'reference_type',
         'reference_id',
         'user_id',
+        'customer_id',
+        'supplier_id',
         'notes',
     ];
 
@@ -37,6 +40,7 @@ class StockMovement extends Model
     {
         return [
             'quantity' => 'decimal:2',
+            'running_balance' => 'decimal:2',
             'unit_cost' => 'decimal:2',
         ];
     }
@@ -54,6 +58,16 @@ class StockMovement extends Model
     public function toWarehouse(): BelongsTo
     {
         return $this->belongsTo(Warehouse::class, 'to_warehouse_id');
+    }
+
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class);
+    }
+
+    public function supplier(): BelongsTo
+    {
+        return $this->belongsTo(Supplier::class);
     }
 
     public function batch(): BelongsTo

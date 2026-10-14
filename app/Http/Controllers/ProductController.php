@@ -5,10 +5,14 @@ namespace App\Http\Controllers;
 use App\Models\BarcodeSetting;
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\Warehouse;
 use App\Services\BarcodeGeneratorService;
+use App\Services\InventoryService;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -62,6 +66,8 @@ class ProductController extends Controller
     public function create(): View
     {
         $categories = Category::active()->orderBy('name')->get();
+        $warehouses = Warehouse::active()->orderBy('name')->get();
+        $defaultWarehouse = Warehouse::where('is_default', true)->first() ?? $warehouses->first();
 
         // Generate a suggested SKU format e.g. KY-26-0001
         $suggestedSku = 'KY-'.date('y').'-'.str_pad((string) (Product::max('id') + 1), 4, '0', STR_PAD_LEFT);
@@ -70,6 +76,8 @@ class ProductController extends Controller
             'title' => 'إضافة منتج جديد',
             'moduleName' => 'المخزون والمنتجات',
             'categories' => $categories,
+            'warehouses' => $warehouses,
+            'defaultWarehouse' => $defaultWarehouse,
             'suggestedSku' => $suggestedSku,
         ]);
     }
@@ -77,7 +85,7 @@ class ProductController extends Controller
     /**
      * Store a newly created product in storage.
      */
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, InventoryService $inventoryService): RedirectResponse
     {
         $validated = $request->validate([
             'sku' => ['required', 'string', 'max:80', 'unique:products,sku'],
@@ -87,8 +95,14 @@ class ProductController extends Controller
             'cost_price' => ['required', 'numeric', 'min:0'],
             'wholesale_price' => ['required', 'numeric', 'min:0'],
             'retail_price' => ['required', 'numeric', 'min:0'],
+            'distributor_price' => ['nullable', 'numeric', 'min:0.01'],
             'unit' => ['required', 'string', 'max:50'],
+            'pieces_per_package' => ['nullable', 'integer', 'min:1'],
             'min_stock_alert' => ['required', 'integer', 'min:0'],
+            'opening_quantity' => ['nullable', 'numeric', 'min:0'],
+            'opening_cost' => ['nullable', 'numeric', 'min:0'],
+            'opening_warehouse_id' => ['nullable', 'exists:warehouses,id'],
+            'opening_balance_date' => ['nullable', 'date'],
             'product_image' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp', 'max:2048'],
             'is_active' => ['sometimes', 'boolean'],
         ], [
@@ -104,9 +118,15 @@ class ProductController extends Controller
             'wholesale_price.min' => 'سعر الجملة لا يمكن أن يكون سالباً.',
             'retail_price.required' => 'سعر التجزئة مطلوب.',
             'retail_price.min' => 'سعر التجزئة لا يمكن أن يكون سالباً.',
+            'distributor_price.min' => 'سعر الموزع يجب أن يكون أكبر من الصفر.',
+            'distributor_price.numeric' => 'سعر الموزع يجب أن يكون قيمة رقمية صحيحة.',
+            'pieces_per_package.min' => 'عدد القطع في الطرد يجب أن يكون 1 على الأقل.',
             'unit.required' => 'وحدة القياس مطلوبة.',
             'min_stock_alert.required' => 'حد الطلب الأدنى مطلوب.',
             'min_stock_alert.min' => 'حد الطلب الأدنى لا يمكن أن يكون سالباً.',
+            'opening_quantity.min' => 'الكمية الافتتاحية لا يمكن أن تكون سالبة.',
+            'opening_cost.min' => 'تكلفة الرصيد الافتتاحي لا يمكن أن تكون سالبة.',
+            'opening_warehouse_id.exists' => 'المستودع المحدد للرصيد الافتتاحي غير موجود.',
             'product_image.image' => 'الملف المرفوع يجب أن يكون صورة صالحة.',
             'product_image.mimes' => 'صيغ الصور المدعومة هي: PNG, JPG, JPEG, WebP فقط.',
             'product_image.max' => 'الحد الأقصى لحجم صورة المنتج هو 2 ميجابايت.',
@@ -127,11 +147,50 @@ class ProductController extends Controller
             $validated['image_path'] = $file->storeAs('products', $filename, 'public');
         }
 
-        Product::create($validated);
+        // Validate opening stock logic
+        $openingQty = isset($validated['opening_quantity']) ? (float) $validated['opening_quantity'] : 0.00;
+        if ($openingQty > 0) {
+            if (empty($validated['opening_warehouse_id'])) {
+                return back()->withInput()->withErrors(['opening_warehouse_id' => 'يرجى تحديد المستودع المستلم للرصيد الافتتاحي.']);
+            }
+            if (!isset($validated['opening_cost']) || $validated['opening_cost'] === '' || $validated['opening_cost'] === null) {
+                $validated['opening_cost'] = $validated['cost_price'];
+            }
+            if (empty($validated['opening_balance_date'])) {
+                $validated['opening_balance_date'] = now()->toDateString();
+            }
+        } else {
+            $validated['opening_quantity'] = 0.00;
+            $validated['opening_cost'] = null;
+            $validated['opening_warehouse_id'] = null;
+            $validated['opening_balance_date'] = null;
+        }
+
+        DB::transaction(function () use ($validated, $inventoryService, $openingQty) {
+            $product = Product::create($validated);
+
+            if ($openingQty > 0) {
+                $warehouseId = (int) $validated['opening_warehouse_id'];
+                $openingCost = (float) $validated['opening_cost'];
+                $receivedDate = Carbon::parse($validated['opening_balance_date']);
+
+                $inventoryService->addStock(
+                    productId: $product->id,
+                    warehouseId: $warehouseId,
+                    quantity: $openingQty,
+                    costPrice: $openingCost,
+                    notes: 'رصيد افتتاحي عند تعريف الصنف: '.$product->name,
+                    referenceType: 'opening_balance',
+                    referenceId: $product->id,
+                    userId: auth()->id(),
+                    receivedAt: $receivedDate
+                );
+            }
+        });
 
         return redirect()->route('products.index')
             ->with('status', 'success')
-            ->with('message', 'تمت إضافة المنتج بنجاح.');
+            ->with('message', 'تمت إضافة المنتج والرصيد الافتتاحي بنجاح.');
     }
 
     /**
@@ -171,6 +230,7 @@ class ProductController extends Controller
     public function edit(Product $product): View
     {
         $categories = Category::active()->orderBy('name')->get();
+        $product->load(['category', 'openingWarehouse', 'batches', 'stockBalances.warehouse']);
 
         return view('products.edit', [
             'title' => 'تعديل: '.$product->name,
@@ -193,7 +253,9 @@ class ProductController extends Controller
             'cost_price' => ['required', 'numeric', 'min:0'],
             'wholesale_price' => ['required', 'numeric', 'min:0'],
             'retail_price' => ['required', 'numeric', 'min:0'],
+            'distributor_price' => ['nullable', 'numeric', 'min:0.01'],
             'unit' => ['required', 'string', 'max:50'],
+            'pieces_per_package' => ['nullable', 'integer', 'min:1'],
             'min_stock_alert' => ['required', 'integer', 'min:0'],
             'product_image' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp', 'max:2048'],
             'is_active' => ['sometimes', 'boolean'],
@@ -210,6 +272,9 @@ class ProductController extends Controller
             'wholesale_price.min' => 'سعر الجملة لا يمكن أن يكون سالباً.',
             'retail_price.required' => 'سعر التجزئة مطلوب.',
             'retail_price.min' => 'سعر التجزئة لا يمكن أن يكون سالباً.',
+            'distributor_price.min' => 'سعر الموزع يجب أن يكون أكبر من الصفر.',
+            'distributor_price.numeric' => 'سعر الموزع يجب أن يكون قيمة رقمية صحيحة.',
+            'pieces_per_package.min' => 'عدد القطع في الطرد يجب أن يكون 1 على الأقل.',
             'unit.required' => 'وحدة القياس مطلوبة.',
             'min_stock_alert.required' => 'حد الطلب الأدنى مطلوب.',
             'min_stock_alert.min' => 'حد الطلب الأدنى لا يمكن أن يكون سالباً.',
@@ -219,6 +284,14 @@ class ProductController extends Controller
         ]);
 
         $validated['is_active'] = $request->boolean('is_active', true);
+
+        // Disallow modifying opening balance values via product update
+        unset(
+            $validated['opening_quantity'],
+            $validated['opening_cost'],
+            $validated['opening_warehouse_id'],
+            $validated['opening_balance_date']
+        );
 
         // Normalize empty barcode string to null
         if (empty($validated['barcode'])) {

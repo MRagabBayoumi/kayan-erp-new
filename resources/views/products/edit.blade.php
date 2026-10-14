@@ -99,18 +99,36 @@
                         </div>
                     </div>
 
-                    <!-- Unit of Measure -->
-                    <div class="erp-form-group">
-                        <label for="productUnit" class="erp-form-label">
-                            وحدة القياس <span class="text-[var(--danger)]">*</span>
-                        </label>
-                        <select id="productUnit" name="unit" class="erp-input">
-                            <option value="قطعة" {{ old('unit', $product->unit) === 'قطعة' ? 'selected' : '' }}>قطعة (Piece)</option>
-                            <option value="دستة" {{ old('unit', $product->unit) === 'دستة' ? 'selected' : '' }}>دستة (Dozen - 12 قطعة)</option>
-                            <option value="كرتونة" {{ old('unit', $product->unit) === 'كرتونة' ? 'selected' : '' }}>كرتونة (Carton)</option>
-                            <option value="طقم" {{ old('unit', $product->unit) === 'طقم' ? 'selected' : '' }}>طقم (Set)</option>
-                            <option value="باكت" {{ old('unit', $product->unit) === 'باكت' ? 'selected' : '' }}>باكت (Pack)</option>
-                        </select>
+                    <!-- Unit and Packaging -->
+                    <div class="erp-form-row-2col">
+                        <div class="erp-form-group">
+                            <label for="productUnit" class="erp-form-label">
+                                وحدة القياس <span class="text-[var(--danger)]">*</span>
+                            </label>
+                            <select id="productUnit" name="unit" class="erp-input">
+                                <option value="قطعة" {{ old('unit', $product->unit) === 'قطعة' ? 'selected' : '' }}>قطعة (Piece)</option>
+                                <option value="دستة" {{ old('unit', $product->unit) === 'دستة' ? 'selected' : '' }}>دستة (Dozen - 12 قطعة)</option>
+                                <option value="كرتونة" {{ old('unit', $product->unit) === 'كرتونة' ? 'selected' : '' }}>كرتونة (Carton)</option>
+                                <option value="طقم" {{ old('unit', $product->unit) === 'طقم' ? 'selected' : '' }}>طقم (Set)</option>
+                                <option value="باكت" {{ old('unit', $product->unit) === 'باكت' ? 'selected' : '' }}>باكت (Pack)</option>
+                            </select>
+                        </div>
+
+                        <div class="erp-form-group">
+                            <label for="piecesPerPackage" class="erp-form-label">
+                                عدد القطع في الطرد / الكرتونة
+                            </label>
+                            <input 
+                                type="number" 
+                                min="1" 
+                                id="piecesPerPackage" 
+                                name="pieces_per_package" 
+                                value="{{ old('pieces_per_package', $product->pieces_per_package) }}" 
+                                class="erp-input font-numeric @error('pieces_per_package') erp-input-error @enderror" 
+                                placeholder="مثال: 12 أو 24"
+                            >
+                            <small class="text-[11px] text-[var(--text-muted)]">اختياري — لحساب تكلفة وعدد الطرود</small>
+                        </div>
                     </div>
 
                     <!-- Barcode Section with Camera Scanner Integration -->
@@ -159,8 +177,8 @@
                     </div>
                 </div>
                 <div class="erp-card-body flex flex-col gap-4">
-                    <!-- Prices 3-Column Grid -->
-                    <div class="erp-pricing-grid">
+                    <!-- Prices 4-Column Grid -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div class="erp-form-group">
                             <label for="costPrice" class="erp-form-label">
                                 سعر التكلفة <span class="text-[var(--danger)]">*</span>
@@ -173,6 +191,22 @@
                                 name="cost_price" 
                                 value="{{ old('cost_price', $product->cost_price) }}" 
                                 class="erp-input font-numeric @error('cost_price') erp-input-error @enderror" 
+                                required
+                            >
+                        </div>
+
+                        <div class="erp-form-group">
+                            <label for="retailPrice" class="erp-form-label">
+                                سعر التجزئة (القطاعي) <span class="text-[var(--danger)]">*</span>
+                            </label>
+                            <input 
+                                type="number" 
+                                step="0.01" 
+                                min="0" 
+                                id="retailPrice" 
+                                name="retail_price" 
+                                value="{{ old('retail_price', $product->retail_price) }}" 
+                                class="erp-input font-numeric @error('retail_price') erp-input-error @enderror" 
                                 required
                             >
                         </div>
@@ -194,18 +228,18 @@
                         </div>
 
                         <div class="erp-form-group">
-                            <label for="retailPrice" class="erp-form-label">
-                                سعر التجزئة <span class="text-[var(--danger)]">*</span>
+                            <label for="distributorPrice" class="erp-form-label">
+                                سعر الموزع (اختياري)
                             </label>
                             <input 
                                 type="number" 
                                 step="0.01" 
-                                min="0" 
-                                id="retailPrice" 
-                                name="retail_price" 
-                                value="{{ old('retail_price', $product->retail_price) }}" 
-                                class="erp-input font-numeric @error('retail_price') erp-input-error @enderror" 
-                                required
+                                min="0.01" 
+                                id="distributorPrice" 
+                                name="distributor_price" 
+                                value="{{ old('distributor_price', $product->distributor_price) }}" 
+                                class="erp-input font-numeric @error('distributor_price') erp-input-error @enderror" 
+                                placeholder="0.00"
                             >
                         </div>
                     </div>
@@ -261,6 +295,43 @@
                             <span class="text-xs font-semibold text-[var(--text-main)]">تفعيل الصنف وإتاحته في النظام</span>
                         </label>
                     </div>
+                </div>
+            </div>
+
+            <!-- Panel 3: Opening Stock Balance Summary (Read-Only) -->
+            <div class="erp-card col-span-full">
+                <div class="erp-card-header flex items-center justify-between">
+                    <div class="erp-card-title">
+                        <x-icon name="layers" size="18" />
+                        <span>بيانات الرصيد الافتتاحي (للقراءة فقط)</span>
+                    </div>
+                    <span class="erp-badge erp-badge-neutral text-[11px]">مغلق ضد التعديل حفاظاً على سلامة المخزون</span>
+                </div>
+                <div class="erp-card-body">
+                    @if($product->opening_quantity > 0)
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div class="erp-summary-item">
+                                <span class="text-xs text-[var(--text-muted)] block mb-1">الكمية الافتتاحية:</span>
+                                <span class="font-bold font-numeric text-base text-[var(--text-main)]">{{ number_format($product->opening_quantity, 2) }} {{ $product->unit }}</span>
+                            </div>
+                            <div class="erp-summary-item">
+                                <span class="text-xs text-[var(--text-muted)] block mb-1">تكلفة الوحدة عند البدء:</span>
+                                <span class="font-bold font-numeric text-base text-[var(--text-main)]">{{ number_format($product->opening_cost ?? $product->cost_price, 2) }} ج.م</span>
+                            </div>
+                            <div class="erp-summary-item">
+                                <span class="text-xs text-[var(--text-muted)] block mb-1">مستودع الرصيد الافتتاحي:</span>
+                                <span class="font-bold text-sm text-[var(--primary)]">{{ $product->openingWarehouse->name ?? 'غير محدد' }}</span>
+                            </div>
+                            <div class="erp-summary-item">
+                                <span class="text-xs text-[var(--text-muted)] block mb-1">تاريخ إثبات الرصيد:</span>
+                                <span class="font-bold font-numeric text-sm text-[var(--text-main)]">{{ $product->opening_balance_date ? $product->opening_balance_date->format('Y-m-d') : 'غير مسجل' }}</span>
+                            </div>
+                        </div>
+                    @else
+                        <div class="text-xs text-[var(--text-muted)] p-3 rounded bg-[var(--surface-muted)]">
+                            لم يتم تسجيل رصيد افتتاحي لهذا الصنف عند إنشائه. يتم قيد الأرصدة عبر أوامر الشراء أو التحويلات أو التسويات الجردية.
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>

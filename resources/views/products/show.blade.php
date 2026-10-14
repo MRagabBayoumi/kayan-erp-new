@@ -116,8 +116,18 @@
                             </div>
 
                             <div class="erp-specs-item">
+                                <span class="erp-specs-label">التعبئة في الطرد:</span>
+                                <strong class="erp-specs-value">{{ $product->pieces_per_package ? $product->pieces_per_package.' قطعة' : 'غير محدد' }}</strong>
+                            </div>
+
+                            <div class="erp-specs-item">
                                 <span class="erp-specs-label">حد تنبيه النواقص:</span>
                                 <span class="font-numeric erp-specs-value text-[var(--warning)]">{{ $product->min_stock_alert }} {{ $product->unit }}</span>
+                            </div>
+
+                            <div class="erp-specs-item">
+                                <span class="erp-specs-label">إجمالي الرصيد المخزني:</span>
+                                <span class="font-numeric font-bold erp-specs-value text-[var(--primary)]">{{ number_format($product->total_stock, 2) }} {{ $product->unit }}</span>
                             </div>
                         </div>
                     </div>
@@ -142,6 +152,15 @@
                                 </div>
                             </div>
 
+                            <!-- Retail Price -->
+                            <div class="erp-pricing-card">
+                                <span class="erp-pricing-label">سعر بيع التجزئة (القطاعي)</span>
+                                <div class="font-numeric erp-pricing-value">
+                                    {{ number_format((float)$product->retail_price, 2) }}
+                                    <span class="erp-pricing-unit">ج.م</span>
+                                </div>
+                            </div>
+
                             <!-- Wholesale Price -->
                             <div class="erp-pricing-card erp-pricing-card-highlight">
                                 <span class="erp-pricing-label">سعر الجملة لتجار الإكسسوارات</span>
@@ -158,12 +177,16 @@
                                 </small>
                             </div>
 
-                            <!-- Retail Price -->
+                            <!-- Distributor Price -->
                             <div class="erp-pricing-card">
-                                <span class="erp-pricing-label">سعر بيع التجزئة المقترح</span>
+                                <span class="erp-pricing-label">سعر الموزع والوكيل</span>
                                 <div class="font-numeric erp-pricing-value">
-                                    {{ number_format((float)$product->retail_price, 2) }}
-                                    <span class="erp-pricing-unit">ج.م</span>
+                                    @if($product->distributor_price)
+                                        {{ number_format((float)$product->distributor_price, 2) }}
+                                        <span class="erp-pricing-unit">ج.م</span>
+                                    @else
+                                        <span class="text-sm font-normal text-[var(--text-muted)]">—</span>
+                                    @endif
                                 </div>
                             </div>
                         </div>

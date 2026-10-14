@@ -97,18 +97,36 @@
                         </div>
                     </div>
 
-                    <!-- Unit of Measure -->
-                    <div class="erp-form-group">
-                        <label for="productUnit" class="erp-form-label">
-                            وحدة القياس <span class="text-[var(--danger)]">*</span>
-                        </label>
-                        <select id="productUnit" name="unit" class="erp-input">
-                            <option value="قطعة" {{ old('unit', 'قطعة') === 'قطعة' ? 'selected' : '' }}>قطعة (Piece)</option>
-                            <option value="دستة" {{ old('unit') === 'دستة' ? 'selected' : '' }}>دستة (Dozen - 12 قطعة)</option>
-                            <option value="كرتونة" {{ old('unit') === 'كرتونة' ? 'selected' : '' }}>كرتونة (Carton)</option>
-                            <option value="طقم" {{ old('unit') === 'طقم' ? 'selected' : '' }}>طقم (Set)</option>
-                            <option value="باكت" {{ old('unit') === 'باكت' ? 'selected' : '' }}>باكت (Pack)</option>
-                        </select>
+                    <!-- Unit and Packaging -->
+                    <div class="erp-form-row-2col">
+                        <div class="erp-form-group">
+                            <label for="productUnit" class="erp-form-label">
+                                وحدة القياس <span class="text-[var(--danger)]">*</span>
+                            </label>
+                            <select id="productUnit" name="unit" class="erp-input">
+                                <option value="قطعة" {{ old('unit', 'قطعة') === 'قطعة' ? 'selected' : '' }}>قطعة (Piece)</option>
+                                <option value="دستة" {{ old('unit') === 'دستة' ? 'selected' : '' }}>دستة (Dozen - 12 قطعة)</option>
+                                <option value="كرتونة" {{ old('unit') === 'كرتونة' ? 'selected' : '' }}>كرتونة (Carton)</option>
+                                <option value="طقم" {{ old('unit') === 'طقم' ? 'selected' : '' }}>طقم (Set)</option>
+                                <option value="باكت" {{ old('unit') === 'باكت' ? 'selected' : '' }}>باكت (Pack)</option>
+                            </select>
+                        </div>
+
+                        <div class="erp-form-group">
+                            <label for="piecesPerPackage" class="erp-form-label">
+                                عدد القطع في الطرد / الكرتونة
+                            </label>
+                            <input 
+                                type="number" 
+                                min="1" 
+                                id="piecesPerPackage" 
+                                name="pieces_per_package" 
+                                value="{{ old('pieces_per_package') }}" 
+                                class="erp-input font-numeric @error('pieces_per_package') erp-input-error @enderror" 
+                                placeholder="مثال: 12 أو 24"
+                            >
+                            <small class="text-[11px] text-[var(--text-muted)]">اختياري — لحساب تكلفة وعدد الطرود</small>
+                        </div>
                     </div>
 
                     <!-- Barcode Section with Camera Scanner Integration -->
@@ -160,8 +178,8 @@
                     </div>
                 </div>
                 <div class="erp-card-body flex flex-col gap-4">
-                    <!-- Prices 3-Column Grid -->
-                    <div class="erp-pricing-grid">
+                    <!-- Prices 4-Column Grid -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div class="erp-form-group">
                             <label for="costPrice" class="erp-form-label">
                                 سعر التكلفة <span class="text-[var(--danger)]">*</span>
@@ -180,6 +198,23 @@
                         </div>
 
                         <div class="erp-form-group">
+                            <label for="retailPrice" class="erp-form-label">
+                                سعر القطاعي <span class="text-[var(--danger)]">*</span>
+                            </label>
+                            <input 
+                                type="number" 
+                                step="0.01" 
+                                min="0" 
+                                id="retailPrice" 
+                                name="retail_price" 
+                                value="{{ old('retail_price', '0.00') }}" 
+                                class="erp-input font-numeric @error('retail_price') erp-input-error @enderror" 
+                                required
+                            >
+                            <small class="text-[10px] text-[var(--text-muted)]">سعر بيع المستهلك</small>
+                        </div>
+
+                        <div class="erp-form-group">
                             <label for="wholesalePrice" class="erp-form-label">
                                 سعر الجملة <span class="text-[var(--danger)]">*</span>
                             </label>
@@ -193,24 +228,24 @@
                                 class="erp-input font-numeric @error('wholesale_price') erp-input-error @enderror" 
                                 required
                             >
-                            <small class="text-[10px] text-[var(--text-muted)]">سعر بيع التجار</small>
+                            <small class="text-[10px] text-[var(--text-muted)]">سعر بيع المحلات والتجار</small>
                         </div>
 
                         <div class="erp-form-group">
-                            <label for="retailPrice" class="erp-form-label">
-                                سعر التجزئة <span class="text-[var(--danger)]">*</span>
+                            <label for="distributorPrice" class="erp-form-label">
+                                سعر الموزع (اختياري)
                             </label>
                             <input 
                                 type="number" 
                                 step="0.01" 
-                                min="0" 
-                                id="retailPrice" 
-                                name="retail_price" 
-                                value="{{ old('retail_price', '0.00') }}" 
-                                class="erp-input font-numeric @error('retail_price') erp-input-error @enderror" 
-                                required
+                                min="0.01" 
+                                id="distributorPrice" 
+                                name="distributor_price" 
+                                value="{{ old('distributor_price') }}" 
+                                class="erp-input font-numeric @error('distributor_price') erp-input-error @enderror" 
+                                placeholder="0.00"
                             >
-                            <small class="text-[10px] text-[var(--text-muted)]">المقترح للقطاعي</small>
+                            <small class="text-[10px] text-[var(--text-muted)]">سعر الوكلاء وكبار الموزعين</small>
                         </div>
                     </div>
 
@@ -260,6 +295,94 @@
                             >
                             <span class="text-xs font-semibold text-[var(--text-main)]">تفعيل الصنف وإتاحته في النظام وقوائم المبيعات</span>
                         </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel 3: Opening Stock Balance -->
+            <div class="erp-card col-span-full">
+                <div class="erp-card-header flex items-center justify-between">
+                    <div class="erp-card-title">
+                        <x-icon name="layers" size="18" />
+                        <span>الرصيد الافتتاحي للصنف (أول المدة)</span>
+                    </div>
+                    <span class="erp-badge erp-badge-neutral text-[11px]">يُسجل كدفعة واردة (FIFO) ولا يُكرر</span>
+                </div>
+                <div class="erp-card-body flex flex-col gap-4">
+                    <p class="text-xs text-[var(--text-muted)] leading-relaxed m-0">
+                        إذا كان هذا الصنف متوفرًا بالفعل في المخازن عند إدخاله للنظام، يمكنك تسجيل رصيده الافتتاحي هنا مباشرة. سيقوم النظام بإنشاء دفعة مخزنية أولى وتحديث رصيد المستودع المحدد آلياً.
+                    </p>
+
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <!-- Opening Quantity -->
+                        <div class="erp-form-group">
+                            <label for="openingQuantity" class="erp-form-label">
+                                الكمية الافتتاحية
+                            </label>
+                            <input 
+                                type="number" 
+                                step="0.01" 
+                                min="0" 
+                                id="openingQuantity" 
+                                name="opening_quantity" 
+                                value="{{ old('opening_quantity', '0.00') }}" 
+                                class="erp-input font-numeric @error('opening_quantity') erp-input-error @enderror"
+                            >
+                            <small class="text-[10px] text-[var(--text-muted)]">اتركه 0 إذا لم يتوفر رصيد أولي</small>
+                        </div>
+
+                        <!-- Opening Cost -->
+                        <div class="erp-form-group">
+                            <label for="openingCost" class="erp-form-label">
+                                تكلفة الوحدة للرصيد الافتتاحي
+                            </label>
+                            <input 
+                                type="number" 
+                                step="0.01" 
+                                min="0" 
+                                id="openingCost" 
+                                name="opening_cost" 
+                                value="{{ old('opening_cost') }}" 
+                                class="erp-input font-numeric @error('opening_cost') erp-input-error @enderror" 
+                                placeholder="فارغ = نفس سعر التكلفة"
+                            >
+                            <small class="text-[10px] text-[var(--text-muted)]">تكلفة القطعة للرصيد الأولي</small>
+                        </div>
+
+                        <!-- Opening Warehouse (Auto-selected default warehouse) -->
+                        <div class="erp-form-group">
+                            <label for="openingWarehouse" class="erp-form-label">
+                                المستودع المستلم
+                            </label>
+                            <select 
+                                id="openingWarehouse" 
+                                name="opening_warehouse_id" 
+                                class="erp-input @error('opening_warehouse_id') erp-input-error @enderror"
+                            >
+                                <option value="">-- اختر المستودع --</option>
+                                @foreach($warehouses as $wh)
+                                    <option value="{{ $wh->id }}" {{ (string)old('opening_warehouse_id', $defaultWarehouse->id ?? '') === (string)$wh->id ? 'selected' : '' }}>
+                                        {{ $wh->name }} {{ $wh->is_default ? '(الافتراضي)' : '' }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <small class="text-[10px] text-[var(--text-muted)]">تم تحديد المستودع الافتراضي آلياً</small>
+                        </div>
+
+                        <!-- Opening Date -->
+                        <div class="erp-form-group">
+                            <label for="openingBalanceDate" class="erp-form-label">
+                                تاريخ إثبات الرصيد
+                            </label>
+                            <input 
+                                type="date" 
+                                id="openingBalanceDate" 
+                                name="opening_balance_date" 
+                                value="{{ old('opening_balance_date', date('Y-m-d')) }}" 
+                                class="erp-input font-numeric @error('opening_balance_date') erp-input-error @enderror"
+                            >
+                            <small class="text-[10px] text-[var(--text-muted)]">تاريخ قيد الرصيد بالدفاتر</small>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -26,8 +26,14 @@ class Product extends Model
         'cost_price',
         'wholesale_price',
         'retail_price',
+        'distributor_price',
         'unit',
+        'pieces_per_package',
         'min_stock_alert',
+        'opening_quantity',
+        'opening_cost',
+        'opening_warehouse_id',
+        'opening_balance_date',
         'image_path',
         'is_active',
     ];
@@ -43,7 +49,12 @@ class Product extends Model
             'cost_price' => 'decimal:2',
             'wholesale_price' => 'decimal:2',
             'retail_price' => 'decimal:2',
+            'distributor_price' => 'decimal:2',
+            'pieces_per_package' => 'integer',
             'min_stock_alert' => 'integer',
+            'opening_quantity' => 'decimal:2',
+            'opening_cost' => 'decimal:2',
+            'opening_balance_date' => 'date',
             'is_active' => 'boolean',
         ];
     }
@@ -54,6 +65,14 @@ class Product extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    /**
+     * Warehouse where the opening balance was recorded.
+     */
+    public function openingWarehouse(): BelongsTo
+    {
+        return $this->belongsTo(Warehouse::class, 'opening_warehouse_id');
     }
 
     /**

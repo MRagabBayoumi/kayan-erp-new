@@ -28,7 +28,8 @@ class InventoryService
         string $referenceType = 'manual_in',
         ?int $referenceId = null,
         ?int $userId = null,
-        ?Carbon $receivedAt = null
+        ?Carbon $receivedAt = null,
+        ?int $supplierId = null
     ): array {
         if ($quantity <= 0) {
             throw new InvalidArgumentException('الكمية المضافة يجب أن تكون أكبر من الصفر.');
@@ -43,7 +44,8 @@ class InventoryService
             $referenceType,
             $referenceId,
             $userId,
-            $receivedAt
+            $receivedAt,
+            $supplierId
         ) {
             $product = Product::findOrFail($productId);
             $warehouse = Warehouse::findOrFail($warehouseId);
@@ -72,6 +74,8 @@ class InventoryService
 
             $balance->increment('quantity', $quantity);
 
+            $runningBalance = (float) StockBalance::where('product_id', $product->id)->sum('quantity');
+
             // 3. Create Audit Stock Movement
             $movement = StockMovement::create([
                 'movement_number' => StockMovement::generateMovementNumber(),
@@ -81,10 +85,12 @@ class InventoryService
                 'to_warehouse_id' => $warehouse->id,
                 'batch_id' => $batch->id,
                 'quantity' => $quantity,
+                'running_balance' => $runningBalance,
                 'unit_cost' => $effectiveCost,
                 'reference_type' => $referenceType,
                 'reference_id' => $referenceId,
                 'user_id' => $userId,
+                'supplier_id' => $supplierId,
                 'notes' => $notes,
             ]);
 
@@ -109,7 +115,8 @@ class InventoryService
         ?string $notes = null,
         string $referenceType = 'manual_out',
         ?int $referenceId = null,
-        ?int $userId = null
+        ?int $userId = null,
+        ?int $customerId = null
     ): array {
         if ($quantity <= 0) {
             throw new InvalidArgumentException('الكمية المطلوب صرفها يجب أن تكون أكبر من الصفر.');
@@ -122,7 +129,8 @@ class InventoryService
             $notes,
             $referenceType,
             $referenceId,
-            $userId
+            $userId,
+            $customerId
         ) {
             $product = Product::findOrFail($productId);
             $warehouse = Warehouse::findOrFail($warehouseId);
@@ -168,6 +176,9 @@ class InventoryService
                 $batchCogs = $deductFromThisBatch * (float) $batch->cost_price;
                 $totalCogs += $batchCogs;
 
+                $balance->decrement('quantity', $deductFromThisBatch);
+                $runningBalance = (float) StockBalance::where('product_id', $product->id)->sum('quantity');
+
                 // Create movement per consumed batch chunk for perfect auditability
                 $movement = StockMovement::create([
                     'movement_number' => StockMovement::generateMovementNumber(),
@@ -177,10 +188,12 @@ class InventoryService
                     'to_warehouse_id' => null,
                     'batch_id' => $batch->id,
                     'quantity' => $deductFromThisBatch,
+                    'running_balance' => $runningBalance,
                     'unit_cost' => (float) $batch->cost_price,
                     'reference_type' => $referenceType,
                     'reference_id' => $referenceId,
                     'user_id' => $userId,
+                    'customer_id' => $customerId,
                     'notes' => $notes,
                 ]);
 
@@ -190,6 +203,9 @@ class InventoryService
 
             // If there were unbatched historical stocks, handle remaining
             if ($remainingToDeduct > 0) {
+                $balance->decrement('quantity', $remainingToDeduct);
+                $runningBalance = (float) StockBalance::where('product_id', $product->id)->sum('quantity');
+
                 $movement = StockMovement::create([
                     'movement_number' => StockMovement::generateMovementNumber(),
                     'type' => StockMovement::TYPE_OUT,
@@ -198,17 +214,17 @@ class InventoryService
                     'to_warehouse_id' => null,
                     'batch_id' => null,
                     'quantity' => $remainingToDeduct,
+                    'running_balance' => $runningBalance,
                     'unit_cost' => (float) $product->cost_price,
                     'reference_type' => $referenceType,
                     'reference_id' => $referenceId,
                     'user_id' => $userId,
+                    'customer_id' => $customerId,
                     'notes' => $notes,
                 ]);
                 $movements[] = $movement;
                 $totalCogs += $remainingToDeduct * (float) $product->cost_price;
             }
-
-            $balance->decrement('quantity', $quantity);
 
             return [
                 'movements' => $movements,
@@ -276,6 +292,7 @@ class InventoryService
                 'to_warehouse_id' => $toWarehouseId,
                 'batch_id' => $addition['batch']->id,
                 'quantity' => $quantity,
+                'running_balance' => (float) StockBalance::where('product_id', $productId)->sum('quantity'),
                 'unit_cost' => $deduction['total_cogs'] / $quantity,
                 'reference_type' => 'stock_transfer',
                 'reference_id' => null,
