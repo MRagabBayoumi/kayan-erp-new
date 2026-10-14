@@ -73,10 +73,10 @@
         <!-- Purchases -->
         <div class="erp-nav-section">
             <div class="erp-nav-section-title">المشتريات والواردات</div>
-            <a href="#" class="erp-nav-item" title="أوامر الشراء (الصين)">
+            <a href="{{ route('purchases.index') }}" class="erp-nav-item {{ request()->is('purchases*') ? 'active' : '' }}" title="فواتير الشراء والتوريد">
                 <div class="erp-nav-content">
                     <span class="erp-nav-icon"><x-icon name="shopping-bag" size="18" /></span>
-                    <span class="erp-nav-label">أوامر الشراء (الصين)</span>
+                    <span class="erp-nav-label">فواتير الشراء والتوريد</span>
                 </div>
             </a>
             <a href="{{ route('suppliers.index') }}" class="erp-nav-item {{ request()->is('suppliers*') || request()->is('shipping-offices*') ? 'active' : '' }}" title="الموردون ومكاتب الشحن">

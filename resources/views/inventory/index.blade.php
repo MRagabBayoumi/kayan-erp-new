@@ -239,18 +239,26 @@
                                 {{ number_format($totalStock * (float) $product->cost_price, 2) }} ج.م
                             </td>
                             <td class="text-center">
-                                <button 
-                                    type="button" 
-                                    data-action="quick-movement"
-                                    data-product-id="{{ $product->id }}"
-                                    data-product-name="{{ $product->name }}"
-                                    data-product-sku="{{ $product->sku }}"
-                                    data-product-cost="{{ (float) $product->cost_price }}"
-                                    class="erp-btn erp-btn-sm erp-btn-secondary"
-                                    title="إجراء حركة أو تسوية">
-                                    <x-icon name="arrow-left-right" size="13" />
-                                    <span>حركة</span>
-                                </button>
+                                <div class="flex items-center justify-center gap-1">
+                                    <a 
+                                        href="{{ route('products.ledger', $product) }}"
+                                        class="erp-btn erp-btn-sm erp-btn-ghost erp-btn-icon"
+                                        title="كشف حركة الصنف">
+                                        <x-icon name="activity" size="14" />
+                                    </a>
+                                    <button 
+                                        type="button" 
+                                        data-action="quick-movement"
+                                        data-product-id="{{ $product->id }}"
+                                        data-product-name="{{ $product->name }}"
+                                        data-product-sku="{{ $product->sku }}"
+                                        data-product-cost="{{ (float) $product->cost_price }}"
+                                        class="erp-btn erp-btn-sm erp-btn-secondary"
+                                        title="إجراء حركة أو تسوية">
+                                        <x-icon name="arrow-left-right" size="13" />
+                                        <span>حركة</span>
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                     @empty

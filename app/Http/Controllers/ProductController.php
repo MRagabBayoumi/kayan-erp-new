@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\BarcodeSetting;
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\StockMovement;
 use App\Models\Warehouse;
 use App\Services\BarcodeGeneratorService;
 use App\Services\InventoryService;
@@ -548,6 +549,55 @@ class ProductController extends Controller
             'name' => $product->name,
             'barcode' => $barcodeValue,
             'svg' => $svg,
+        ]);
+    }
+
+    /**
+     * Display the granular stock movement ledger for a specific product.
+     */
+    public function ledger(Product $product, Request $request): View
+    {
+        $product->load(['category', 'stockBalances.warehouse']);
+
+        $query = StockMovement::where('product_id', $product->id)
+            ->with(['fromWarehouse', 'toWarehouse', 'batch', 'user', 'customer', 'supplier']);
+
+        if ($request->filled('warehouse_id')) {
+            $wid = (int) $request->input('warehouse_id');
+            $query->where(function ($q) use ($wid) {
+                $q->where('from_warehouse_id', $wid)
+                    ->orWhere('to_warehouse_id', $wid);
+            });
+        }
+
+        if ($request->filled('type')) {
+            $query->where('type', $request->input('type'));
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('created_at', '>=', $request->input('date_from'));
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereDate('created_at', '<=', $request->input('date_to'));
+        }
+
+        $movements = $query->orderByDesc('id')
+            ->paginate(25)
+            ->withQueryString();
+
+        $warehouses = Warehouse::active()->orderBy('name')->get();
+
+        return view('products.ledger', [
+            'title' => 'كشف حركة الصنف: '.$product->name,
+            'moduleName' => 'المخزون والمنتجات',
+            'product' => $product,
+            'movements' => $movements,
+            'warehouses' => $warehouses,
+            'currentWarehouseId' => $request->input('warehouse_id'),
+            'currentType' => $request->input('type'),
+            'currentDateFrom' => $request->input('date_from'),
+            'currentDateTo' => $request->input('date_to'),
         ]);
     }
 }

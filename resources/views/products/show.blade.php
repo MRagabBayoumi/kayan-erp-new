@@ -14,6 +14,10 @@
                     <button type="button" data-action="adjust-show-qty" data-delta="1" class="erp-btn erp-btn-ghost font-numeric py-0.5 px-2 font-bold text-sm">+</button>
                 </div>
             </div>
+            <a href="{{ route('products.ledger', $product) }}" class="erp-btn erp-btn-secondary" title="كشف حركة الصنف التفصيلي والرصيد التراكمي">
+                <x-icon name="activity" size="16" />
+                <span>كشف حركة الصنف</span>
+            </a>
             <a href="{{ route('products.edit', $product) }}" class="erp-btn erp-btn-primary">
                 <x-icon name="pencil" size="16" />
                 <span>تعديل الصنف</span>
