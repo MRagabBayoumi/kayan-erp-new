@@ -21,16 +21,16 @@ Every phase is strictly classified into one of four unambiguous engineering stat
 | **Phase 1 — Project Audit & Database Isolation** | Toolchain audit, PHP 8.5 environment verification, `kayan_erp` target confirmation and legacy database isolation. | ✅ **Verified Complete** |
 | **Phase 2 — Design System & Application Shell** | Master layout, Cairo typography, Light/Dark themes, Enterprise density switcher, modular Blade components. | ✅ **Verified Complete** |
 | **Visual QA & Sidebar Bugfix** | Multi-screen browser verification via Chrome CDP, desktop collapse & mobile sliding drawer toggle fix. | ✅ **Verified Complete** |
-| **Phase 3A — Company & System Settings (`/settings`)** | Dedicated `/settings` module: company branding, phone number, safe logo upload with live preview, system maintenance badge. | ✅ **Verified Complete** |
-| **Phase 3B — Dashboard Visual Shell** | Master dashboard layout, shortcuts, and notifications (KPI metrics display em-dash `—` placeholders to prevent data fabrication). | 🟡 **Partially Implemented** |
-| **Phase 4 — Products, Categories & Excel Import Engine** | Catalog schema, Categories, indexed `barcode` (1.3ms), and Universal Excel/CSV Import with pre-import database review and template download. | ✅ **Verified Complete** |
-| **Phase 5 — Inventory Management & FIFO Batch Tracking** | Multi-location stock balances, stock transaction logs, reorder thresholds, and lot/batch foundations for FIFO. | ⏳ **Planned** *(Immediate Next Phase)* |
-| **Phase 6 — Wholesale Customers & Suppliers Directory** | Customer ledger accounts, credit terms, China manufacturers, shipping agents, and contact directory. | 📋 **Planned** |
-| **Phase 7 — Mobile Barcode Scanner & Order Builder** | Field-ready mobile camera/USB scanner, instant database lookup, and interactive draft order builder for sales reps. | 📋 **Planned** |
-| **Phase 8 — Sales Orders & Wholesale Invoicing** | Confirmed sales orders, atomic inventory deductions (`DB::transaction`), invoices, and accounts receivable. | 📋 **Planned** |
-| **Phase 9 — Purchases, Supplier Invoices & FIFO Costing** | Supplier purchase invoices, lot-based dynamic selling prices, and First-In First-Out (FIFO) cost of goods sold engine. | 📋 **Planned** |
+| **Phase 3A — Company & Barcode Settings (`/settings`)** | Dedicated `/settings` module: company branding, international phone, logo upload with live preview, and thermal barcode printer settings. | ✅ **Verified Complete** |
+| **Phase 3B — Dynamic Live Dashboard** | Real-time master dashboard connected to MySQL database with live counters for products, customers, and suppliers. | ✅ **Verified Complete** |
+| **Phase 4 — Products, Categories, Excel Import & Thermal Printing** | Catalog schema, multi-tier pricing, SKU generator, indexed barcode, Excel/CSV importer, and direct thermal barcode label printing engine. | ✅ **Verified Complete** |
+| **Phase 5 — Warehouses & Multi-Location Inventory** | Multi-warehouse management, stock balances, stock movements (in/out/transfer/adjustment), and low-stock reorder alerts. | ✅ **Verified Complete** |
+| **Phase 6 — Wholesale Customers & Suppliers Directory** | Customer ledger accounts, credit terms, China manufacturers with WeChat ID & foreign currency, and shipping agents directory. | ✅ **Verified Complete** |
+| **Phase 9 (Part 1) — Purchases & FIFO Receipt Batches** | Purchase invoices, line item entry, automatic inventory batch generation (`inventory_batches`), invoice posting, and document printing. | ✅ **Verified Complete** |
+| **Production Architecture & Deployment** | Separate dev/live environments, background auto-start on Windows boot, and automated 1-click zero-downtime deployment script. | ✅ **Verified Complete** |
+| **Phase 7 & 8 — Cashier, Point of Sale (POS) & Sales Invoicing** | Fast POS interface, barcode scanner (laser/camera), instant stock deduction, shift & cash drawer management, and thermal receipt printing. | ⏳ **Planned** *(Immediate Next Phase)* |
 | **Phase 10 — Cash Register & Treasury Accounting** | Cash boxes, operating expense vouchers, supplier payments, profit & loss statements, and balance sheets. | 📋 **Planned** |
-| **Phase 11 — Live Dynamic Dashboard & BI Analytics** | Interactive financial charts, real-time sales KPIs, and aggregated analytics derived from real business transactions. | ⛔ **Blocked** *(Awaiting Transactions)* |
+| **Phase 11 — Live Dynamic Dashboard & BI Analytics** | Interactive financial charts, real-time sales KPIs, and aggregated analytics derived from real business transactions. | 📋 **Planned** |
 | **Phase 12 — Production Hardening & Deployment** | End-to-end integration testing, concurrency lock tests, security audit, and deployment pipeline. | 📋 **Planned** |
 
 ---
@@ -42,7 +42,8 @@ Every phase is strictly classified into one of four unambiguous engineering stat
 - **Frontend Architecture:** Reusable Blade Components & Partials
 - **Styling:** CSS Design Tokens (`erp.css`) + Tailwind CSS v4 + Vite v8
 - **Typography:** [Cairo](https://fonts.google.com/specimen/Cairo) Arabic font with tabular numeric figures (`tabular-nums`) for barcode and accounting data
-- **Testing & Quality Assurance:** [Pest PHP](https://pestphp.com) (**46/46 automated tests passing with 256 assertions**) + [Laravel Pint](https://laravel.com/docs/pint)
+- **Testing & Quality Assurance:** [Pest PHP](https://pestphp.com) (**165/165 automated tests passing with 1,124 assertions**) + [Laravel Pint](https://laravel.com/docs/pint)
+- **Direct Thermal Printing Engine:** Embedded Python thermal printing engine for label stickers and invoices (TSPL / ESC-POS / ZPL).
 
 ---
 
