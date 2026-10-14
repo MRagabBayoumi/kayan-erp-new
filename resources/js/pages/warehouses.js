@@ -56,7 +56,7 @@ export function initWarehousesPage() {
         }
     }
 
-    page.querySelectorAll('[data-action="open-add-warehouse"]').forEach(btn => {
+    document.querySelectorAll('[data-action="open-add-warehouse"]').forEach(btn => {
         btn.addEventListener('click', openAddWarehouseModal);
     });
 

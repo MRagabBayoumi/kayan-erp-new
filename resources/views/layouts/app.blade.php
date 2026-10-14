@@ -5,12 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>{{ $title ?? 'الرئيسية' }} | Kayan ERP</title>
+    <title>{{ $title ?? 'الرئيسية' }} | {{ config('app.name', 'BayoSoft ERP') }}</title>
 
     @if(!empty($globalCompanySetting?->logo_url))
         <link rel="icon" href="{{ $globalCompanySetting->logo_url }}">
     @else
-        <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23714B67'/><text x='50%' y='55%' dominant-baseline='central' text-anchor='middle' fill='white' font-size='60' font-family='sans-serif' font-weight='bold'>K</text></svg>">
+        <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
+        <link rel="alternate icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
     @endif
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

@@ -26,8 +26,8 @@
 
         <!-- Brand Name -->
         <a href="{{ url('/') }}" class="erp-brand">
-            <span class="erp-brand-badge">K</span>
-            <span>Kayan ERP</span>
+            <span class="erp-brand-badge">B</span>
+            <span>{{ config('app.name', 'BayoSoft ERP') }}</span>
         </a>
 
         <div class="erp-topbar-divider"></div>

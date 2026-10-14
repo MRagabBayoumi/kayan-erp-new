@@ -1,10 +1,10 @@
 <?php
 
-test('the application returns a successful response with Kayan ERP layout', function () {
+test('the application returns a successful response with BayoSoft ERP layout', function () {
     $response = $this->get('/');
 
     $response->assertStatus(200);
-    $response->assertSee('Kayan ERP');
+    $response->assertSee('BayoSoft ERP');
     $response->assertSee('dir="rtl"', false);
     $response->assertSee('data-theme="light"', false);
     $response->assertSee('data-density="comfortable"', false);

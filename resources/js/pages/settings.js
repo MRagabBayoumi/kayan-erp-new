@@ -98,17 +98,24 @@ export function initSettingsPage() {
             const frameWidthPx = 240;
             const frameHeightPx = Math.round((heightMm / widthMm) * frameWidthPx);
             frame.style.width = frameWidthPx + 'px';
-            frame.style.height = Math.max(120, frameHeightPx) + 'px';
+            frame.style.height = Math.max(75, frameHeightPx) + 'px';
+
+            const svgEl = page.querySelector('#previewBarcodeSvg');
+            if (svgEl) {
+                const barHeight = parseInt(inputBarcodeH?.value || 40, 10);
+                const scaledSvgHeight = heightMm <= 18 ? 24 : Math.min(60, Math.max(20, Math.round(barHeight * 0.5)));
+                svgEl.setAttribute('height', scaledSvgHeight);
+            }
 
             if (compEl) {
                 compEl.style.display = showCompany ? 'block' : 'none';
                 compEl.textContent = companyName;
-                compEl.style.fontSize = Math.max(9, Math.round(detFont * 1.15)) + 'px';
+                compEl.style.fontSize = Math.max(8, Math.round(detFont * (heightMm <= 18 ? 0.9 : 1.15))) + 'px';
             }
 
             if (prodEl) {
                 prodEl.style.display = showProd ? 'block' : 'none';
-                prodEl.style.fontSize = Math.max(10, prodFont) + 'px';
+                prodEl.style.fontSize = Math.max(9, heightMm <= 18 ? Math.min(11, prodFont) : prodFont) + 'px';
             }
 
             if (barsEl) {
@@ -137,7 +144,7 @@ export function initSettingsPage() {
 
             if (bottomEl) {
                 bottomEl.style.display = (showSku || priceType !== 'none') ? 'block' : 'none';
-                bottomEl.style.fontSize = detFont + 'px';
+                bottomEl.style.fontSize = Math.max(7, detFont) + 'px';
             }
         }
 
@@ -159,6 +166,13 @@ export function initSettingsPage() {
         // Barcode Presets
         page.querySelectorAll('[data-action="apply-barcode-preset"]').forEach(btn => {
             btn.addEventListener('click', () => {
+                page.querySelectorAll('[data-action="apply-barcode-preset"]').forEach(b => {
+                    b.classList.remove('erp-btn-primary');
+                    b.classList.add('erp-btn-secondary');
+                });
+                btn.classList.remove('erp-btn-secondary');
+                btn.classList.add('erp-btn-primary');
+
                 if (inputWidth) inputWidth.value = btn.dataset.width || 38;
                 if (inputHeight) inputHeight.value = btn.dataset.height || 25;
                 if (inputBarcodeW) inputBarcodeW.value = btn.dataset.barW || 260;

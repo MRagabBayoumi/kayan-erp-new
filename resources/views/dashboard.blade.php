@@ -30,7 +30,7 @@
     <!-- Welcome Hero Banner -->
     <section class="welcome-banner">
         <div>
-            <h2>مرحبًا بك في Kayan ERP</h2>
+            <h2>مرحبًا بك في {{ config('app.name', 'BayoSoft ERP') }}</h2>
             <p>
                 نظام إدارة العمليات المتكامل لشركة كيان — استيراد وتوزيع إكسسوارات حريمي، توك شعر، مستلزمات زينة وهدايا من الصين إلى السوق المحلي.
             </p>

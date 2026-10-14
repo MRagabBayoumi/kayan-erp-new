@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+    <defs>
+        <linearGradient id="bayoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#4F46E5"/>
+            <stop offset="100%" stop-color="#7C3AED"/>
+        </linearGradient>
+    </defs>
+    <rect width="64" height="64" rx="14" fill="url(#bayoGrad)"/>
+    <path d="M20 16h14c5.523 0 10 3.582 10 8 0 2.5-1.5 4.7-3.8 6 3 1.3 4.8 3.8 4.8 6.5 0 4.97-4.925 9.5-11 9.5H20V16zm8 7v7h5.5c2 0 3.5-1.5 3.5-3.5s-1.5-3.5-3.5-3.5H28zm0 13v8h6.5c2.5 0 4.5-1.8 4.5-4s-2-4-4.5-4H28z" fill="#FFFFFF"/>
+</svg>

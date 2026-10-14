@@ -4,7 +4,7 @@
         <div class="erp-launcher-header">
             <div class="erp-launcher-title" id="launcherTitle">
                 <x-icon name="layout-grid" size="18" />
-                <span>تطبيقات Kayan ERP</span>
+                <span>تطبيقات {{ config('app.name', 'BayoSoft ERP') }}</span>
             </div>
             <button id="appLauncherClose" type="button" class="erp-btn erp-btn-ghost erp-btn-icon" title="إغلاق (Esc)">
                 <x-icon name="x" size="16" />

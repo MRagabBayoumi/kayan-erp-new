@@ -11,7 +11,7 @@
         <!-- Breadcrumb & Title -->
         <nav class="erp-breadcrumb" aria-label="شريط المسار">
             <span class="erp-breadcrumb-item">
-                <a href="{{ url('/') }}">Kayan ERP</a>
+                <a href="{{ url('/') }}">{{ config('app.name', 'BayoSoft ERP') }}</a>
             </span>
             @foreach($breadcrumbs as $name => $link)
                 <span class="erp-breadcrumb-sep">/</span>

@@ -7,14 +7,14 @@ export function initInventoryPage() {
     const page = document.querySelector('[data-page="inventory"]');
     if (!page) return;
 
-    const modal = page.querySelector('#stockMovementModal');
-    const openModalBtns = page.querySelectorAll('[data-action="open-movement-modal"]');
-    const closeModalBtns = page.querySelectorAll('[data-action="close-movement-modal"]');
-    const quickMovementBtns = page.querySelectorAll('[data-action="quick-movement"]');
+    const modal = document.querySelector('#stockMovementModal');
+    const openModalBtns = document.querySelectorAll('[data-action="open-movement-modal"]');
+    const closeModalBtns = document.querySelectorAll('[data-action="close-movement-modal"]');
+    const quickMovementBtns = document.querySelectorAll('[data-action="quick-movement"]');
 
     function openStockMovementModal() {
         if (!modal) return;
-        const subtitle = page.querySelector('#modal_product_subtitle');
+        const subtitle = document.querySelector('#modal_product_subtitle');
         if (subtitle) subtitle.textContent = '';
         modal.classList.add('open');
         modal.style.display = 'flex';
