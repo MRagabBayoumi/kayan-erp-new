@@ -6,6 +6,7 @@ use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductImportController;
+use App\Http\Controllers\PurchaseInvoiceController;
 use App\Http\Controllers\ShippingOfficeController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\WarehouseController;
@@ -41,8 +42,14 @@ Route::get('/products/lookup-barcode', [ProductController::class, 'lookupBarcode
 Route::match(['get', 'post'], '/products/print-labels/batch', [ProductController::class, 'printBatchLabels'])->name('products.print-batch');
 Route::get('/products/{product}/print-label', [ProductController::class, 'printLabel'])->name('products.print-label');
 Route::get('/products/{product}/barcode-svg', [ProductController::class, 'barcodeSvg'])->name('products.barcode-svg');
+Route::get('/products/{product}/ledger', [ProductController::class, 'ledger'])->name('products.ledger');
 Route::resource('products', ProductController::class);
 Route::resource('categories', CategoryController::class)->except(['create', 'show', 'edit']);
+
+// Purchasing & Suppliers Invoices (FIFO Receipt)
+Route::post('/purchases/{purchase}/post', [PurchaseInvoiceController::class, 'post'])->name('purchases.post');
+Route::post('/purchases/{purchase}/cancel', [PurchaseInvoiceController::class, 'cancel'])->name('purchases.cancel');
+Route::resource('purchases', PurchaseInvoiceController::class)->except(['edit', 'update', 'destroy']);
 
 // Warehouse & Inventory Management (Phase 5)
 Route::resource('warehouses', WarehouseController::class)->except(['create', 'show', 'edit']);
