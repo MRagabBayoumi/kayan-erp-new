@@ -3,7 +3,6 @@
 use App\Models\Category;
 use App\Models\Customer;
 use App\Models\Product;
-use App\Models\ShippingOffice;
 use App\Models\Supplier;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -273,4 +272,3 @@ test('purchases index has vertically stacked main cards and enterprise filter fo
         ->assertSee('name="supplier_id"', false)
         ->assertSee('class="erp-table"', false);
 });
-

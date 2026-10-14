@@ -25,5 +25,5 @@ $size = strlen($pngData);
 // Standard ICO directory header: 6 bytes header + 16 bytes directory entry
 $header = pack('vvvCCCCvvVV', 0, 1, 1, 32, 32, 0, 0, 1, 32, $size, 22);
 
-file_put_contents(__DIR__ . '/../public/favicon.ico', $header . $pngData);
-echo "Favicon generated successfully: " . filesize(__DIR__ . '/../public/favicon.ico') . " bytes\n";
+file_put_contents(__DIR__.'/../public/favicon.ico', $header.$pngData);
+echo 'Favicon generated successfully: '.filesize(__DIR__.'/../public/favicon.ico')." bytes\n";

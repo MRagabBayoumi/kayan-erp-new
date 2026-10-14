@@ -41,6 +41,8 @@ Route::get('/products/import/cancel', [ProductImportController::class, 'cancel']
 Route::get('/products/generate-barcode', [ProductController::class, 'generateBarcode'])->name('products.generate-barcode');
 Route::get('/products/lookup-barcode', [ProductController::class, 'lookupBarcode'])->name('products.lookup-barcode');
 Route::match(['get', 'post'], '/products/print-labels/batch', [ProductController::class, 'printBatchLabels'])->name('products.print-batch');
+Route::post('/products/direct-print/batch', [ProductController::class, 'directPrintBatch'])->name('products.direct-print-batch');
+Route::post('/products/{product}/direct-print', [ProductController::class, 'directPrint'])->name('products.direct-print');
 Route::get('/products/{product}/print-label', [ProductController::class, 'printLabel'])->name('products.print-label');
 Route::get('/products/{product}/barcode-svg', [ProductController::class, 'barcodeSvg'])->name('products.barcode-svg');
 Route::get('/products/{product}/ledger/print', [ProductController::class, 'printLedger'])->name('products.ledger.print');
@@ -49,6 +51,7 @@ Route::resource('products', ProductController::class);
 Route::resource('categories', CategoryController::class)->except(['create', 'show', 'edit']);
 
 // Purchasing & Suppliers Invoices (FIFO Receipt)
+Route::post('/purchases/{purchase}/direct-print', [PurchaseInvoiceController::class, 'directPrint'])->name('purchases.direct-print');
 Route::get('/purchases/{purchase}/print', [PurchaseInvoiceController::class, 'print'])->name('purchases.print');
 Route::post('/purchases/{purchase}/post', [PurchaseInvoiceController::class, 'post'])->name('purchases.post');
 Route::post('/purchases/{purchase}/cancel', [PurchaseInvoiceController::class, 'cancel'])->name('purchases.cancel');

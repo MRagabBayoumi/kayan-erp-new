@@ -1,7 +1,6 @@
 <?php
 
 use App\Models\Category;
-use App\Models\CompanySetting;
 use App\Models\PrintTemplate;
 use App\Models\Product;
 use App\Models\PurchaseInvoice;
@@ -11,6 +10,7 @@ use App\Models\Supplier;
 use App\Models\Warehouse;
 use App\Services\PrintTemplateService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Route;
 
 uses(RefreshDatabase::class);
 
@@ -220,8 +220,8 @@ test('10. opening the print page does not modify inventory balances or supplier 
 });
 
 test('11. print route shares identical middleware configuration with invoice show route', function () {
-    $printRoute = Illuminate\Support\Facades\Route::getRoutes()->getByName('purchases.print');
-    $showRoute = Illuminate\Support\Facades\Route::getRoutes()->getByName('purchases.show');
+    $printRoute = Route::getRoutes()->getByName('purchases.print');
+    $showRoute = Route::getRoutes()->getByName('purchases.show');
 
     expect($printRoute)->not->toBeNull()
         ->and($showRoute)->not->toBeNull()
@@ -281,4 +281,3 @@ test('14. resilient against incomplete or partial template settings without cras
         ->assertSee('فاتورة شراء وتوريد') // Fallback default title
         ->assertSee($this->invoice->invoice_number);
 });
-

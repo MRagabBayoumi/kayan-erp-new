@@ -116,16 +116,11 @@ SVG;
         ?int $heightMm = null,
         ?BarcodeSetting $settings = null,
         ?float $retailPrice = null,
-        ?float $wholesalePrice = null,
-        ?string $orientation = null
+        ?float $wholesalePrice = null
     ): string {
         $settings ??= BarcodeSetting::getSettings();
         $widthMm ??= (int) $settings->label_width_mm;
         $heightMm ??= (int) $settings->label_height_mm;
-        $orientation ??= (string) ($settings->print_orientation ?? '0');
-        if (! in_array($orientation, ['0', '90', '270'], true)) {
-            $orientation = '0';
-        }
 
         $code = trim($barcodeValue);
         if ($code === '') {
@@ -143,9 +138,9 @@ SVG;
         $showSku = (bool) $settings->show_item_sku;
         $priceType = (string) $settings->print_price_type;
 
-        $productFontSize = max(9, min(24, (int) $settings->product_font_size));
-        $detailsFontSize = max(7, min(16, (int) $settings->details_font_size));
-        $companyFontSize = max(8, min(14, (int) round($detailsFontSize * 1.15)));
+        $productFontSize = max(8, min(36, (int) $settings->product_font_size));
+        $detailsFontSize = max(6, min(28, (int) $settings->details_font_size));
+        $companyFontSize = max(7, min(24, (int) round($detailsFontSize * 1.05)));
 
         // Determine price text to display
         $priceText = '';
@@ -244,11 +239,11 @@ SVG;
 
             // Target barcode width and height
             $configuredBarWidth = (int) ($settings->barcode_width_px ?: 260);
-            $targetWidth = min((float) $totalWidthPx * 0.90, max(120.0, (float) $configuredBarWidth));
+            $targetWidth = min((float) $totalWidthPx * 0.96, max(80.0, (float) $configuredBarWidth));
 
             $availableHeight = ($bottomY - $detailsFontSize - 6) - $currentY;
             $configuredBarHeight = (int) ($settings->barcode_height_px ?: 80);
-            $barcodeHeight = (int) max(20, min($configuredBarHeight, $availableHeight));
+            $barcodeHeight = (int) max(15, min($configuredBarHeight, max(15, $availableHeight)));
             $barcodeY = (int) max($currentY + 2, $currentY + round(($availableHeight - $barcodeHeight) / 2));
 
             $moduleWidth = $targetWidth / max(1, $totalModules);
@@ -283,36 +278,16 @@ BARCODE;
         }
 
         $allTextsHtml = implode("\n    ", $textElements);
-        $innerElements = $allTextsHtml.($barcodeSvgGroup !== '' ? "\n".$barcodeSvgGroup : '');
-
-        if ($orientation === '90') {
-            $svgWidthMm = $heightMm;
-            $svgHeightMm = $widthMm;
-            $viewBoxWidth = $totalHeightPx;
-            $viewBoxHeight = $totalWidthPx;
-            $contentHtml = "    <g transform=\"rotate(90) translate(0, -{$totalHeightPx})\">\n        {$innerElements}\n    </g>";
-        } elseif ($orientation === '270') {
-            $svgWidthMm = $heightMm;
-            $svgHeightMm = $widthMm;
-            $viewBoxWidth = $totalHeightPx;
-            $viewBoxHeight = $totalWidthPx;
-            $contentHtml = "    <g transform=\"rotate(270) translate(-{$totalWidthPx}, 0)\">\n        {$innerElements}\n    </g>";
-        } else {
-            $svgWidthMm = $widthMm;
-            $svgHeightMm = $heightMm;
-            $viewBoxWidth = $totalWidthPx;
-            $viewBoxHeight = $totalHeightPx;
-            $contentHtml = "    {$innerElements}";
-        }
 
         return <<<SVG
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {$viewBoxWidth} {$viewBoxHeight}" width="{$svgWidthMm}mm" height="{$svgHeightMm}mm" preserveAspectRatio="none" shape-rendering="crispEdges">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {$totalWidthPx} {$totalHeightPx}" width="{$widthMm}mm" height="{$heightMm}mm" preserveAspectRatio="none" shape-rendering="crispEdges">
     <style>
         .comp-title { font-family: 'Cairo', 'Tahoma', Arial, sans-serif; font-weight: 700; fill: #1e293b; text-anchor: middle; direction: rtl; }
         .prod-title { font-family: 'Cairo', 'Tahoma', Arial, sans-serif; font-weight: 700; fill: #000000; text-anchor: middle; direction: rtl; }
         .item-sku { font-family: 'Cairo', 'Courier New', Arial, monospace; font-weight: 700; fill: #000000; text-anchor: middle; letter-spacing: 0.5px; }
     </style>
-{$contentHtml}
+    {$allTextsHtml}
+{$barcodeSvgGroup}
 </svg>
 SVG;
     }

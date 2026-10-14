@@ -11,6 +11,7 @@ use App\Models\StockMovement;
 use App\Models\Warehouse;
 use App\Services\BarcodeGeneratorService;
 use App\Services\InventoryService;
+use App\Services\Printing\PythonPrintEngineService;
 use App\Services\PrintTemplateService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -49,8 +50,13 @@ class ProductController extends Controller
             }
         }
 
+        $perPage = (int) $request->input('per_page', 15);
+        if (! in_array($perPage, [10, 15, 25, 50, 100], true)) {
+            $perPage = 15;
+        }
+
         $products = $query->orderByDesc('id')
-            ->paginate(15)
+            ->paginate($perPage)
             ->withQueryString();
 
         return view('products.index', [
@@ -61,6 +67,8 @@ class ProductController extends Controller
             'currentSearch' => $request->input('search'),
             'currentCategoryId' => $request->input('category_id'),
             'currentStatus' => $request->input('status'),
+            'currentPerPage' => $perPage,
+            'barcodeSettings' => BarcodeSetting::getSettings(),
         ]);
     }
 
@@ -248,6 +256,7 @@ class ProductController extends Controller
             'moduleName' => 'المخزون والمنتجات',
             'product' => $product,
             'categories' => $categories,
+            'barcodeSettings' => BarcodeSetting::getSettings(),
         ]);
     }
 
@@ -410,18 +419,11 @@ class ProductController extends Controller
 
         $widthMm = (int) $barcodeSettings->label_width_mm;
         $heightMm = (int) $barcodeSettings->label_height_mm;
-        $orientation = (string) $request->input('orientation', $barcodeSettings->print_orientation ?? '0');
-        if (! in_array($orientation, ['0', '90', '270'], true)) {
-            $orientation = (string) ($barcodeSettings->print_orientation ?? '0');
-        }
 
         $size = $request->input('size');
-        if ($size === '38x15') {
-            $widthMm = 38;
-            $heightMm = 15;
-        } elseif ($size === '38x25') {
-            $widthMm = 38;
-            $heightMm = 25;
+        if ($size && preg_match('/^(\d+)x(\d+)$/', $size, $matches)) {
+            $widthMm = (int) $matches[1];
+            $heightMm = (int) $matches[2];
         }
 
         $barcodeValue = $barcodeService->getBarcodeValue($product);
@@ -434,8 +436,7 @@ class ProductController extends Controller
             $heightMm,
             $barcodeSettings,
             (float) $product->retail_price,
-            (float) $product->wholesale_price,
-            $orientation
+            (float) $product->wholesale_price
         );
 
         return view('products.print-label', [
@@ -454,7 +455,6 @@ class ProductController extends Controller
             'widthMm' => $widthMm,
             'heightMm' => $heightMm,
             'size' => $widthMm.'x'.$heightMm,
-            'orientation' => $orientation,
             'barcodeSettings' => $barcodeSettings,
         ]);
     }
@@ -469,18 +469,11 @@ class ProductController extends Controller
 
         $widthMm = (int) $barcodeSettings->label_width_mm;
         $heightMm = (int) $barcodeSettings->label_height_mm;
-        $orientation = (string) $request->input('orientation', $barcodeSettings->print_orientation ?? '0');
-        if (! in_array($orientation, ['0', '90', '270'], true)) {
-            $orientation = (string) ($barcodeSettings->print_orientation ?? '0');
-        }
 
         $size = $request->input('size');
-        if ($size === '38x15') {
-            $widthMm = 38;
-            $heightMm = 15;
-        } elseif ($size === '38x25') {
-            $widthMm = 38;
-            $heightMm = 25;
+        if ($size && preg_match('/^(\d+)x(\d+)$/', $size, $matches)) {
+            $widthMm = (int) $matches[1];
+            $heightMm = (int) $matches[2];
         }
 
         if ($request->has('items') && is_array($request->input('items'))) {
@@ -531,8 +524,7 @@ class ProductController extends Controller
                         $heightMm,
                         $barcodeSettings,
                         (float) $product->retail_price,
-                        (float) $product->wholesale_price,
-                        $orientation
+                        (float) $product->wholesale_price
                     ),
                     'quantity' => $qty,
                 ];
@@ -554,7 +546,6 @@ class ProductController extends Controller
             'widthMm' => $widthMm,
             'heightMm' => $heightMm,
             'size' => $widthMm.'x'.$heightMm,
-            'orientation' => $orientation,
             'barcodeSettings' => $barcodeSettings,
         ]);
     }
@@ -574,6 +565,95 @@ class ProductController extends Controller
             'barcode' => $barcodeValue,
             'svg' => $svg,
         ]);
+    }
+
+    /**
+     * Direct print barcode sticker via the centralized Python printing engine.
+     */
+    public function directPrint(Request $request, Product $product, PythonPrintEngineService $printService): JsonResponse
+    {
+        $validated = $request->validate([
+            'quantity' => ['nullable', 'integer', 'min:1', 'max:500'],
+            'printer' => ['nullable', 'string', 'max:120'],
+            'size' => ['nullable', 'string', 'regex:/^\d+x\d+$/'],
+        ]);
+
+        $quantity = (int) ($validated['quantity'] ?? 1);
+        $printer = $validated['printer'] ?? null;
+        $overrides = [];
+
+        if (! empty($validated['size']) && preg_match('/^(\d+)x(\d+)$/', $validated['size'], $matches)) {
+            $overrides['width_mm'] = (float) $matches[1];
+            $overrides['height_mm'] = (float) $matches[2];
+        }
+
+        $result = $printService->printBarcodeLabel($product, $quantity, $printer, $overrides);
+
+        return response()->json($result, $result['success'] ? 200 : 422);
+    }
+
+    /**
+     * Direct print multiple product labels via the centralized Python printing engine.
+     */
+    public function directPrintBatch(Request $request, PythonPrintEngineService $printService): JsonResponse
+    {
+        $validated = $request->validate([
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.id' => ['required', 'integer', 'exists:products,id'],
+            'items.*.qty' => ['nullable', 'integer', 'min:1', 'max:500'],
+            'printer' => ['nullable', 'string', 'max:120'],
+            'size' => ['nullable', 'string', 'regex:/^\d+x\d+$/'],
+        ]);
+
+        $printer = $validated['printer'] ?? null;
+        $overrides = [];
+        if (! empty($validated['size']) && preg_match('/^(\d+)x(\d+)$/', $validated['size'], $matches)) {
+            $overrides['width_mm'] = (float) $matches[1];
+            $overrides['height_mm'] = (float) $matches[2];
+        }
+
+        $batchItems = [];
+        $totalRequestedQty = 0;
+
+        foreach ($validated['items'] as $item) {
+            $product = Product::find($item['id']);
+            if (! $product) {
+                continue;
+            }
+
+            $qty = max(1, min(500, (int) ($item['qty'] ?? 1)));
+            $batchItems[] = [
+                'product' => $product,
+                'qty' => $qty,
+            ];
+            $totalRequestedQty += $qty;
+        }
+
+        if (empty($batchItems)) {
+            return response()->json([
+                'success' => false,
+                'status' => 'EMPTY_BATCH',
+                'message' => 'لم يتم العثور على أي أصناف صالحة للطباعة.',
+            ], 422);
+        }
+
+        $res = $printService->printBarcodeLabelBatch($batchItems, $printer, $overrides);
+
+        $isSuccess = (bool) ($res['success'] ?? false);
+        $totalCopies = (int) ($res['total_labels'] ?? $totalRequestedQty);
+        $printedCount = (int) ($res['total_products'] ?? count($batchItems));
+
+        return response()->json([
+            'success' => $isSuccess,
+            'status' => $res['status'] ?? ($isSuccess ? 'SPOOLED' : 'FAILED'),
+            'message' => $isSuccess
+                ? "تم إرسال {$totalCopies} ملصق لعدد {$printedCount} صنف للطباعة بنجاح."
+                : ($res['message'] ?? 'فشل إرسال أمر الطباعة المجمعة.'),
+            'total_copies' => $totalCopies,
+            'printed_products_count' => $printedCount,
+            'printer' => $res['printer'] ?? $printer,
+            'items_summary' => $res['items_summary'] ?? [],
+        ], $isSuccess ? 200 : 422);
     }
 
     /**

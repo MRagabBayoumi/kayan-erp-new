@@ -10,8 +10,10 @@ use App\Models\PurchaseInvoiceItem;
 use App\Models\Supplier;
 use App\Models\Warehouse;
 use App\Services\InventoryService;
+use App\Services\Printing\PythonPrintEngineService;
 use App\Services\PrintTemplateService;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -207,7 +209,7 @@ class PurchaseInvoiceController extends Controller
         $purchase->loadMissing(['supplier', 'warehouse', 'creator', 'items.product.category']);
 
         $format = (string) $request->query('format', $request->query('paper_format', PrintTemplate::FORMAT_A4));
-        if (!in_array($format, PrintTemplateService::SUPPORTED_FORMATS, true)) {
+        if (! in_array($format, PrintTemplateService::SUPPORTED_FORMATS, true)) {
             $format = PrintTemplate::FORMAT_A4;
         }
 
@@ -236,6 +238,21 @@ class PurchaseInvoiceController extends Controller
             'company' => $companySetting,
             'autoPrint' => $autoPrint,
         ]);
+    }
+
+    /**
+     * Direct print purchase invoice receipt via the centralized Python printing engine.
+     */
+    public function directPrint(Request $request, PurchaseInvoice $purchase, PythonPrintEngineService $printService): JsonResponse
+    {
+        $validated = $request->validate([
+            'printer' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        $printer = $validated['printer'] ?? null;
+        $result = $printService->printPurchaseInvoice($purchase, $printer);
+
+        return response()->json($result, $result['success'] ? 200 : 422);
     }
 
     /**

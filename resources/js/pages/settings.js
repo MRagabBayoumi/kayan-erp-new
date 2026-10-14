@@ -59,7 +59,6 @@ export function initSettingsPage() {
         const inputBarcodeH = page.querySelector('#barcode_height_px') || page.querySelector('#barcodeHeight');
         const inputProdFont = page.querySelector('#product_font_size') || page.querySelector('#labelFontSize');
         const inputDetFont = page.querySelector('#details_font_size');
-        const inputOrientation = page.querySelector('#print_orientation');
 
         const cbCompany = page.querySelector('#show_company_name') || page.querySelector('#showCompanyName');
         const companyNameOverride = page.querySelector('#company_name_override');
@@ -83,7 +82,6 @@ export function initSettingsPage() {
             const heightMm = parseInt(inputHeight?.value || 25, 10);
             const prodFont = parseInt(inputProdFont?.value || 14, 10);
             const detFont = parseInt(inputDetFont?.value || 8, 10);
-            const orientation = inputOrientation?.value || '0';
 
             const showCompany = cbCompany?.checked ?? true;
             const companyName = companyNameOverride?.value || 'شركة كيان للتجارة والتوزيع';
@@ -95,41 +93,32 @@ export function initSettingsPage() {
             const priceChecked = page.querySelector('input[name="print_price_type"]:checked');
             if (priceChecked) priceType = priceChecked.value;
 
-            if (badge) {
-                if (orientation === '90') {
-                    badge.textContent = `${heightMm}×${widthMm} مم (بالعرض 90°)`;
-                } else if (orientation === '270') {
-                    badge.textContent = `${heightMm}×${widthMm} مم (بالعرض 270°)`;
-                } else {
-                    badge.textContent = `${widthMm}×${heightMm} مم (أفقي 0°)`;
-                }
-            }
+            if (badge) badge.textContent = `${widthMm}×${heightMm} مم`;
 
-            let frameWidthPx = 240;
-            let frameHeightPx = Math.round((heightMm / widthMm) * frameWidthPx);
-            if (orientation === '90' || orientation === '270') {
-                frameWidthPx = 130;
-                frameHeightPx = Math.min(320, Math.round((widthMm / heightMm) * frameWidthPx));
-            }
+            const frameWidthPx = 240;
+            const frameHeightPx = Math.round((heightMm / widthMm) * frameWidthPx);
             frame.style.width = frameWidthPx + 'px';
-            frame.style.height = Math.max(75, frameHeightPx) + 'px';
+            frame.style.height = Math.max(65, frameHeightPx) + 'px';
 
             const svgEl = page.querySelector('#previewBarcodeSvg');
             if (svgEl) {
                 const barHeight = parseInt(inputBarcodeH?.value || 40, 10);
-                const scaledSvgHeight = heightMm <= 18 ? 24 : Math.min(60, Math.max(20, Math.round(barHeight * 0.5)));
+                const barWidth = parseInt(inputBarcodeW?.value || 260, 10);
+                const scaledSvgHeight = Math.max(14, Math.min(80, Math.round(barHeight * (frameHeightPx / 115))));
+                const scaledSvgWidthPercent = Math.min(95, Math.max(40, Math.round((barWidth / 304) * 90)));
                 svgEl.setAttribute('height', scaledSvgHeight);
+                svgEl.style.width = scaledSvgWidthPercent + '%';
             }
 
             if (compEl) {
                 compEl.style.display = showCompany ? 'block' : 'none';
                 compEl.textContent = companyName;
-                compEl.style.fontSize = Math.max(8, Math.round(detFont * (heightMm <= 18 ? 0.9 : 1.15))) + 'px';
+                compEl.style.fontSize = Math.max(7, Math.min(22, Math.round(detFont * 0.95))) + 'px';
             }
 
             if (prodEl) {
                 prodEl.style.display = showProd ? 'block' : 'none';
-                prodEl.style.fontSize = Math.max(9, heightMm <= 18 ? Math.min(11, prodFont) : prodFont) + 'px';
+                prodEl.style.fontSize = Math.max(8, Math.min(26, prodFont)) + 'px';
             }
 
             if (barsEl) {
@@ -158,13 +147,13 @@ export function initSettingsPage() {
 
             if (bottomEl) {
                 bottomEl.style.display = (showSku || priceType !== 'none') ? 'block' : 'none';
-                bottomEl.style.fontSize = Math.max(7, detFont) + 'px';
+                bottomEl.style.fontSize = Math.max(6, Math.min(20, detFont)) + 'px';
             }
         }
 
         const previewFields = [
             inputWidth, inputHeight, inputBarcodeW, inputBarcodeH,
-            inputProdFont, inputDetFont, inputOrientation, companyNameOverride,
+            inputProdFont, inputDetFont, companyNameOverride,
             cbCompany, cbProdName, cbBarcodeBars, cbSku
         ];
 
@@ -193,9 +182,6 @@ export function initSettingsPage() {
                 if (inputBarcodeH) inputBarcodeH.value = btn.dataset.barH || 80;
                 if (inputProdFont) inputProdFont.value = btn.dataset.prodFont || 14;
                 if (inputDetFont) inputDetFont.value = btn.dataset.detFont || 8;
-                if (inputOrientation && btn.dataset.orientation !== undefined) {
-                    inputOrientation.value = btn.dataset.orientation;
-                }
                 updateLiveSticker();
             });
         });

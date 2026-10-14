@@ -1,7 +1,6 @@
 <?php
 
 use App\Models\PrintTemplate;
-use App\Models\User;
 use App\Services\PrintTemplateService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 

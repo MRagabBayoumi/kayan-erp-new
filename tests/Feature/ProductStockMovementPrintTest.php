@@ -283,4 +283,3 @@ test('14. supports sorting chronologically (asc) or newest first (desc)', functi
     $resDesc = $this->get(route('products.ledger.print', [$this->product, 'sort' => 'desc']));
     $resDesc->assertOk();
 });
-

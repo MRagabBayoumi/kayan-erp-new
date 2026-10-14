@@ -115,20 +115,41 @@ export function initProductForm() {
         });
     }
 
-    // 6. Direct Print Handler
+    // 6. Direct Print Handler via Centralized Python Engine
     const printBtn = document.querySelector('[data-action="direct-print-edit"]');
     if (printBtn) {
-        printBtn.addEventListener('click', () => {
-            const printUrl = printBtn.getAttribute('data-print-url');
-            if (!printUrl) return;
-            let iframe = document.getElementById('editPrintIframe');
-            if (!iframe) {
-                iframe = document.createElement('iframe');
-                iframe.id = 'editPrintIframe';
-                iframe.className = 'hidden';
-                document.body.appendChild(iframe);
+        printBtn.addEventListener('click', async () => {
+            const productId = printBtn.dataset.productId;
+            if (!productId) return;
+
+            const originalHtml = printBtn.innerHTML;
+            printBtn.disabled = true;
+            printBtn.innerHTML = '<span>جاري الإرسال للطابعة...</span>';
+
+            try {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                const response = await fetch(`/products/${productId}/direct-print`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({ quantity: 1 }),
+                });
+
+                const data = await response.json();
+                if (response.ok && data.success) {
+                    alert(`تم إرسال الملصق بنجاح إلى (${data.printer || 'طابعة الباركود'}).`);
+                } else {
+                    alert(`تعذر إرسال أمر الطباعة: ${data.message || 'خطأ غير محدد'}`);
+                }
+            } catch (err) {
+                alert('حدث خطأ في الاتصال بالخادم أثناء إرسال أمر الطباعة.');
+            } finally {
+                printBtn.disabled = false;
+                printBtn.innerHTML = originalHtml;
             }
-            iframe.src = printUrl;
         });
     }
 }

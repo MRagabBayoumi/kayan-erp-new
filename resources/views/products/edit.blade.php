@@ -7,7 +7,7 @@
                 <x-icon name="save" size="16" />
                 <span>حفظ التعديلات</span>
             </button>
-            <button type="button" data-action="direct-print-edit" data-print-url="{{ route('products.print-label', $product) }}?quantity=1&autoprint=1" class="erp-btn erp-btn-secondary" title="طباعة فورية للملصق (38×25 مم) بدون نوافذ">
+            <button type="button" data-action="direct-print-edit" data-product-id="{{ $product->id }}" class="erp-btn erp-btn-secondary" title="طباعة فورية للملصق ({{ (int) ($barcodeSettings->label_width_mm ?? 38) }}×{{ (int) ($barcodeSettings->label_height_mm ?? 15) }} مم) بدون نوافذ">
                 <x-icon name="printer" size="16" />
                 <span>طباعة الباركود</span>
             </button>

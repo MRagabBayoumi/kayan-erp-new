@@ -29,3 +29,10 @@ Thumbs.db
 *.key
 local-cert.pem
 local-key.pem
+
+# Python & Temporary Files
+__pycache__/
+*.pyc
+storage/orga_export/
+storage/*.png
+

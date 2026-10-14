@@ -11,15 +11,20 @@ class PrintTemplate extends Model
      * Supported document types.
      */
     public const DOC_SALES_INVOICE = 'sales_invoice';
+
     public const DOC_PURCHASE_INVOICE = 'purchase_invoice';
+
     public const DOC_CUSTOMER_STATEMENT = 'customer_statement';
+
     public const DOC_SUPPLIER_STATEMENT = 'supplier_statement';
 
     /**
      * Supported paper formats.
      */
     public const FORMAT_A4 = 'a4';
+
     public const FORMAT_A5 = 'a5';
+
     public const FORMAT_THERMAL_80MM = 'thermal_80mm';
 
     /**
@@ -80,10 +85,6 @@ class PrintTemplate extends Model
 
     /**
      * Safe nested setting getter.
-     *
-     * @param string $path
-     * @param mixed $default
-     * @return mixed
      */
     public function getSetting(string $path, mixed $default = null): mixed
     {

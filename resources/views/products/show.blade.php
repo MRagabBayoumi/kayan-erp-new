@@ -4,7 +4,7 @@
     <x-control-panel title="{{ $product->name }}" :breadcrumbs="['المنتجات والأصناف' => route('products.index'), $product->sku => '#']">
         <x-slot:actions>
             <div class="erp-show-print-group">
-                <button type="button" data-action="direct-print-show" class="erp-btn erp-btn-secondary text-[var(--primary)] flex-1 justify-center" title="طباعة فورية للملصق (38×25 مم) بدون نوافذ">
+                <button type="button" data-action="direct-print-show" class="erp-btn erp-btn-secondary text-[var(--primary)] flex-1 justify-center" title="طباعة فورية للملصق ({{ (int) ($barcodeSettings->label_width_mm ?? 38) }}×{{ (int) ($barcodeSettings->label_height_mm ?? 15) }} مم) بدون نوافذ">
                     <x-icon name="printer" size="16" />
                     <span>طباعة ملصق الباركود</span>
                 </button>
@@ -86,7 +86,7 @@
                     <div class="erp-card-header">
                         <div class="erp-card-title">
                             <x-icon name="barcode" size="18" />
-                            <span>ملصق الباركود (38×25 مم)</span>
+                            <span>ملصق الباركود ({{ (int) ($barcodeSettings->label_width_mm ?? 38) }}×{{ (int) ($barcodeSettings->label_height_mm ?? 15) }} مم)</span>
                         </div>
                     </div>
                     <div class="erp-card-body p-4 text-center flex flex-col items-center">
@@ -372,21 +372,18 @@
                         <button type="button" data-action="close-print-modal" class="erp-btn erp-btn-secondary">
                             <span>إلغاء</span>
                         </button>
-                        <button type="button" data-action="submit-print-preview" data-auto-print="false" class="erp-btn erp-btn-secondary" title="فتح صفحة المعاينة بدون طباعة فورية">
-                            <x-icon name="eye" size="16" />
-                            <span>معاينة</span>
-                        </button>
-                        <button type="button" data-action="submit-print-preview" data-auto-print="true" class="erp-btn erp-btn-primary">
+                        <button type="button" data-action="submit-print-preview" data-auto-print="true" class="erp-btn erp-btn-primary" title="طباعة فورية مباشرة على طابعة الباركود بدون نوافذ">
                             <x-icon name="printer" size="16" />
-                            <span>طباعة الآن</span>
+                            <span>طباعة فورية للطابعة</span>
+                        </button>
+                        <button type="button" data-action="submit-print-preview" data-auto-print="false" class="erp-btn erp-btn-secondary" title="فتح صفحة المعاينة في نافذة جديدة">
+                            <x-icon name="eye" size="16" />
+                            <span>معاينة في المتصفح</span>
                         </button>
                     </div>
                 </div>
             </div>
         </div>
-
-        <!-- Hidden Iframe for Direct Silent Printing -->
-        <iframe id="directPrintIframe" name="directPrintIframe" class="hidden"></iframe>
 
         <!-- Toast Notification for Direct Print Feedback -->
         <div id="printNotificationToast" class="erp-toast hidden">

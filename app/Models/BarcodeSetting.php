@@ -33,7 +33,6 @@ class BarcodeSetting extends Model
         'show_barcode_bars',
         'show_item_sku',
         'print_price_type',
-        'print_orientation',
     ];
 
     /**
@@ -74,7 +73,6 @@ class BarcodeSetting extends Model
             'show_barcode_bars' => true,
             'show_item_sku' => true,
             'print_price_type' => 'none',
-            'print_orientation' => '0',
         ]);
     }
 

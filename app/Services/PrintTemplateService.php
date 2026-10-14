@@ -29,8 +29,6 @@ class PrintTemplateService
     /**
      * Get default settings for a given document type and paper format.
      *
-     * @param string $documentType
-     * @param string $paperFormat
      * @return array<string, mixed>
      */
     public function getDefaultSettings(string $documentType, string $paperFormat): array
@@ -45,7 +43,7 @@ class PrintTemplateService
             'logo_size' => ($isThermal || $isA5) ? 'sm' : 'md',
             'show_company_name' => true,
             'show_company_phone' => true,
-            'show_company_address' => !$isThermal,
+            'show_company_address' => ! $isThermal,
             'custom_title' => $this->getDefaultTitle($documentType),
             'custom_subtitle' => $this->getDefaultSubtitle($documentType),
             'primary_color' => $isThermal ? '#000000' : '#1e293b',
@@ -57,7 +55,7 @@ class PrintTemplateService
             'show_doc_date' => true,
             'show_due_date' => false,
             'show_warehouse' => true,
-            'show_status_badge' => !$isThermal,
+            'show_status_badge' => ! $isThermal,
             'show_barcode' => true,
             'show_qr_code' => true,
         ];
@@ -66,20 +64,20 @@ class PrintTemplateService
             'party_type_label' => $this->getDefaultPartyLabel($documentType),
             'show_party_name' => true,
             'show_party_phone' => true,
-            'show_party_address' => !$isThermal,
+            'show_party_address' => ! $isThermal,
             'show_party_tax_no' => false,
         ];
 
         $tableColumns = [
             'show_index' => true,
-            'show_sku' => !$isThermal,
+            'show_sku' => ! $isThermal,
             'show_barcode' => false,
             'show_unit' => true,
             'show_price' => true,
-            'show_discount' => !$isThermal,
+            'show_discount' => ! $isThermal,
             'show_tax' => false,
             'show_total' => true,
-            'show_notes' => (!$isThermal && !$isA5),
+            'show_notes' => (! $isThermal && ! $isA5),
             'density' => ($isThermal || $isA5) ? 'compact' : 'comfortable',
         ];
 
@@ -99,21 +97,21 @@ class PrintTemplateService
             'show_opening_balance' => true,
             'show_debit_credit' => true,
             'show_running_balance' => true,
-            'show_summary_cards' => !$isThermal,
+            'show_summary_cards' => ! $isThermal,
         ];
 
         $notesAndTerms = [
             'show_notes' => true,
             'notes_text' => 'شكراً لتعاملكم مع كيان للتجارة والتوزيع.',
-            'show_terms' => !$isThermal,
+            'show_terms' => ! $isThermal,
             'terms_text' => $this->getDefaultTermsText($documentType),
         ];
 
         $signatures = [
-            'show_signatures' => !$isThermal,
+            'show_signatures' => ! $isThermal,
             'first_party_title' => $this->getDefaultFirstPartySignature($documentType),
             'second_party_title' => 'المسؤول / المحاسب',
-            'show_stamp_box' => (!$isThermal && !$isA5),
+            'show_stamp_box' => (! $isThermal && ! $isA5),
         ];
 
         return [
@@ -131,9 +129,7 @@ class PrintTemplateService
     /**
      * Validate and sanitize settings against whitelist schema.
      *
-     * @param array<string, mixed> $input
-     * @param string $documentType
-     * @param string $paperFormat
+     * @param  array<string, mixed>  $input
      * @return array<string, mixed>
      */
     public function validateSettings(array $input, string $documentType, string $paperFormat): array
@@ -237,11 +233,6 @@ class PrintTemplateService
 
     /**
      * Get the effective template model or fallback to safe defaults.
-     *
-     * @param string $documentType
-     * @param string $paperFormat
-     * @param int|null $templateId
-     * @return PrintTemplate
      */
     public function getEffectiveTemplate(string $documentType, string $paperFormat, ?int $templateId = null): PrintTemplate
     {
@@ -296,7 +287,7 @@ class PrintTemplateService
                     ->default()
                     ->exists();
 
-                if (!$exists) {
+                if (! $exists) {
                     PrintTemplate::create([
                         'document_type' => $docType,
                         'paper_format' => $format,
@@ -317,8 +308,6 @@ class PrintTemplateService
      * Generate representative sample data for live preview.
      * ZERO database mutations, strictly read-only and memory-bound.
      *
-     * @param string $documentType
-     * @param string $paperFormat
      * @return array<string, mixed>
      */
     public function getPreviewSampleData(string $documentType, string $paperFormat): array
@@ -636,11 +625,11 @@ class PrintTemplateService
      */
     protected function assertSupported(string $documentType, string $paperFormat): void
     {
-        if (!in_array($documentType, self::SUPPORTED_DOCUMENTS, true)) {
+        if (! in_array($documentType, self::SUPPORTED_DOCUMENTS, true)) {
             throw new InvalidArgumentException("Invalid document type: {$documentType}");
         }
 
-        if (!in_array($paperFormat, self::SUPPORTED_FORMATS, true)) {
+        if (! in_array($paperFormat, self::SUPPORTED_FORMATS, true)) {
             throw new InvalidArgumentException("Invalid paper format: {$paperFormat}");
         }
     }
@@ -723,6 +712,7 @@ class PrintTemplateService
         // Strip script and style tags along with their contents
         $withoutExecutableBlocks = preg_replace('/<(script|style)\b[^>]*>(.*?)<\/\1>/is', '', $input) ?? $input;
         $clean = trim(strip_tags($withoutExecutableBlocks));
+
         return mb_substr($clean, 0, $maxLength, 'UTF-8');
     }
 

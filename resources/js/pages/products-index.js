@@ -193,15 +193,12 @@ export function initProductsIndex() {
 
     // Submit batch print form
     page.querySelectorAll('[data-action="submit-batch-print"]').forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', async () => {
             const autoPrint = btn.dataset.autoprint === 'true';
             const form = page.querySelector('#batchPrintForm');
             const container = page.querySelector('#batchFormHiddenInputs');
             const autoprintInput = page.querySelector('#batchFormAutoprint');
             if (!form || !container) return;
-
-            if (autoprintInput) autoprintInput.value = autoPrint ? '1' : '0';
-            container.innerHTML = '';
 
             const inputs = page.querySelectorAll('.batch-qty-input');
             if (inputs.length === 0) {
@@ -209,23 +206,62 @@ export function initProductsIndex() {
                 return;
             }
 
-            inputs.forEach(inp => {
-                const id = inp.dataset.id;
-                const qty = parseInt(inp.value, 10) || 1;
-                const hidden = document.createElement('input');
-                hidden.type = 'hidden';
-                hidden.name = `products[${id}]`;
-                hidden.value = qty;
-                container.appendChild(hidden);
-            });
+            if (autoPrint) {
+                // Direct Printing via Centralized Python Engine (Zero browser dialogs)
+                const itemsPayload = [];
+                inputs.forEach(inp => {
+                    const id = inp.dataset.id;
+                    const qty = parseInt(inp.value, 10) || 1;
+                    itemsPayload.push({ id: parseInt(id, 10), qty: qty });
+                });
 
-            form.submit();
-            closeBatchPrintModal();
+                closeBatchPrintModal();
+                showPrintToast(`جاري إرسال ${itemsPayload.length} أصناف للطباعة الفورية...`);
+
+                try {
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                    const response = await fetch('/products/direct-print/batch', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                            'Accept': 'application/json',
+                        },
+                        body: JSON.stringify({ items: itemsPayload }),
+                    });
+
+                    const data = await response.json();
+                    if (response.ok && data.success) {
+                        showPrintToast(`تم إرسال ${data.total_copies || itemsPayload.length} ملصق إلى طابعة الباركود بنجاح.`);
+                    } else {
+                        showPrintToast(`تعذر إرسال أمر الطباعة: ${data.message || 'خطأ غير محدد'}`);
+                    }
+                } catch (err) {
+                    showPrintToast('حدث خطأ في الاتصال بالخادم أثناء إرسال أمر الطباعة.');
+                }
+            } else {
+                // Browser Preview
+                if (autoprintInput) autoprintInput.value = '0';
+                container.innerHTML = '';
+
+                inputs.forEach(inp => {
+                    const id = inp.dataset.id;
+                    const qty = parseInt(inp.value, 10) || 1;
+                    const hidden = document.createElement('input');
+                    hidden.type = 'hidden';
+                    hidden.name = `products[${id}]`;
+                    hidden.value = qty;
+                    container.appendChild(hidden);
+                });
+
+                form.submit();
+                closeBatchPrintModal();
+            }
         });
     });
 
-    // Direct Printing from index row
-    page.addEventListener('click', (e) => {
+    // Direct Printing from index row via Centralized Python Engine
+    page.addEventListener('click', async (e) => {
         const printBtn = e.target.closest('[data-action="direct-print-row"]');
         if (printBtn) {
             e.preventDefault();
@@ -233,15 +269,38 @@ export function initProductsIndex() {
             const productId = printBtn.dataset.productId;
             if (!productId) return;
 
-            showPrintToast('جاري إرسال ملصق الصنف إلى الطابعة...');
-            const iframe = getOrCreatePrintIframe();
-            iframe.src = `/products/${productId}/print-label?quantity=1&autoprint=1`;
+            showPrintToast('جاري إرسال ملصق الصنف مباشرة إلى طابعة الباركود...');
+            printBtn.disabled = true;
+
+            try {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                const response = await fetch(`/products/${productId}/direct-print`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({ quantity: 1 }),
+                });
+
+                const data = await response.json();
+                if (response.ok && data.success) {
+                    showPrintToast(`تم إرسال الملصق بنجاح إلى (${data.printer || 'طابعة الباركود'}).`);
+                } else {
+                    showPrintToast(`تعذر إرسال أمر الطباعة: ${data.message || 'خطأ غير محدد'}`);
+                }
+            } catch (err) {
+                showPrintToast('حدث خطأ في الاتصال بالخادم أثناء إرسال أمر الطباعة.');
+            } finally {
+                printBtn.disabled = false;
+            }
         }
     });
 
-    // Direct Batch Print buttons (both in control panel and floating bar)
+    // Direct Batch Print buttons (both in control panel and floating bar) via Centralized Python Engine
     document.querySelectorAll('[data-action="direct-print-batch"]').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        btn.addEventListener('click', async (e) => {
             e.preventDefault();
             const selected = getSelectedCheckboxes();
             if (selected.length === 0) {
@@ -251,15 +310,32 @@ export function initProductsIndex() {
 
             const ids = selected.map(cb => cb.dataset.id).filter(Boolean);
             showPrintToast(`جاري إرسال ${ids.length} أصناف للطباعة الفورية...`);
+            btn.disabled = true;
 
-            const iframe = getOrCreatePrintIframe();
-            const params = new URLSearchParams();
-            params.set('autoprint', '1');
-            ids.forEach(id => {
-                params.set(`products[${id}]`, '1');
-            });
+            try {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                const itemsPayload = ids.map(id => ({ id: parseInt(id, 10), qty: 1 }));
+                const response = await fetch('/products/direct-print/batch', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({ items: itemsPayload }),
+                });
 
-            iframe.src = '/products/print-labels/batch?' + params.toString();
+                const data = await response.json();
+                if (response.ok && data.success) {
+                    showPrintToast(`تم إرسال ${data.total_copies || ids.length} ملصق إلى طابعة الباركود بنجاح.`);
+                } else {
+                    showPrintToast(`تعذر إرسال أمر الطباعة: ${data.message || 'خطأ غير محدد'}`);
+                }
+            } catch (err) {
+                showPrintToast('حدث خطأ في الاتصال بالخادم أثناء إرسال أمر الطباعة.');
+            } finally {
+                btn.disabled = false;
+            }
         });
     });
 
@@ -278,18 +354,17 @@ export function initProductsIndex() {
             }
         });
     }
-}
 
-function getOrCreatePrintIframe() {
-    let iframe = document.getElementById('directPrintIframe');
-    if (!iframe) {
-        iframe = document.createElement('iframe');
-        iframe.id = 'directPrintIframe';
-        iframe.name = 'directPrintIframe';
-        iframe.classList.add('direct-print-iframe');
-        document.body.appendChild(iframe);
+    // Per Page Selector Handling
+    const perPageSelect = page.querySelector('[data-action="change-per-page"]');
+    if (perPageSelect) {
+        perPageSelect.addEventListener('change', () => {
+            const url = new URL(window.location.href);
+            url.searchParams.set('per_page', perPageSelect.value);
+            url.searchParams.delete('page');
+            window.location.href = url.toString();
+        });
     }
-    return iframe;
 }
 
 export function showPrintToast(msg) {

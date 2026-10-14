@@ -1,8 +1,9 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl" data-size="{{ $size ?? '38x25' }}" data-orientation="{{ $orientation ?? '0' }}">
+<html lang="ar" dir="rtl" data-size="{{ $size ?? '38x25' }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $title ?? 'طباعة ملصقات الباركود - كيان ERP' }}</title>
     
     <!-- Fonts -->
@@ -12,7 +13,7 @@
 
     @vite(['resources/css/print/thermal-label.css', 'resources/js/pages/print-label.js'])
 </head>
-<body data-size="{{ $size ?? '38x25' }}" data-orientation="{{ $orientation ?? '0' }}" data-auto-print="{{ !empty($autoPrint) ? 'true' : 'false' }}">
+<body data-size="{{ $size ?? '38x25' }}" data-width-mm="{{ $widthMm }}" data-height-mm="{{ $heightMm }}" data-auto-print="{{ !empty($autoPrint) ? 'true' : 'false' }}">
 
     <!-- SCREEN-ONLY CONTROL TOOLBAR -->
     <header class="preview-toolbar no-print">
@@ -22,27 +23,26 @@
                 <span>طباعة ملصقات الباركود</span>
             </span>
             <span class="preview-badge preview-badge-primary">
-                @if(($orientation ?? '0') === '90')
-                    <span>المقاس: {{ $heightMm ?? 15 }}×{{ $widthMm ?? 38 }} مم (بالعرض 90°)</span>
-                @elseif(($orientation ?? '0') === '270')
-                    <span>المقاس: {{ $heightMm ?? 15 }}×{{ $widthMm ?? 38 }} مم (بالعرض 270°)</span>
-                @else
-                    <span>المقاس: {{ $widthMm ?? 38 }}×{{ $heightMm ?? 25 }} مم (أفقي 0°)</span>
-                @endif
+                <span>المقاس: {{ $widthMm }}×{{ $heightMm }} مم ({{ $barcodeSettings->printer_name ?? 'طابعة الباركود' }})</span>
             </span>
             <div class="preview-btn-group">
-                <a href="{{ request()->fullUrlWithQuery(['size' => '38x25', 'orientation' => '0']) }}" class="btn {{ (($size ?? '38x25') === '38x25' && ($orientation ?? '0') === '0') ? 'btn-primary' : 'btn-secondary' }} btn-preset-size">
-                    38×25 مم (أفقي 0°)
+                @php
+                    $dbSize = ($barcodeSettings->label_width_mm ?? 38) . 'x' . ($barcodeSettings->label_height_mm ?? 15);
+                    $currentSize = $size ?? $dbSize;
+                @endphp
+                <a href="{{ request()->fullUrlWithQuery(['size' => $dbSize]) }}" class="btn {{ $currentSize === $dbSize ? 'btn-primary' : 'btn-secondary' }} btn-preset-size">
+                    المقاس من الإعدادات ({{ $barcodeSettings->label_width_mm ?? 38 }}×{{ $barcodeSettings->label_height_mm ?? 15 }} مم)
                 </a>
-                <a href="{{ request()->fullUrlWithQuery(['size' => '38x15', 'orientation' => '0']) }}" class="btn {{ (($size ?? '38x25') === '38x15' && ($orientation ?? '0') === '0') ? 'btn-primary' : 'btn-secondary' }} btn-preset-size">
-                    38×15 مم (أفقي 0°)
+                @if($dbSize !== '38x25')
+                <a href="{{ request()->fullUrlWithQuery(['size' => '38x25']) }}" class="btn {{ $currentSize === '38x25' ? 'btn-primary' : 'btn-secondary' }} btn-preset-size">
+                    38×25 مم
                 </a>
-                <a href="{{ request()->fullUrlWithQuery(['size' => '38x15', 'orientation' => '90']) }}" class="btn {{ (($size ?? '38x25') === '38x15' && ($orientation ?? '0') === '90') ? 'btn-primary' : 'btn-secondary' }} btn-preset-size" title="طباعة بالعرض للاستيكرات الرفيعة">
-                    38×15 مم بالعرض (90°)
+                @endif
+                @if($dbSize !== '38x15')
+                <a href="{{ request()->fullUrlWithQuery(['size' => '38x15']) }}" class="btn {{ $currentSize === '38x15' ? 'btn-primary' : 'btn-secondary' }} btn-preset-size">
+                    38×15 مم
                 </a>
-                <a href="{{ request()->fullUrlWithQuery(['size' => '38x15', 'orientation' => '270']) }}" class="btn {{ (($size ?? '38x25') === '38x15' && ($orientation ?? '0') === '270') ? 'btn-primary' : 'btn-secondary' }} btn-preset-size">
-                    38×15 مم بالعرض (270°)
-                </a>
+                @endif
                 <a href="{{ route('settings.index', ['tab' => 'barcode']) }}" class="btn btn-secondary btn-preset-settings" title="تعديل مقاسات وإعدادات الباركود">
                     <x-icon name="settings" size="13" />
                     <span>إعدادات المقاسات</span>
@@ -57,9 +57,34 @@
         </div>
 
         <div class="preview-actions">
-            <button type="button" data-action="print-now" class="btn btn-primary btn-inline-icon" id="printButton">
+            @php
+                $isSingle = count($items) === 1 && isset($items[0]['product']);
+                $directUrl = $isSingle 
+                    ? route('products.direct-print', $items[0]['product']) 
+                    : route('products.direct-print-batch');
+                $itemsJson = json_encode(array_values(array_map(function($item) {
+                    return [
+                        'id' => (int) $item['product']->id,
+                        'qty' => (int) $item['quantity'],
+                    ];
+                }, $items)));
+            @endphp
+            <button type="button" 
+                    data-action="direct-thermal-print" 
+                    data-url="{{ $directUrl }}" 
+                    data-is-batch="{{ $isSingle ? '0' : '1' }}"
+                    data-items="{{ $itemsJson }}"
+                    data-quantity="{{ $totalQuantity }}"
+                    data-size="{{ $currentSize }}"
+                    class="btn btn-primary btn-inline-icon" 
+                    id="directPrintButton"
+                    title="إرسال مباشر إلى طابعة الباركود الحرارية بدون نوافذ المتصفح">
                 <x-icon name="printer" size="16" />
-                <span>طباعة الآن</span>
+                <span>طباعة حرارية فورية ({{ $totalQuantity }} ملصق)</span>
+            </button>
+            <button type="button" data-action="print-now" class="btn btn-secondary btn-inline-icon" id="printButton" title="طباعة عبر المتصفح كخيار بديل">
+                <x-icon name="printer" size="14" />
+                <span>طباعة عبر المتصفح</span>
             </button>
             <button type="button" data-action="close-window" class="btn btn-secondary btn-inline-icon">
                 <x-icon name="x" size="14" />
@@ -75,11 +100,7 @@
                 <x-icon name="info" size="14" />
                 <span>نصيحة للطباعة:</span>
             </span>
-            @if(($orientation ?? '0') === '90' || ($orientation ?? '0') === '270')
-                <span>في نافذة الطابعة، اختر طابعة <strong>Xprinter XP-233B</strong> بمقاس <strong>{{ $heightMm ?? 15 }}x{{ $widthMm ?? 38 }}mm</strong> والهوامش على <strong>None (بدون هوامش)</strong>.</span>
-            @else
-                <span>في نافذة الطابعة، اختر طابعة <strong>Xprinter XP-233B</strong> بمقاس <strong>{{ $widthMm ?? 38 }}x{{ $heightMm ?? 25 }}mm</strong> والهوامش على <strong>None (بدون هوامش)</strong>.</span>
-            @endif
+            <span>في نافذة الطابعة، اختر طابعة <strong>{{ $barcodeSettings->printer_name ?? 'Xprinter XP-233B' }}</strong> بمقاس <strong>{{ $widthMm }}x{{ $heightMm }}mm</strong> والهوامش على <strong>None (بدون هوامش)</strong>.</span>
         </div>
         <button type="button" data-action="dismiss-tip" class="preview-tips-close" title="إغلاق التنبيه">
             <x-icon name="x" size="14" />
@@ -103,6 +124,12 @@
             @endforeach
         </div>
     </main>
+
+    <!-- Toast Notification for Direct Print Feedback -->
+    <div id="printNotificationToast" class="erp-toast hidden">
+        <span class="erp-toast-icon"><x-icon name="printer" size="18" /></span>
+        <span id="printToastMessage" class="erp-toast-message">جاري إرسال الملصقات للطباعة...</span>
+    </div>
 
 </body>
 </html>

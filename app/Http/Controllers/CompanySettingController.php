@@ -129,11 +129,10 @@ class CompanySettingController extends Controller
             'label_height_mm' => ['required', 'integer', 'min:10', 'max:150'],
             'barcode_width_px' => ['required', 'integer', 'min:50', 'max:1000'],
             'barcode_height_px' => ['required', 'integer', 'min:15', 'max:300'],
-            'product_font_size' => ['required', 'integer', 'min:8', 'max:30'],
-            'details_font_size' => ['required', 'integer', 'min:6', 'max:24'],
+            'product_font_size' => ['required', 'integer', 'min:8', 'max:36'],
+            'details_font_size' => ['required', 'integer', 'min:6', 'max:28'],
             'company_name_override' => ['nullable', 'string', 'max:255'],
             'print_price_type' => ['required', 'string', 'in:none,retail,wholesale,both'],
-            'print_orientation' => ['required', 'string', 'in:0,90,270'],
         ], [
             'barcode_prefix.required' => 'بادئة الباركود مطلوبة.',
             'printer_name.required' => 'اسم الطابعة مطلوب.',
@@ -146,8 +145,6 @@ class CompanySettingController extends Controller
             'product_font_size.required' => 'حجم خط اسم المنتج مطلوب.',
             'details_font_size.required' => 'حجم خط تفاصيل الباركود مطلوب.',
             'print_price_type.in' => 'خيار طباعة السعر غير صالح.',
-            'print_orientation.required' => 'اتجاه طباعة الباركود مطلوب.',
-            'print_orientation.in' => 'اتجاه الطباعة المختار غير صالح.',
         ]);
 
         $validated['show_company_name'] = $request->boolean('show_company_name');

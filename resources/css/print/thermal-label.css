@@ -19,27 +19,9 @@
     --label-height: 15mm;
 }
 
-[data-size="38x25"][data-orientation="90"],
-[data-size="38x25"][data-orientation="270"] {
-    --label-width: 25mm;
-    --label-height: 38mm;
-}
-
-[data-size="38x15"][data-orientation="90"],
-[data-size="38x15"][data-orientation="270"] {
-    --label-width: 15mm;
-    --label-height: 38mm;
-}
-
 [data-size="40x20"] {
     --label-width: 40mm;
     --label-height: 20mm;
-}
-
-[data-size="40x20"][data-orientation="90"],
-[data-size="40x20"][data-orientation="270"] {
-    --label-width: 20mm;
-    --label-height: 40mm;
 }
 
 [data-size="50x25"] {
@@ -47,21 +29,9 @@
     --label-height: 25mm;
 }
 
-[data-size="50x25"][data-orientation="90"],
-[data-size="50x25"][data-orientation="270"] {
-    --label-width: 25mm;
-    --label-height: 50mm;
-}
-
 [data-size="50x30"] {
     --label-width: 50mm;
     --label-height: 30mm;
-}
-
-[data-size="50x30"][data-orientation="90"],
-[data-size="50x30"][data-orientation="270"] {
-    --label-width: 30mm;
-    --label-height: 50mm;
 }
 
 @page {
@@ -323,6 +293,50 @@ body {
     display: block;
 }
 
+/* Toast Notification on Print Label Screen */
+.erp-toast {
+    position: fixed;
+    bottom: 24px;
+    left: 24px;
+    z-index: 99999;
+    background-color: #0f172a;
+    color: #ffffff;
+    padding: 12px 20px;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+    font-size: 13.5px;
+    font-weight: 600;
+    display: none;
+    align-items: center;
+    gap: 10px;
+    animation: toastSlideUp 0.2s ease;
+}
+
+.erp-toast.hidden {
+    display: none !important;
+}
+
+.erp-toast-icon {
+    font-size: 18px;
+    line-height: 1;
+}
+
+.erp-toast-message {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+@keyframes toastSlideUp {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 /* Print Overrides */
 @media print {
     *, *::before, *::after {
@@ -380,6 +394,12 @@ body {
         align-items: center !important;
         justify-content: center !important;
         background: #ffffff !important;
+    }
+
+    .label-card-preview:last-child .thermal-label,
+    .thermal-label:last-child {
+        page-break-after: auto !important;
+        break-after: auto !important;
     }
 
     .thermal-label svg {

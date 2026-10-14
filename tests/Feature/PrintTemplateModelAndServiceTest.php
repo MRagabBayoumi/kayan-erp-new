@@ -2,8 +2,8 @@
 
 use App\Models\PrintTemplate;
 use App\Models\Product;
-use App\Models\StockMovement;
 use App\Models\PurchaseInvoice;
+use App\Models\StockMovement;
 use App\Services\PrintTemplateService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;

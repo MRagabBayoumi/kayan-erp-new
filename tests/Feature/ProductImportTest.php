@@ -2,6 +2,8 @@
 
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\Warehouse;
+use App\Services\ProductImportService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 
@@ -160,4 +162,101 @@ test('confirming import inserts new records, updates existing records, and creat
 
     // Session review data is cleared
     expect(session('import_review_data'))->toBeNull();
+});
+
+test('import parses float and decimal numbers with commas, currency, and Arabic numerals accurately', function () {
+    $service = app(ProductImportService::class);
+
+    expect($service->parseDecimal('160.50'))->toBe(160.50)
+        ->and($service->parseDecimal('160,50'))->toBe(160.50)
+        ->and($service->parseDecimal('١٦٠.٥٠'))->toBe(160.50)
+        ->and($service->parseDecimal('١٦٠،٥٠'))->toBe(160.50)
+        ->and($service->parseDecimal('160٫50'))->toBe(160.50)
+        ->and($service->parseDecimal(' 160.50 ج.م '))->toBe(160.50)
+        ->and($service->parseDecimal('1,250.75'))->toBe(1250.75)
+        ->and($service->parseDecimal('1.250,75'))->toBe(1250.75)
+        ->and($service->parseDecimal('0.00'))->toBe(0.0)
+        ->and($service->parseDecimal(''))->toBeNull();
+
+    // Now test auditing a CSV containing floats with commas and decimals
+    $csvData = "\xEF\xBB\xBF"."كود الصنف,اسم المنتج,التصنيف,الباركود,سعر التكلفة,سعر الجملة,سعر التجزئة,سعر الموزع,الوحدة,عدد القطع في الطرد,حد الطلب\n"
+        ."KY-DEC-01,منتج عشري فاخر,أصناف حديثة,6900000001,160.50,\"220,50\",300.75,190.25,دستة,12,5\n";
+
+    $file = UploadedFile::fake()->createWithContent('products_decimal.csv', $csvData);
+
+    $response = $this->post(route('products.import.review'), [
+        'import_file' => $file,
+    ]);
+
+    $response->assertStatus(200);
+    $reviewData = session('import_review_data');
+    expect($reviewData['stats']['invalid_count'])->toBe(0)
+        ->and($reviewData['stats']['new_count'])->toBe(1);
+
+    $row = $reviewData['rows'][0];
+    expect($row['cost_price'])->toBe(160.50)
+        ->and($row['wholesale_price'])->toBe(220.50)
+        ->and($row['retail_price'])->toBe(300.75)
+        ->and($row['distributor_price'])->toBe(190.25)
+        ->and($row['pieces_per_package'])->toBe(12);
+});
+
+test('import captures full form inputs including distributor price, pieces per package, and opening stock FIFO batch', function () {
+    $warehouse = Warehouse::create([
+        'name' => 'مستودع العبور الرئيسي',
+        'code' => 'WH-OB-01',
+        'is_default' => true,
+        'is_active' => true,
+    ]);
+
+    $csvData = "\xEF\xBB\xBF"."كود الصنف,اسم المنتج,التصنيف,الباركود,سعر التكلفة,سعر الجملة,سعر التجزئة,سعر الموزع,وحدة القياس,عدد القطع في الطرد,حد الطلب الأدنى,الكمية الافتتاحية,تكلفة الرصيد الافتتاحي,المستودع المستلم,تاريخ الرصيد الافتتاحي\n"
+        ."KY-FULL-01,طقم إكسسوارات كامل,أطقم,695554443332,45.50,75.00,110.00,65.00,طقم,6,10,25.00,45.50,مستودع العبور الرئيسي,2026-10-14\n";
+
+    $file = UploadedFile::fake()->createWithContent('products_full.csv', $csvData);
+
+    // 1. Review
+    $response = $this->post(route('products.import.review'), [
+        'import_file' => $file,
+    ]);
+
+    $response->assertStatus(200);
+    $reviewData = session('import_review_data');
+    expect($reviewData['stats']['new_count'])->toBe(1)
+        ->and($reviewData['rows'][0]['opening_quantity'])->toBe(25.00)
+        ->and($reviewData['rows'][0]['distributor_price'])->toBe(65.00)
+        ->and($reviewData['rows'][0]['pieces_per_package'])->toBe(6);
+
+    // 2. Confirm
+    $confirmResponse = $this->post(route('products.import.confirm'), [
+        'update_existing' => '1',
+        'create_categories' => '1',
+    ]);
+
+    $confirmResponse->assertRedirect(route('products.index'));
+
+    // Assert product exists with all fields
+    $product = Product::where('sku', 'KY-FULL-01')->first();
+    expect($product)->not->toBeNull()
+        ->and((float) $product->cost_price)->toBe(45.50)
+        ->and((float) $product->distributor_price)->toBe(65.00)
+        ->and($product->pieces_per_package)->toBe(6)
+        ->and((float) $product->opening_quantity)->toBe(25.00)
+        ->and((float) $product->opening_cost)->toBe(45.50)
+        ->and($product->opening_warehouse_id)->toBe($warehouse->id);
+
+    // Assert inventory FIFO batch and stock movement were automatically created
+    $this->assertDatabaseHas('inventory_batches', [
+        'product_id' => $product->id,
+        'warehouse_id' => $warehouse->id,
+        'initial_quantity' => 25.00,
+        'remaining_quantity' => 25.00,
+        'cost_price' => 45.50,
+    ]);
+
+    $this->assertDatabaseHas('stock_movements', [
+        'product_id' => $product->id,
+        'to_warehouse_id' => $warehouse->id,
+        'quantity' => 25.00,
+        'reference_type' => 'opening_balance',
+    ]);
 });

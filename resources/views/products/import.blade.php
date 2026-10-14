@@ -118,9 +118,10 @@
                             <li><strong>اسم المنتج:</strong> إلزامي بالعربية.</li>
                             <li><strong>التصنيف:</strong> اختياري (يُنشأ تلقائياً إن لم يوجد).</li>
                             <li><strong>الباركود:</strong> اختياري (يدعم ماسحات الباركود).</li>
-                            <li><strong>الأسعار:</strong> سعر التكلفة، سعر الجملة، وسعر التجزئة.</li>
-                            <li><strong>وحدة القياس:</strong> قطعة، دستة، كرتونة، ...</li>
-                            <li><strong>حد الطلب الأدنى:</strong> رقم صحيح غير سالب.</li>
+                            <li><strong>الأسعار:</strong> التكلفة، الجملة، القطاعي، وسعر الموزع (يدعم الأرقام العشرية بالفاصلة أو النقطة).</li>
+                            <li><strong>المواصفات:</strong> وحدة القياس وعدد القطع في الطرد / الكرتونة.</li>
+                            <li><strong>حد الطلب الأدنى:</strong> رقم صحيح لتنبيه النواقص.</li>
+                            <li><strong>الرصيد الافتتاحي:</strong> كمية أول المدة، تكلفة الرصيد، واسم المستودع المستلم (لتسجيل FIFO آلياً).</li>
                         </ul>
                     </div>
                 </div>
@@ -221,10 +222,14 @@
                             <th>اسم المنتج</th>
                             <th class="w-[120px]">التصنيف</th>
                             <th class="w-[140px]">الباركود</th>
-                            <th class="w-[90px] text-left">التكلفة</th>
-                            <th class="w-[130px] text-left">سعر الجملة</th>
-                            <th class="w-[90px] text-left">التجزئة</th>
-                            <th class="w-[70px] text-center">الوحدة</th>
+                            <th class="w-[85px] text-left">التكلفة</th>
+                            <th class="w-[95px] text-left">الجملة</th>
+                            <th class="w-[85px] text-left">التجزئة</th>
+                            <th class="w-[85px] text-left">الموزع</th>
+                            <th class="w-[60px] text-center">الوحدة</th>
+                            <th class="w-[60px] text-center">التعبئة</th>
+                            <th class="w-[90px] text-center">رصيد أولي</th>
+                            <th class="w-[110px]">المستودع</th>
                             <th>المطابقة وملاحظات التدقيق</th>
                         </tr>
                     </thead>
@@ -301,9 +306,41 @@
                                     {{ number_format((float)$row['retail_price'], 2) }}
                                 </td>
 
+                                <!-- Distributor Price -->
+                                <td class="text-left font-numeric">
+                                    @if($row['distributor_price'] !== null)
+                                        <span>{{ number_format((float)$row['distributor_price'], 2) }}</span>
+                                    @else
+                                        <span class="text-[var(--text-light)] text-[11px]">—</span>
+                                    @endif
+                                </td>
+
                                 <!-- Unit -->
                                 <td class="text-center">
                                     <span class="text-[11px] text-[var(--text-muted)]">{{ $row['unit'] }}</span>
+                                </td>
+
+                                <!-- Pieces Per Package -->
+                                <td class="text-center font-numeric">
+                                    @if(!empty($row['pieces_per_package']))
+                                        <span class="text-xs">{{ $row['pieces_per_package'] }}</span>
+                                    @else
+                                        <span class="text-[var(--text-light)] text-[11px]">—</span>
+                                    @endif
+                                </td>
+
+                                <!-- Opening Stock -->
+                                <td class="text-center font-numeric">
+                                    @if(!empty($row['opening_quantity']) && (float)$row['opening_quantity'] > 0)
+                                        <span class="erp-badge erp-badge-info text-[11px] font-bold">{{ number_format((float)$row['opening_quantity'], 2) }}</span>
+                                    @else
+                                        <span class="text-[var(--text-light)] text-[11px]">0.00</span>
+                                    @endif
+                                </td>
+
+                                <!-- Warehouse -->
+                                <td>
+                                    <span class="text-xs text-[var(--text-muted)]">{{ $row['opening_warehouse_name'] ?? '—' }}</span>
                                 </td>
 
                                 <!-- Audit Notes -->

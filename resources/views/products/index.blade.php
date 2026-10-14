@@ -238,7 +238,7 @@
                                     <!-- Actions -->
                                     <td class="text-center">
                                         <div class="flex items-center justify-center gap-1">
-                                            <button type="button" class="erp-btn erp-btn-ghost erp-btn-icon" title="طباعة فورية للملصق (38×15 مم) بدون نوافذ" data-action="direct-print-row" data-product-id="{{ $product->id }}">
+                                            <button type="button" class="erp-btn erp-btn-ghost erp-btn-icon" title="طباعة فورية للملصق ({{ (int) ($barcodeSettings->label_width_mm ?? 38) }}×{{ (int) ($barcodeSettings->label_height_mm ?? 15) }} مم) بدون نوافذ" data-action="direct-print-row" data-product-id="{{ $product->id }}">
                                                 <x-icon name="printer" size="15" />
                                             </button>
                                             <a href="{{ route('products.show', $product) }}" class="erp-btn erp-btn-ghost erp-btn-icon" title="عرض تفاصيل الصنف">
@@ -262,17 +262,39 @@
                     </table>
                 </div>
 
-                <!-- Pagination -->
-                @if($products->hasPages())
-                    <div class="py-3 px-4 border-t border-[var(--border-color)] flex items-center justify-between">
-                        <div class="text-xs text-[var(--text-muted)] font-numeric">
-                            عرض {{ $products->firstItem() }} إلى {{ $products->lastItem() }} من إجمالي {{ $products->total() }} صنف
-                        </div>
-                        <div>
-                            {{ $products->links() }}
+                <!-- Table Footer & Pagination -->
+                <div class="erp-table-footer">
+                    <div class="erp-table-footer-info">
+                        <span class="font-numeric">
+                            @if($products->total() > 0)
+                                عرض <strong>{{ $products->firstItem() }}</strong> إلى <strong>{{ $products->lastItem() }}</strong> من إجمالي <strong>{{ $products->total() }}</strong> صنف
+                            @else
+                                لا توجد أصناف مسجلة
+                            @endif
+                        </span>
+                        @if($products->lastPage() > 1)
+                            <span class="text-[var(--text-muted)] opacity-40">•</span>
+                            <span>
+                                صفحة <strong class="font-numeric">{{ $products->currentPage() }}</strong> من <strong class="font-numeric">{{ $products->lastPage() }}</strong>
+                            </span>
+                        @endif
+                        <span class="text-[var(--text-muted)] opacity-40">•</span>
+                        <div class="inline-flex items-center gap-1.5">
+                            <label for="perPageSelect" class="text-xs text-[var(--text-muted)]">لكل صفحة:</label>
+                            <select id="perPageSelect" class="erp-per-page-select font-numeric" data-action="change-per-page">
+                                <option value="10" {{ ($currentPerPage ?? 15) == 10 ? 'selected' : '' }}>10</option>
+                                <option value="15" {{ ($currentPerPage ?? 15) == 15 ? 'selected' : '' }}>15</option>
+                                <option value="25" {{ ($currentPerPage ?? 15) == 25 ? 'selected' : '' }}>25</option>
+                                <option value="50" {{ ($currentPerPage ?? 15) == 50 ? 'selected' : '' }}>50</option>
+                                <option value="100" {{ ($currentPerPage ?? 15) == 100 ? 'selected' : '' }}>100</option>
+                            </select>
                         </div>
                     </div>
-                @endif
+
+                    <div class="erp-table-footer-controls">
+                        {{ $products->links() }}
+                    </div>
+                </div>
             @endif
         </div>
 
@@ -285,7 +307,7 @@
                     <span>صنف</span>
                 </span>
                 <span class="text-xs text-[var(--text-muted)]">
-                    جاهز لطباعة ملصقات الباركود على طابعة <strong>Xprinter XP-233B</strong> (38×15 مم)
+                    جاهز لطباعة ملصقات الباركود على طابعة <strong>{{ $barcodeSettings->printer_name ?: 'طابعة الباركود' }}</strong> ({{ (int) ($barcodeSettings->label_width_mm ?? 38) }}×{{ (int) ($barcodeSettings->label_height_mm ?? 15) }} مم)
                 </span>
             </div>
             <div class="flex items-center gap-2">
@@ -311,7 +333,7 @@
                 <div class="erp-card-header erp-modal-header">
                     <div class="erp-card-title erp-modal-title">
                         <x-icon name="printer" size="18" />
-                        <span>طباعة ملصقات الباركود للمنتجات المحددة (38×15 مم)</span>
+                        <span>طباعة ملصقات الباركود للمنتجات المحددة ({{ (int) ($barcodeSettings->label_width_mm ?? 38) }}×{{ (int) ($barcodeSettings->label_height_mm ?? 15) }} مم)</span>
                     </div>
                     <button type="button" data-action="close-batch-modal" class="erp-btn erp-btn-ghost erp-btn-icon erp-modal-close" title="إغلاق">
                         <x-icon name="x" size="16" />
@@ -366,21 +388,18 @@
                         <button type="button" data-action="close-batch-modal" class="erp-btn erp-btn-secondary">
                             <span>إلغاء</span>
                         </button>
-                        <button type="button" data-action="submit-batch-print" data-autoprint="false" class="erp-btn erp-btn-secondary" title="فتح المعاينة لجميع الملصقات">
-                            <x-icon name="eye" size="16" />
-                            <span>معاينة الطباعة</span>
-                        </button>
-                        <button type="button" data-action="submit-batch-print" data-autoprint="true" class="erp-btn erp-btn-primary">
+                        <button type="button" data-action="submit-batch-print" data-autoprint="true" class="erp-btn erp-btn-primary" title="طباعة فورية مباشرة لجميع الملصقات على طابعة الباركود">
                             <x-icon name="printer" size="16" />
-                            <span>طباعة الكل الآن</span>
+                            <span>طباعة فورية للطابعة</span>
+                        </button>
+                        <button type="button" data-action="submit-batch-print" data-autoprint="false" class="erp-btn erp-btn-secondary" title="فتح المعاينة في نافذة جديدة بالمتصفح">
+                            <x-icon name="eye" size="16" />
+                            <span>معاينة في المتصفح</span>
                         </button>
                     </div>
                 </div>
             </div>
         </div>
-
-        <!-- Hidden Iframe for Direct Silent Printing -->
-        <iframe id="directPrintIframe" name="directPrintIframe" class="hidden"></iframe>
 
         <x-barcode-scanner-modal target-input-id="productSearchInput" />
 

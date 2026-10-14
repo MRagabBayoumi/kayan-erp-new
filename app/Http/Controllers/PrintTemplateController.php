@@ -22,11 +22,11 @@ class PrintTemplateController extends Controller
         $paperFormat = $request->query('paper_format', PrintTemplate::FORMAT_A4);
         $templateId = $request->query('template_id') ? (int) $request->query('template_id') : null;
 
-        if (!in_array($docType, PrintTemplateService::SUPPORTED_DOCUMENTS, true)) {
+        if (! in_array($docType, PrintTemplateService::SUPPORTED_DOCUMENTS, true)) {
             $docType = PrintTemplate::DOC_SALES_INVOICE;
         }
 
-        if (!in_array($paperFormat, PrintTemplateService::SUPPORTED_FORMATS, true)) {
+        if (! in_array($paperFormat, PrintTemplateService::SUPPORTED_FORMATS, true)) {
             $paperFormat = PrintTemplate::FORMAT_A4;
         }
 
@@ -73,7 +73,7 @@ class PrintTemplateController extends Controller
 
         $isDefault = (bool) ($validatedData['is_default'] ?? $template->is_default);
 
-        if ($isDefault && !$template->is_default) {
+        if ($isDefault && ! $template->is_default) {
             // Unmark any existing default for this combination
             PrintTemplate::forDocument($template->document_type)
                 ->forFormat($template->paper_format)

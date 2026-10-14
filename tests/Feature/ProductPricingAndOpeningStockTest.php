@@ -7,7 +7,6 @@ use App\Models\StockBalance;
 use App\Models\StockMovement;
 use App\Models\Warehouse;
 use App\Services\InventoryService;
-use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);

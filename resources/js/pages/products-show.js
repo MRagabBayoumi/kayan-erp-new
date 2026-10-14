@@ -14,21 +14,38 @@ export function initProductShow() {
     const modalQtyInput = page.querySelector('#labelQuantity');
     const printModal = page.querySelector('#printBarcodeModal');
 
-    // 1. Direct Print from Show (handles both control-panel and card buttons)
+    // 1. Direct Print from Show via Centralized Python Engine (handles both control-panel and card buttons)
     document.querySelectorAll('[data-action="direct-print-show"]').forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', async () => {
             const qty = parseInt(showQtyInput ? showQtyInput.value : 1, 10) || 1;
             showPrintToast('جاري إرسال الملصق مباشرة إلى طابعة الباركود...');
 
-            let iframe = document.getElementById('directPrintIframe');
-            if (!iframe) {
-                iframe = document.createElement('iframe');
-                iframe.id = 'directPrintIframe';
-                iframe.name = 'directPrintIframe';
-                iframe.classList.add('direct-print-iframe');
-                document.body.appendChild(iframe);
+            const originalDisabled = btn.disabled;
+            btn.disabled = true;
+
+            try {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                const response = await fetch(`/products/${productId}/direct-print`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({ quantity: qty }),
+                });
+
+                const data = await response.json();
+                if (response.ok && data.success) {
+                    showPrintToast(`تم إرسال ${qty} ملصق إلى (${data.printer || 'طابعة الباركود'}) بنجاح.`);
+                } else {
+                    showPrintToast(`تعذر إرسال أمر الطباعة: ${data.message || 'خطأ غير محدد'}`);
+                }
+            } catch (err) {
+                showPrintToast('حدث خطأ في الاتصال بالخادم أثناء إرسال أمر الطباعة.');
+            } finally {
+                btn.disabled = originalDisabled;
             }
-            iframe.src = `/products/${productId}/print-label?quantity=${qty}&autoprint=1`;
         });
     });
 
@@ -98,17 +115,43 @@ export function initProductShow() {
         });
     });
 
-    // Open Print Preview / Window
-    page.querySelectorAll('[data-action="open-print-preview"]').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const autoPrint = btn.dataset.autoprint === 'true';
+    // Open Print Preview or Direct Print from Modal
+    page.querySelectorAll('[data-action="open-print-preview"], [data-action="submit-print-preview"]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const autoPrint = btn.dataset.autoPrint === 'true' || btn.dataset.autoprint === 'true';
             const qty = parseInt(modalQtyInput ? modalQtyInput.value : 1, 10) || 1;
-            let url = `/products/${productId}/print-label?quantity=${qty}`;
+
             if (autoPrint) {
-                url += '&autoprint=1';
+                // Direct Print via Centralized Python Engine (Zero browser dialogs)
+                closePrintModal();
+                showPrintToast(`جاري إرسال ${qty} ملصق مباشرة إلى طابعة الباركود...`);
+
+                try {
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                    const response = await fetch(`/products/${productId}/direct-print`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                            'Accept': 'application/json',
+                        },
+                        body: JSON.stringify({ quantity: qty }),
+                    });
+
+                    const data = await response.json();
+                    if (response.ok && data.success) {
+                        showPrintToast(`تم إرسال ${qty} ملصق إلى (${data.printer || 'طابعة الباركود'}) بنجاح.`);
+                    } else {
+                        showPrintToast(`تعذر إرسال أمر الطباعة: ${data.message || 'خطأ غير محدد'}`);
+                    }
+                } catch (err) {
+                    showPrintToast('حدث خطأ في الاتصال بالخادم أثناء إرسال أمر الطباعة.');
+                }
+            } else {
+                // Pure screen preview in new tab (without auto-print dialog)
+                window.open(`/products/${productId}/print-label?quantity=${qty}`, '_blank');
+                closePrintModal();
             }
-            window.open(url, '_blank');
-            closePrintModal();
         });
     });
 }
