@@ -116,11 +116,16 @@ SVG;
         ?int $heightMm = null,
         ?BarcodeSetting $settings = null,
         ?float $retailPrice = null,
-        ?float $wholesalePrice = null
+        ?float $wholesalePrice = null,
+        ?string $orientation = null
     ): string {
         $settings ??= BarcodeSetting::getSettings();
         $widthMm ??= (int) $settings->label_width_mm;
         $heightMm ??= (int) $settings->label_height_mm;
+        $orientation ??= (string) ($settings->print_orientation ?? '0');
+        if (! in_array($orientation, ['0', '90', '270'], true)) {
+            $orientation = '0';
+        }
 
         $code = trim($barcodeValue);
         if ($code === '') {
@@ -278,16 +283,36 @@ BARCODE;
         }
 
         $allTextsHtml = implode("\n    ", $textElements);
+        $innerElements = $allTextsHtml.($barcodeSvgGroup !== '' ? "\n".$barcodeSvgGroup : '');
+
+        if ($orientation === '90') {
+            $svgWidthMm = $heightMm;
+            $svgHeightMm = $widthMm;
+            $viewBoxWidth = $totalHeightPx;
+            $viewBoxHeight = $totalWidthPx;
+            $contentHtml = "    <g transform=\"rotate(90) translate(0, -{$totalHeightPx})\">\n        {$innerElements}\n    </g>";
+        } elseif ($orientation === '270') {
+            $svgWidthMm = $heightMm;
+            $svgHeightMm = $widthMm;
+            $viewBoxWidth = $totalHeightPx;
+            $viewBoxHeight = $totalWidthPx;
+            $contentHtml = "    <g transform=\"rotate(270) translate(-{$totalWidthPx}, 0)\">\n        {$innerElements}\n    </g>";
+        } else {
+            $svgWidthMm = $widthMm;
+            $svgHeightMm = $heightMm;
+            $viewBoxWidth = $totalWidthPx;
+            $viewBoxHeight = $totalHeightPx;
+            $contentHtml = "    {$innerElements}";
+        }
 
         return <<<SVG
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {$totalWidthPx} {$totalHeightPx}" width="{$widthMm}mm" height="{$heightMm}mm" preserveAspectRatio="none" shape-rendering="crispEdges">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {$viewBoxWidth} {$viewBoxHeight}" width="{$svgWidthMm}mm" height="{$svgHeightMm}mm" preserveAspectRatio="none" shape-rendering="crispEdges">
     <style>
         .comp-title { font-family: 'Cairo', 'Tahoma', Arial, sans-serif; font-weight: 700; fill: #1e293b; text-anchor: middle; direction: rtl; }
         .prod-title { font-family: 'Cairo', 'Tahoma', Arial, sans-serif; font-weight: 700; fill: #000000; text-anchor: middle; direction: rtl; }
         .item-sku { font-family: 'Cairo', 'Courier New', Arial, monospace; font-weight: 700; fill: #000000; text-anchor: middle; letter-spacing: 0.5px; }
     </style>
-    {$allTextsHtml}
-{$barcodeSvgGroup}
+{$contentHtml}
 </svg>
 SVG;
     }

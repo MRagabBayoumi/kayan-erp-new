@@ -59,6 +59,7 @@ export function initSettingsPage() {
         const inputBarcodeH = page.querySelector('#barcode_height_px') || page.querySelector('#barcodeHeight');
         const inputProdFont = page.querySelector('#product_font_size') || page.querySelector('#labelFontSize');
         const inputDetFont = page.querySelector('#details_font_size');
+        const inputOrientation = page.querySelector('#print_orientation');
 
         const cbCompany = page.querySelector('#show_company_name') || page.querySelector('#showCompanyName');
         const companyNameOverride = page.querySelector('#company_name_override');
@@ -82,6 +83,7 @@ export function initSettingsPage() {
             const heightMm = parseInt(inputHeight?.value || 25, 10);
             const prodFont = parseInt(inputProdFont?.value || 14, 10);
             const detFont = parseInt(inputDetFont?.value || 8, 10);
+            const orientation = inputOrientation?.value || '0';
 
             const showCompany = cbCompany?.checked ?? true;
             const companyName = companyNameOverride?.value || 'شركة كيان للتجارة والتوزيع';
@@ -93,10 +95,22 @@ export function initSettingsPage() {
             const priceChecked = page.querySelector('input[name="print_price_type"]:checked');
             if (priceChecked) priceType = priceChecked.value;
 
-            if (badge) badge.textContent = `${widthMm}×${heightMm} مم`;
+            if (badge) {
+                if (orientation === '90') {
+                    badge.textContent = `${heightMm}×${widthMm} مم (بالعرض 90°)`;
+                } else if (orientation === '270') {
+                    badge.textContent = `${heightMm}×${widthMm} مم (بالعرض 270°)`;
+                } else {
+                    badge.textContent = `${widthMm}×${heightMm} مم (أفقي 0°)`;
+                }
+            }
 
-            const frameWidthPx = 240;
-            const frameHeightPx = Math.round((heightMm / widthMm) * frameWidthPx);
+            let frameWidthPx = 240;
+            let frameHeightPx = Math.round((heightMm / widthMm) * frameWidthPx);
+            if (orientation === '90' || orientation === '270') {
+                frameWidthPx = 130;
+                frameHeightPx = Math.min(320, Math.round((widthMm / heightMm) * frameWidthPx));
+            }
             frame.style.width = frameWidthPx + 'px';
             frame.style.height = Math.max(75, frameHeightPx) + 'px';
 
@@ -150,7 +164,7 @@ export function initSettingsPage() {
 
         const previewFields = [
             inputWidth, inputHeight, inputBarcodeW, inputBarcodeH,
-            inputProdFont, inputDetFont, companyNameOverride,
+            inputProdFont, inputDetFont, inputOrientation, companyNameOverride,
             cbCompany, cbProdName, cbBarcodeBars, cbSku
         ];
 
@@ -179,6 +193,9 @@ export function initSettingsPage() {
                 if (inputBarcodeH) inputBarcodeH.value = btn.dataset.barH || 80;
                 if (inputProdFont) inputProdFont.value = btn.dataset.prodFont || 14;
                 if (inputDetFont) inputDetFont.value = btn.dataset.detFont || 8;
+                if (inputOrientation && btn.dataset.orientation !== undefined) {
+                    inputOrientation.value = btn.dataset.orientation;
+                }
                 updateLiveSticker();
             });
         });

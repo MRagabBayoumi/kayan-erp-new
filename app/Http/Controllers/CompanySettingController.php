@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\BarcodeSetting;
 use App\Models\CompanySetting;
+use App\Models\PrintTemplate;
+use App\Services\PrintTemplateService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -23,16 +25,16 @@ class CompanySettingController extends Controller
 
         $printTemplateData = [];
         if ($activeTab === 'print_templates') {
-            $service = app(\App\Services\PrintTemplateService::class);
-            $docType = request('doc_type', \App\Models\PrintTemplate::DOC_SALES_INVOICE);
-            $paperFormat = request('paper_format', \App\Models\PrintTemplate::FORMAT_A4);
+            $service = app(PrintTemplateService::class);
+            $docType = request('doc_type', PrintTemplate::DOC_SALES_INVOICE);
+            $paperFormat = request('paper_format', PrintTemplate::FORMAT_A4);
             $templateId = request('template_id') ? (int) request('template_id') : null;
 
-            if (!in_array($docType, \App\Services\PrintTemplateService::SUPPORTED_DOCUMENTS, true)) {
-                $docType = \App\Models\PrintTemplate::DOC_SALES_INVOICE;
+            if (! in_array($docType, PrintTemplateService::SUPPORTED_DOCUMENTS, true)) {
+                $docType = PrintTemplate::DOC_SALES_INVOICE;
             }
-            if (!in_array($paperFormat, \App\Services\PrintTemplateService::SUPPORTED_FORMATS, true)) {
-                $paperFormat = \App\Models\PrintTemplate::FORMAT_A4;
+            if (! in_array($paperFormat, PrintTemplateService::SUPPORTED_FORMATS, true)) {
+                $paperFormat = PrintTemplate::FORMAT_A4;
             }
 
             $printTemplateData = [
@@ -41,13 +43,13 @@ class CompanySettingController extends Controller
                 'currentTemplate' => $service->getEffectiveTemplate($docType, $paperFormat, $templateId),
                 'sampleData' => $service->getPreviewSampleData($docType, $paperFormat),
                 'defaults' => $service->getDefaultSettings($docType, $paperFormat),
-                'templatesList' => \App\Models\PrintTemplate::forDocument($docType)
+                'templatesList' => PrintTemplate::forDocument($docType)
                     ->forFormat($paperFormat)
                     ->orderByDesc('is_default')
                     ->orderBy('name')
                     ->get(),
-                'docTypeLabels' => \App\Models\PrintTemplate::getDocumentTypeLabels(),
-                'paperFormatLabels' => \App\Models\PrintTemplate::getPaperFormatLabels(),
+                'docTypeLabels' => PrintTemplate::getDocumentTypeLabels(),
+                'paperFormatLabels' => PrintTemplate::getPaperFormatLabels(),
             ];
         }
 
@@ -131,6 +133,7 @@ class CompanySettingController extends Controller
             'details_font_size' => ['required', 'integer', 'min:6', 'max:24'],
             'company_name_override' => ['nullable', 'string', 'max:255'],
             'print_price_type' => ['required', 'string', 'in:none,retail,wholesale,both'],
+            'print_orientation' => ['required', 'string', 'in:0,90,270'],
         ], [
             'barcode_prefix.required' => 'بادئة الباركود مطلوبة.',
             'printer_name.required' => 'اسم الطابعة مطلوب.',
@@ -143,6 +146,8 @@ class CompanySettingController extends Controller
             'product_font_size.required' => 'حجم خط اسم المنتج مطلوب.',
             'details_font_size.required' => 'حجم خط تفاصيل الباركود مطلوب.',
             'print_price_type.in' => 'خيار طباعة السعر غير صالح.',
+            'print_orientation.required' => 'اتجاه طباعة الباركود مطلوب.',
+            'print_orientation.in' => 'اتجاه الطباعة المختار غير صالح.',
         ]);
 
         $validated['show_company_name'] = $request->boolean('show_company_name');

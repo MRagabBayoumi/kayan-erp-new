@@ -42,6 +42,32 @@ test('barcode generator service produces complete 38x15mm fallback label SVG wit
         ->toContain('ITEM-NO: KY-NCK-001');
 });
 
+test('barcode generator service produces rotated 90 degree label SVG for narrow 38x15 rolls', function () {
+    $service = new BarcodeGeneratorService;
+    $labelSvg = $service->generateCompleteLabelSvg('اكلادور', '202610110001', 'COCO-1', 38, 15, null, null, null, '90');
+
+    expect($labelSvg)->toBeString()
+        ->toContain('viewBox="0 0 120 304"')
+        ->toContain('width="15mm"')
+        ->toContain('height="38mm"')
+        ->toContain('rotate(90)')
+        ->toContain('اكلادور')
+        ->toContain('ITEM-NO: COCO-1');
+});
+
+test('barcode generator service produces rotated 270 degree label SVG', function () {
+    $service = new BarcodeGeneratorService;
+    $labelSvg = $service->generateCompleteLabelSvg('اكلادور', '202610110001', 'COCO-1', 38, 15, null, null, null, '270');
+
+    expect($labelSvg)->toBeString()
+        ->toContain('viewBox="0 0 120 304"')
+        ->toContain('width="15mm"')
+        ->toContain('height="38mm"')
+        ->toContain('rotate(270)')
+        ->toContain('اكلادور')
+        ->toContain('ITEM-NO: COCO-1');
+});
+
 test('barcode generator service produces valid Code 128 SVG for alphanumeric SKUs', function () {
     $service = new BarcodeGeneratorService;
     $svg = $service->generateSvg('KY-26-0001');
@@ -125,6 +151,35 @@ test('single product print label view renders with 38x15mm specifications when r
     $response->assertViewIs('products.print-label');
     $response->assertSee('38×15 مم');
     $response->assertSee('Xprinter XP-233B');
+});
+
+test('single product print label view renders rotated 90 degree landscape label when requested', function () {
+    $category = Category::create(['name' => 'مناكير']);
+    $product = Product::create([
+        'sku' => 'COCO-1',
+        'name' => 'اكلادور أحمر',
+        'category_id' => $category->id,
+        'barcode' => '202610119876',
+        'cost_price' => 10.00,
+        'wholesale_price' => 15.00,
+        'retail_price' => 25.00,
+        'unit' => 'قطعة',
+        'min_stock_alert' => 5,
+        'is_active' => true,
+    ]);
+
+    $response = $this->get(route('products.print-label', [
+        'product' => $product,
+        'quantity' => 1,
+        'size' => '38x15',
+        'orientation' => '90',
+    ]));
+
+    $response->assertOk();
+    $response->assertViewIs('products.print-label');
+    $response->assertSee('data-orientation="90"', false);
+    $response->assertSee('15×38 مم (بالعرض 90°)');
+    $response->assertSee('rotate(90)', false);
 });
 
 test('single product print label view triggers autoprint when requested', function () {

@@ -19,6 +19,51 @@
     --label-height: 15mm;
 }
 
+[data-size="38x25"][data-orientation="90"],
+[data-size="38x25"][data-orientation="270"] {
+    --label-width: 25mm;
+    --label-height: 38mm;
+}
+
+[data-size="38x15"][data-orientation="90"],
+[data-size="38x15"][data-orientation="270"] {
+    --label-width: 15mm;
+    --label-height: 38mm;
+}
+
+[data-size="40x20"] {
+    --label-width: 40mm;
+    --label-height: 20mm;
+}
+
+[data-size="40x20"][data-orientation="90"],
+[data-size="40x20"][data-orientation="270"] {
+    --label-width: 20mm;
+    --label-height: 40mm;
+}
+
+[data-size="50x25"] {
+    --label-width: 50mm;
+    --label-height: 25mm;
+}
+
+[data-size="50x25"][data-orientation="90"],
+[data-size="50x25"][data-orientation="270"] {
+    --label-width: 25mm;
+    --label-height: 50mm;
+}
+
+[data-size="50x30"] {
+    --label-width: 50mm;
+    --label-height: 30mm;
+}
+
+[data-size="50x30"][data-orientation="90"],
+[data-size="50x30"][data-orientation="270"] {
+    --label-width: 30mm;
+    --label-height: 50mm;
+}
+
 @page {
     size: var(--label-width) var(--label-height);
     margin: 0mm !important;

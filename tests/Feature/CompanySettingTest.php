@@ -209,6 +209,7 @@ test('barcode settings can be updated successfully and reflected in database', f
         'show_barcode_bars' => '1',
         'show_item_sku' => '1',
         'print_price_type' => 'wholesale',
+        'print_orientation' => '90',
     ]);
 
     $response->assertRedirect(route('settings.index', ['tab' => 'barcode']));
@@ -229,11 +230,13 @@ test('barcode settings can be updated successfully and reflected in database', f
         'show_barcode_bars' => 1,
         'show_item_sku' => 1,
         'print_price_type' => 'wholesale',
+        'print_orientation' => '90',
     ]);
 
     $settings = BarcodeSetting::getSettings();
     expect($settings->barcode_prefix)->toBe('05')
         ->and($settings->print_price_type)->toBe('wholesale')
+        ->and($settings->print_orientation)->toBe('90')
         ->and($settings->show_company_name)->toBeTrue();
 });
 
@@ -248,6 +251,7 @@ test('barcode settings validation rejects invalid input', function () {
         'product_font_size' => 0,
         'details_font_size' => 50,
         'print_price_type' => 'invalid_choice',
+        'print_orientation' => 'invalid_orientation',
     ]);
 
     $response->assertRedirect(route('settings.index', ['tab' => 'barcode']));
@@ -261,6 +265,7 @@ test('barcode settings validation rejects invalid input', function () {
         'product_font_size',
         'details_font_size',
         'print_price_type',
+        'print_orientation',
     ]);
 });
 

@@ -305,6 +305,34 @@
                                         <span class="erp-error-msg">{{ $message }}</span>
                                     @enderror
                                 </div>
+
+                                <!-- 9. Print Orientation -->
+                                <div class="erp-form-group col-span-full">
+                                    <label for="print_orientation" class="erp-form-label">
+                                        <span>اتجاه طباعة الملصق (Orientation)</span>
+                                        <span class="required">*</span>
+                                    </label>
+                                    <select
+                                        id="print_orientation"
+                                        name="print_orientation"
+                                        class="erp-select @error('print_orientation') is-invalid @enderror"
+                                        required
+                                    >
+                                        <option value="0" {{ old('print_orientation', $barcodeSettings->print_orientation ?? '0') === '0' ? 'selected' : '' }}>
+                                            أفقي عادي (0°) — للملصقات العريضة العادية (مثل 38×25 مم)
+                                        </option>
+                                        <option value="90" {{ old('print_orientation', $barcodeSettings->print_orientation ?? '0') === '90' ? 'selected' : '' }}>
+                                            بالعرض مائل 90° — للبكرات الرفيعة متعددة الأعمدة (مثل 38×15 مم)
+                                        </option>
+                                        <option value="270" {{ old('print_orientation', $barcodeSettings->print_orientation ?? '0') === '270' ? 'selected' : '' }}>
+                                            بالعرض مائل 270° — دوران عكسي باتجاه اليسار
+                                        </option>
+                                    </select>
+                                    <span class="erp-form-hint">عند استخدام بكرة ملصقات ضيقة (15 مم) متعددة الأعمدة، اختر "بالعرض مائل 90°" لتتم طباعة الباركود والبيانات بطول الاستيكر بدلاً من امتدادها عبر عدة استيكرات.</span>
+                                    @error('print_orientation')
+                                        <span class="erp-error-msg">{{ $message }}</span>
+                                    @enderror
+                                </div>
                             </div>
 
                             <!-- Presets Quick Bar -->
@@ -313,12 +341,15 @@
                                     <x-icon name="zap" size="13" />
                                     <span>قوالب جاهزة سريعة للأبعاد:</span>
                                 </span>
-                                <div class="flex gap-2">
-                                    <button type="button" data-action="apply-barcode-preset" data-width="38" data-height="25" data-bar-w="260" data-bar-h="80" data-prod-font="14" data-det-font="8" class="erp-btn erp-btn-secondary text-[11.5px] py-1 px-2.5">
-                                        <span>بكرة 38×25 مم (الافتراضي)</span>
+                                <div class="flex gap-2 flex-wrap">
+                                    <button type="button" data-action="apply-barcode-preset" data-width="38" data-height="25" data-bar-w="260" data-bar-h="80" data-prod-font="14" data-det-font="8" data-orientation="0" class="erp-btn erp-btn-secondary text-[11.5px] py-1 px-2.5">
+                                        <span>بكرة 38×25 مم (أفقي 0°)</span>
                                     </button>
-                                    <button type="button" data-action="apply-barcode-preset" data-width="38" data-height="15" data-bar-w="260" data-bar-h="40" data-prod-font="12" data-det-font="7" class="erp-btn erp-btn-secondary text-[11.5px] py-1 px-2.5">
-                                        <span>بكرة 38×15 مم (صغير)</span>
+                                    <button type="button" data-action="apply-barcode-preset" data-width="38" data-height="15" data-bar-w="260" data-bar-h="40" data-prod-font="12" data-det-font="7" data-orientation="0" class="erp-btn erp-btn-secondary text-[11.5px] py-1 px-2.5">
+                                        <span>بكرة 38×15 مم (أفقي 0°)</span>
+                                    </button>
+                                    <button type="button" data-action="apply-barcode-preset" data-width="38" data-height="15" data-bar-w="260" data-bar-h="40" data-prod-font="12" data-det-font="7" data-orientation="90" class="erp-btn erp-btn-secondary text-[11.5px] py-1 px-2.5">
+                                        <span>بكرة 38×15 مم بالعرض (90° للرفيعة)</span>
                                     </button>
                                 </div>
                             </div>

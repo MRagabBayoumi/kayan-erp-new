@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl" data-size="{{ $size ?? '38x25' }}">
+<html lang="ar" dir="rtl" data-size="{{ $size ?? '38x25' }}" data-orientation="{{ $orientation ?? '0' }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,7 +12,7 @@
 
     @vite(['resources/css/print/thermal-label.css', 'resources/js/pages/print-label.js'])
 </head>
-<body data-size="{{ $size ?? '38x25' }}" data-auto-print="{{ !empty($autoPrint) ? 'true' : 'false' }}">
+<body data-size="{{ $size ?? '38x25' }}" data-orientation="{{ $orientation ?? '0' }}" data-auto-print="{{ !empty($autoPrint) ? 'true' : 'false' }}">
 
     <!-- SCREEN-ONLY CONTROL TOOLBAR -->
     <header class="preview-toolbar no-print">
@@ -22,14 +22,26 @@
                 <span>طباعة ملصقات الباركود</span>
             </span>
             <span class="preview-badge preview-badge-primary">
-                <span>المقاس: {{ $widthMm ?? 38 }}×{{ $heightMm ?? 25 }} مم (Xprinter XP-233B)</span>
+                @if(($orientation ?? '0') === '90')
+                    <span>المقاس: {{ $heightMm ?? 15 }}×{{ $widthMm ?? 38 }} مم (بالعرض 90°)</span>
+                @elseif(($orientation ?? '0') === '270')
+                    <span>المقاس: {{ $heightMm ?? 15 }}×{{ $widthMm ?? 38 }} مم (بالعرض 270°)</span>
+                @else
+                    <span>المقاس: {{ $widthMm ?? 38 }}×{{ $heightMm ?? 25 }} مم (أفقي 0°)</span>
+                @endif
             </span>
             <div class="preview-btn-group">
-                <a href="{{ request()->fullUrlWithQuery(['size' => '38x25']) }}" class="btn {{ ($size ?? '38x25') === '38x25' ? 'btn-primary' : 'btn-secondary' }} btn-preset-size">
-                    38×25 مم (الافتراضي)
+                <a href="{{ request()->fullUrlWithQuery(['size' => '38x25', 'orientation' => '0']) }}" class="btn {{ (($size ?? '38x25') === '38x25' && ($orientation ?? '0') === '0') ? 'btn-primary' : 'btn-secondary' }} btn-preset-size">
+                    38×25 مم (أفقي 0°)
                 </a>
-                <a href="{{ request()->fullUrlWithQuery(['size' => '38x15']) }}" class="btn {{ ($size ?? '38x25') === '38x15' ? 'btn-primary' : 'btn-secondary' }} btn-preset-size">
-                    38×15 مم
+                <a href="{{ request()->fullUrlWithQuery(['size' => '38x15', 'orientation' => '0']) }}" class="btn {{ (($size ?? '38x25') === '38x15' && ($orientation ?? '0') === '0') ? 'btn-primary' : 'btn-secondary' }} btn-preset-size">
+                    38×15 مم (أفقي 0°)
+                </a>
+                <a href="{{ request()->fullUrlWithQuery(['size' => '38x15', 'orientation' => '90']) }}" class="btn {{ (($size ?? '38x25') === '38x15' && ($orientation ?? '0') === '90') ? 'btn-primary' : 'btn-secondary' }} btn-preset-size" title="طباعة بالعرض للاستيكرات الرفيعة">
+                    38×15 مم بالعرض (90°)
+                </a>
+                <a href="{{ request()->fullUrlWithQuery(['size' => '38x15', 'orientation' => '270']) }}" class="btn {{ (($size ?? '38x25') === '38x15' && ($orientation ?? '0') === '270') ? 'btn-primary' : 'btn-secondary' }} btn-preset-size">
+                    38×15 مم بالعرض (270°)
                 </a>
                 <a href="{{ route('settings.index', ['tab' => 'barcode']) }}" class="btn btn-secondary btn-preset-settings" title="تعديل مقاسات وإعدادات الباركود">
                     <x-icon name="settings" size="13" />
@@ -63,7 +75,11 @@
                 <x-icon name="info" size="14" />
                 <span>نصيحة للطباعة:</span>
             </span>
-            <span>في نافذة الطابعة، اختر طابعة <strong>Xprinter XP-233B</strong> بمقاس <strong>{{ $widthMm ?? 38 }}x{{ $heightMm ?? 25 }}mm</strong> والهوامش على <strong>None (بدون هوامش)</strong>.</span>
+            @if(($orientation ?? '0') === '90' || ($orientation ?? '0') === '270')
+                <span>في نافذة الطابعة، اختر طابعة <strong>Xprinter XP-233B</strong> بمقاس <strong>{{ $heightMm ?? 15 }}x{{ $widthMm ?? 38 }}mm</strong> والهوامش على <strong>None (بدون هوامش)</strong>.</span>
+            @else
+                <span>في نافذة الطابعة، اختر طابعة <strong>Xprinter XP-233B</strong> بمقاس <strong>{{ $widthMm ?? 38 }}x{{ $heightMm ?? 25 }}mm</strong> والهوامش على <strong>None (بدون هوامش)</strong>.</span>
+            @endif
         </div>
         <button type="button" data-action="dismiss-tip" class="preview-tips-close" title="إغلاق التنبيه">
             <x-icon name="x" size="14" />

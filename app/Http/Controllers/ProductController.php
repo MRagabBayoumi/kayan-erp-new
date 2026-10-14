@@ -157,7 +157,7 @@ class ProductController extends Controller
             if (empty($validated['opening_warehouse_id'])) {
                 return back()->withInput()->withErrors(['opening_warehouse_id' => 'يرجى تحديد المستودع المستلم للرصيد الافتتاحي.']);
             }
-            if (!isset($validated['opening_cost']) || $validated['opening_cost'] === '' || $validated['opening_cost'] === null) {
+            if (! isset($validated['opening_cost']) || $validated['opening_cost'] === '' || $validated['opening_cost'] === null) {
                 $validated['opening_cost'] = $validated['cost_price'];
             }
             if (empty($validated['opening_balance_date'])) {
@@ -410,6 +410,11 @@ class ProductController extends Controller
 
         $widthMm = (int) $barcodeSettings->label_width_mm;
         $heightMm = (int) $barcodeSettings->label_height_mm;
+        $orientation = (string) $request->input('orientation', $barcodeSettings->print_orientation ?? '0');
+        if (! in_array($orientation, ['0', '90', '270'], true)) {
+            $orientation = (string) ($barcodeSettings->print_orientation ?? '0');
+        }
+
         $size = $request->input('size');
         if ($size === '38x15') {
             $widthMm = 38;
@@ -429,7 +434,8 @@ class ProductController extends Controller
             $heightMm,
             $barcodeSettings,
             (float) $product->retail_price,
-            (float) $product->wholesale_price
+            (float) $product->wholesale_price,
+            $orientation
         );
 
         return view('products.print-label', [
@@ -448,6 +454,7 @@ class ProductController extends Controller
             'widthMm' => $widthMm,
             'heightMm' => $heightMm,
             'size' => $widthMm.'x'.$heightMm,
+            'orientation' => $orientation,
             'barcodeSettings' => $barcodeSettings,
         ]);
     }
@@ -462,6 +469,11 @@ class ProductController extends Controller
 
         $widthMm = (int) $barcodeSettings->label_width_mm;
         $heightMm = (int) $barcodeSettings->label_height_mm;
+        $orientation = (string) $request->input('orientation', $barcodeSettings->print_orientation ?? '0');
+        if (! in_array($orientation, ['0', '90', '270'], true)) {
+            $orientation = (string) ($barcodeSettings->print_orientation ?? '0');
+        }
+
         $size = $request->input('size');
         if ($size === '38x15') {
             $widthMm = 38;
@@ -519,7 +531,8 @@ class ProductController extends Controller
                         $heightMm,
                         $barcodeSettings,
                         (float) $product->retail_price,
-                        (float) $product->wholesale_price
+                        (float) $product->wholesale_price,
+                        $orientation
                     ),
                     'quantity' => $qty,
                 ];
@@ -541,6 +554,7 @@ class ProductController extends Controller
             'widthMm' => $widthMm,
             'heightMm' => $heightMm,
             'size' => $widthMm.'x'.$heightMm,
+            'orientation' => $orientation,
             'barcodeSettings' => $barcodeSettings,
         ]);
     }
@@ -608,7 +622,7 @@ class ProductController extends Controller
 
         // Paper format resolution
         $format = (string) $request->query('format', PrintTemplate::FORMAT_A4);
-        if (!in_array($format, PrintTemplateService::SUPPORTED_FORMATS, true)) {
+        if (! in_array($format, PrintTemplateService::SUPPORTED_FORMATS, true)) {
             $format = PrintTemplate::FORMAT_A4;
         }
 
