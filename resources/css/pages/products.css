@@ -133,9 +133,76 @@
 /* Product Show Details Layout */
 .erp-product-show-grid {
     display: grid;
-    grid-template-columns: 300px 1fr;
+    grid-template-columns: 300px minmax(0, 1fr);
     gap: 20px;
     align-items: start;
+}
+
+.erp-product-show-grid > * {
+    min-width: 0;
+}
+
+/* Product Image Frame */
+.erp-product-image-frame {
+    width: 100%;
+    max-width: 260px;
+    height: 230px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--bg-surface-alt);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 12px;
+    box-sizing: border-box;
+    overflow: hidden;
+    transition: all 0.2s ease;
+}
+
+.erp-product-image-frame:hover {
+    border-color: var(--primary);
+    box-shadow: var(--shadow-sm);
+}
+
+.erp-product-image {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    border-radius: var(--border-radius-sm);
+    display: block;
+    margin: 0 auto;
+}
+
+.erp-product-image-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    color: var(--text-muted);
+}
+
+/* Barcode Label Box inside Show Page */
+.erp-barcode-label-box {
+    background-color: #ffffff;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-sm);
+    padding: 8px 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    max-width: 100%;
+    box-shadow: var(--shadow-xs);
+    box-sizing: border-box;
+}
+
+.erp-barcode-label-box svg {
+    max-width: 100%;
+    height: auto;
+    display: block;
 }
 
 .erp-show-print-group {
@@ -144,10 +211,15 @@
     gap: 6px;
 }
 
-@media (max-width: 820px) {
+@media (max-width: 1080px) {
     .erp-product-show-grid {
         grid-template-columns: 1fr;
         gap: 16px;
+    }
+
+    .erp-product-image-frame {
+        max-width: 320px;
+        height: 260px;
     }
 
     .erp-show-print-group {
@@ -168,3 +240,4 @@
         grid-template-columns: 1fr;
     }
 }
+

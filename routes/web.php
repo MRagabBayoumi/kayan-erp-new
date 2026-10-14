@@ -4,6 +4,7 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CompanySettingController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\InventoryController;
+use App\Http\Controllers\PrintTemplateController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductImportController;
 use App\Http\Controllers\PurchaseInvoiceController;
@@ -42,11 +43,13 @@ Route::get('/products/lookup-barcode', [ProductController::class, 'lookupBarcode
 Route::match(['get', 'post'], '/products/print-labels/batch', [ProductController::class, 'printBatchLabels'])->name('products.print-batch');
 Route::get('/products/{product}/print-label', [ProductController::class, 'printLabel'])->name('products.print-label');
 Route::get('/products/{product}/barcode-svg', [ProductController::class, 'barcodeSvg'])->name('products.barcode-svg');
+Route::get('/products/{product}/ledger/print', [ProductController::class, 'printLedger'])->name('products.ledger.print');
 Route::get('/products/{product}/ledger', [ProductController::class, 'ledger'])->name('products.ledger');
 Route::resource('products', ProductController::class);
 Route::resource('categories', CategoryController::class)->except(['create', 'show', 'edit']);
 
 // Purchasing & Suppliers Invoices (FIFO Receipt)
+Route::get('/purchases/{purchase}/print', [PurchaseInvoiceController::class, 'print'])->name('purchases.print');
 Route::post('/purchases/{purchase}/post', [PurchaseInvoiceController::class, 'post'])->name('purchases.post');
 Route::post('/purchases/{purchase}/cancel', [PurchaseInvoiceController::class, 'cancel'])->name('purchases.cancel');
 Route::resource('purchases', PurchaseInvoiceController::class)->except(['edit', 'update', 'destroy']);
@@ -66,3 +69,11 @@ Route::get('/suppliers/lookup', [SupplierController::class, 'lookup'])->name('su
 Route::resource('suppliers', SupplierController::class);
 
 Route::resource('shipping-offices', ShippingOfficeController::class)->except(['create', 'show', 'edit']);
+
+// Print Template Designer (Phase 2)
+Route::prefix('settings/print-templates')->name('settings.print-templates.')->group(function () {
+    Route::get('/data', [PrintTemplateController::class, 'data'])->name('data');
+    Route::put('/{template}', [PrintTemplateController::class, 'update'])->name('update');
+    Route::post('/{template}/reset', [PrintTemplateController::class, 'reset'])->name('reset');
+    Route::post('/{template}/duplicate', [PrintTemplateController::class, 'duplicate'])->name('duplicate');
+});

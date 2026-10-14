@@ -12,6 +12,8 @@ export default defineConfig({
                 'resources/js/app.js',
                 'resources/css/print/thermal-label.css',
                 'resources/js/pages/print-label.js',
+                'resources/css/print/invoice-document.css',
+                'resources/js/pages/invoice-print.js',
             ],
             refresh: true,
             fonts: [

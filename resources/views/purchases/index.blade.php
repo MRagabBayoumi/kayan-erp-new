@@ -23,56 +23,64 @@
 @endsection
 
 @section('content')
-    <div data-page="purchases-index" class="flex flex-col gap-5">
+    <div data-page="purchases-index">
         <!-- Status Alerts -->
         @if(session('status') === 'success')
-            <div class="erp-alert erp-alert-success" role="alert">
+            <div class="erp-alert erp-alert-success mb-4" role="alert">
                 <x-icon name="check-circle" size="18" />
                 <span>{{ session('message') }}</span>
             </div>
         @endif
 
         @if(session('error'))
-            <div class="erp-alert erp-alert-danger" role="alert">
+            <div class="erp-alert erp-alert-danger mb-4" role="alert">
                 <x-icon name="alert-triangle" size="18" />
                 <span>{{ session('error') }}</span>
             </div>
         @endif
 
-        <!-- Summary KPI Cards -->
-        <div class="erp-kpi-grid">
-            <div class="erp-kpi-card">
-                <div class="erp-kpi-header">
-                    <span class="erp-kpi-title">إجمالي فواتير الشراء</span>
-                    <span class="erp-kpi-icon-wrap"><x-icon name="shopping-bag" size="18" /></span>
+        <!-- Summary KPI Card -->
+        <div class="erp-card mb-4 p-4">
+            <div class="purchases-kpi-row">
+                <div class="purchases-kpi-stat">
+                    <div class="purchases-kpi-icon-wrap">
+                        <x-icon name="shopping-bag" size="22" />
+                    </div>
+                    <div class="purchases-kpi-info">
+                        <div class="purchases-kpi-label">إجمالي فواتير الشراء</div>
+                        <div class="purchases-kpi-value font-numeric">{{ $metrics['total_count'] }}</div>
+                        <div class="purchases-kpi-desc">جميع الفواتير المسجلة</div>
+                    </div>
                 </div>
-                <div class="erp-kpi-value font-numeric">{{ $metrics['total_count'] }}</div>
-                <div class="erp-kpi-subtitle">جميع الفواتير المسجلة</div>
-            </div>
 
-            <div class="erp-kpi-card">
-                <div class="erp-kpi-header">
-                    <span class="erp-kpi-title">مشتريات مُرحلة للمخازن</span>
-                    <span class="erp-kpi-icon-wrap text-[var(--success)]"><x-icon name="check-circle" size="18" /></span>
+                <div class="purchases-kpi-stat">
+                    <div class="purchases-kpi-icon-wrap success">
+                        <x-icon name="check-circle" size="22" />
+                    </div>
+                    <div class="purchases-kpi-info">
+                        <div class="purchases-kpi-label">مشتريات مُرحلة للمخازن</div>
+                        <div class="purchases-kpi-value font-numeric text-[var(--success)]">{{ number_format($metrics['posted_total'], 2) }} ج.م</div>
+                        <div class="purchases-kpi-desc">تم إيداعها وتوليد دفعات FIFO</div>
+                    </div>
                 </div>
-                <div class="erp-kpi-value font-numeric text-[var(--success)]">{{ number_format($metrics['posted_total'], 2) }} ج.م</div>
-                <div class="erp-kpi-subtitle">تم إيداعها وتوليد دفعات FIFO</div>
-            </div>
 
-            <div class="erp-kpi-card">
-                <div class="erp-kpi-header">
-                    <span class="erp-kpi-title">مسودات قيد الإعداد</span>
-                    <span class="erp-kpi-icon-wrap text-[var(--warning)]"><x-icon name="file-text" size="18" /></span>
+                <div class="purchases-kpi-stat">
+                    <div class="purchases-kpi-icon-wrap warning">
+                        <x-icon name="file-text" size="22" />
+                    </div>
+                    <div class="purchases-kpi-info">
+                        <div class="purchases-kpi-label">مسودات قيد الإعداد</div>
+                        <div class="purchases-kpi-value font-numeric text-[var(--warning)]">{{ $metrics['draft_count'] }}</div>
+                        <div class="purchases-kpi-desc">تتطلب مراجعة وترحيل</div>
+                    </div>
                 </div>
-                <div class="erp-kpi-value font-numeric text-[var(--warning)]">{{ $metrics['draft_count'] }}</div>
-                <div class="erp-kpi-subtitle">تتطلب مراجعة وترحيل</div>
             </div>
         </div>
 
         <!-- Filter Bar -->
-        <div class="erp-card p-3">
-            <form action="{{ route('purchases.index') }}" method="GET" class="flex flex-wrap items-center gap-3">
-                <div class="flex-1 min-w-[200px]">
+        <div class="erp-card mb-4 p-3">
+            <form action="{{ route('purchases.index') }}" method="GET" class="erp-filter-form">
+                <div class="flex-1 min-w-[220px]">
                     <div class="relative">
                         <input 
                             type="text" 
@@ -87,7 +95,7 @@
                     </div>
                 </div>
 
-                <div class="w-40">
+                <div class="w-40 min-w-[140px]">
                     <select name="status" class="erp-input w-full">
                         <option value="">-- كل الحالات --</option>
                         <option value="draft" {{ $currentStatus === 'draft' ? 'selected' : '' }}>مسودة</option>
@@ -96,7 +104,7 @@
                     </select>
                 </div>
 
-                <div class="w-48">
+                <div class="w-48 min-w-[160px]">
                     <select name="warehouse_id" class="erp-input w-full">
                         <option value="">-- كل المستودعات --</option>
                         @foreach($warehouses as $wh)
@@ -107,7 +115,7 @@
                     </select>
                 </div>
 
-                <div class="w-48">
+                <div class="w-48 min-w-[160px]">
                     <select name="supplier_id" class="erp-input w-full">
                         <option value="">-- كل الموردين --</option>
                         @foreach($suppliers as $sup)
@@ -134,6 +142,7 @@
 
         <!-- Invoices Data Table -->
         <div class="erp-card overflow-hidden">
+
             <div class="erp-table-responsive">
                 <table class="erp-table">
                     <thead>
@@ -185,6 +194,10 @@
                                     <div class="flex items-center gap-1.5">
                                         <a href="{{ route('purchases.show', $inv) }}" class="erp-btn erp-btn-ghost erp-btn-icon" title="عرض التفاصيل">
                                             <x-icon name="eye" size="14" />
+                                        </a>
+
+                                        <a href="{{ route('purchases.print', [$inv, 'format' => 'a4']) }}" target="_blank" class="erp-btn erp-btn-ghost erp-btn-icon text-[var(--primary)]" title="طباعة الفاتورة">
+                                            <x-icon name="printer" size="14" />
                                         </a>
 
                                         @if($inv->status === 'draft')

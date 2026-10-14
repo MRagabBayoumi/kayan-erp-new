@@ -14,8 +14,8 @@ export function initProductShow() {
     const modalQtyInput = page.querySelector('#labelQuantity');
     const printModal = page.querySelector('#printBarcodeModal');
 
-    // 1. Direct Print from Show
-    page.querySelectorAll('[data-action="direct-print-show"]').forEach(btn => {
+    // 1. Direct Print from Show (handles both control-panel and card buttons)
+    document.querySelectorAll('[data-action="direct-print-show"]').forEach(btn => {
         btn.addEventListener('click', () => {
             const qty = parseInt(showQtyInput ? showQtyInput.value : 1, 10) || 1;
             showPrintToast('جاري إرسال الملصق مباشرة إلى طابعة الباركود...');
@@ -33,7 +33,7 @@ export function initProductShow() {
     });
 
     // 2. Adjust Show Qty
-    page.querySelectorAll('[data-action="adjust-show-qty"]').forEach(btn => {
+    document.querySelectorAll('[data-action="adjust-show-qty"]').forEach(btn => {
         btn.addEventListener('click', () => {
             const delta = parseInt(btn.dataset.delta, 10) || 0;
             if (showQtyInput) {

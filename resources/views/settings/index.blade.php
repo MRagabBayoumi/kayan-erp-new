@@ -1,12 +1,17 @@
 @extends('layouts.app')
 
 @section('control_panel')
-    <x-control-panel title="إعدادات الشركة والنظام" :breadcrumbs="['الإدارة' => '#', $activeTab === 'barcode' ? 'إعدادات الباركود' : 'بيانات الشركة' => '#']">
+    <x-control-panel title="إعدادات الشركة والنظام" :breadcrumbs="['الإدارة' => '#', $activeTab === 'print_templates' ? 'قوالب الطباعة' : ($activeTab === 'barcode' ? 'إعدادات الباركود' : 'بيانات الشركة') => '#']">
         <x-slot:actions>
             @if($activeTab === 'barcode')
                 <button type="submit" form="barcodeSettingsForm" class="erp-btn erp-btn-primary">
                     <x-icon name="save" size="16" />
                     <span>حفظ إعدادات الباركود</span>
+                </button>
+            @elseif($activeTab === 'print_templates')
+                <button type="submit" form="printTemplateForm" class="erp-btn erp-btn-primary">
+                    <x-icon name="save" size="16" />
+                    <span>حفظ إعدادات القالب</span>
                 </button>
             @else
                 <button type="submit" form="settingsForm" class="erp-btn erp-btn-primary">
@@ -77,12 +82,12 @@
                     <span>إعدادات الباركود</span>
                 </a>
 
-                <!-- Future Tabs from Legacy Software -->
-                <span class="erp-tab-link disabled" title="مرحلة قادمة في المخطط">
-                    <x-icon name="receipt" size="16" />
-                    <span>إعدادات الفاتورة</span>
-                    <span class="erp-badge erp-badge-neutral text-[10px] py-0.5 px-1.5">قريباً</span>
-                </span>
+                <!-- Tab 3: Print Template Center -->
+                <a href="{{ route('settings.index', ['tab' => 'print_templates']) }}"
+                   class="erp-tab-link {{ $activeTab === 'print_templates' ? 'active' : '' }}">
+                    <x-icon name="printer" size="16" />
+                    <span>قوالب الطباعة والمستندات</span>
+                </a>
 
                 <span class="erp-tab-link disabled" title="مرحلة قادمة في المخطط">
                     <x-icon name="printer" size="16" />
@@ -104,7 +109,10 @@
             </nav>
         </div>
 
-        @if($activeTab === 'barcode')
+        @if($activeTab === 'print_templates')
+            <!-- TAB 3: PRINT TEMPLATE VISUAL DESIGNER -->
+            @include('settings.tabs.print-templates')
+        @elseif($activeTab === 'barcode')
             <!-- TAB 2: BARCODE PRINTER SETTINGS -->
             <div class="grid grid-cols-[minmax(400px,1fr)_340px] gap-5 items-start">
                 <!-- Form Left / Main Column -->

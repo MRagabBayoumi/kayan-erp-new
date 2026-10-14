@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CompanySetting;
+use App\Models\PrintTemplate;
 use App\Models\Product;
 use App\Models\PurchaseInvoice;
 use App\Models\PurchaseInvoiceItem;
 use App\Models\Supplier;
 use App\Models\Warehouse;
 use App\Services\InventoryService;
+use App\Services\PrintTemplateService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -192,6 +195,46 @@ class PurchaseInvoiceController extends Controller
             'title' => 'فاتورة شراء: '.$purchase->invoice_number,
             'moduleName' => 'المشتريات والموردين',
             'invoice' => $purchase,
+        ]);
+    }
+
+    /**
+     * Display a dedicated, template-driven printable view of the purchase invoice.
+     * ZERO data mutation, strictly read-only and authorization verified.
+     */
+    public function print(Request $request, PurchaseInvoice $purchase, PrintTemplateService $templateService): View
+    {
+        $purchase->loadMissing(['supplier', 'warehouse', 'creator', 'items.product.category']);
+
+        $format = (string) $request->query('format', $request->query('paper_format', PrintTemplate::FORMAT_A4));
+        if (!in_array($format, PrintTemplateService::SUPPORTED_FORMATS, true)) {
+            $format = PrintTemplate::FORMAT_A4;
+        }
+
+        $template = $templateService->getEffectiveTemplate(PrintTemplate::DOC_PURCHASE_INVOICE, $format);
+        $companySetting = CompanySetting::getSettings();
+        $autoPrint = $request->boolean('autoprint', false);
+
+        $colorHex = $template->getSetting('general.primary_color', '#1e293b');
+        $colorClass = match ($colorHex) {
+            '#059669', '#10b981' => 'theme-emerald',
+            '#2563eb', '#3b82f6' => 'theme-blue',
+            '#7c3aed', '#8b5cf6' => 'theme-purple',
+            '#e11d48', '#f43f5e' => 'theme-rose',
+            '#d97706', '#f59e0b' => 'theme-amber',
+            '#000000' => 'theme-black',
+            default => 'theme-navy',
+        };
+
+        return view('purchases.print', [
+            'title' => 'طباعة فاتورة شراء: '.$purchase->invoice_number,
+            'invoice' => $purchase,
+            'template' => $template,
+            'settings' => $template->settings,
+            'format' => $format,
+            'colorClass' => $colorClass,
+            'company' => $companySetting,
+            'autoPrint' => $autoPrint,
         ]);
     }
 

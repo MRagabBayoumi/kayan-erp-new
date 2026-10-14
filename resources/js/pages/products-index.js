@@ -12,9 +12,9 @@ export function initProductsIndex() {
     const selectAllCb = page.querySelector('#selectAllCheckbox');
     const rowCheckboxes = page.querySelectorAll('.product-select-cb');
     const actionBar = page.querySelector('#batchActionBar');
-    const topBatchBtn = page.querySelector('#topBatchPrintBtn');
+    const topBatchBtn = document.getElementById('topBatchPrintBtn');
     const selectedCountEl = page.querySelector('#selectedProductsCount');
-    const topBatchCountEl = page.querySelector('#topBatchCount');
+    const topBatchCountEl = document.getElementById('topBatchCount');
 
     function getSelectedCheckboxes() {
         return Array.from(page.querySelectorAll('.product-select-cb:checked'));
@@ -239,8 +239,8 @@ export function initProductsIndex() {
         }
     });
 
-    // Direct Batch Print button
-    page.querySelectorAll('[data-action="direct-print-batch"]').forEach(btn => {
+    // Direct Batch Print buttons (both in control panel and floating bar)
+    document.querySelectorAll('[data-action="direct-print-batch"]').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.preventDefault();
             const selected = getSelectedCheckboxes();

@@ -4,11 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\BarcodeSetting;
 use App\Models\Category;
+use App\Models\CompanySetting;
+use App\Models\PrintTemplate;
 use App\Models\Product;
 use App\Models\StockMovement;
 use App\Models\Warehouse;
 use App\Services\BarcodeGeneratorService;
 use App\Services\InventoryService;
+use App\Services\PrintTemplateService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -199,7 +202,13 @@ class ProductController extends Controller
      */
     public function show(Product $product, BarcodeGeneratorService $barcodeService): View
     {
-        $product->load('category');
+        $product->load(['category', 'stockBalances.warehouse']);
+        $recentMovements = StockMovement::where('product_id', $product->id)
+            ->with(['fromWarehouse', 'toWarehouse', 'user', 'customer', 'supplier'])
+            ->orderByDesc('id')
+            ->limit(5)
+            ->get();
+
         $barcodeSettings = BarcodeSetting::getSettings();
         $barcodeValue = $barcodeService->getBarcodeValue($product);
         $barcodeSvg = $barcodeService->generateSvg($barcodeValue);
@@ -218,6 +227,7 @@ class ProductController extends Controller
             'title' => $product->name,
             'moduleName' => 'المخزون والمنتجات',
             'product' => $product,
+            'recentMovements' => $recentMovements,
             'barcodeValue' => $barcodeValue,
             'barcodeSvg' => $barcodeSvg,
             'completeLabelSvg' => $completeLabelSvg,
@@ -549,6 +559,101 @@ class ProductController extends Controller
             'name' => $product->name,
             'barcode' => $barcodeValue,
             'svg' => $svg,
+        ]);
+    }
+
+    /**
+     * Display a dedicated, template-driven printable view of the product stock movement ledger.
+     * ZERO data mutation, strictly read-only, respects filters, and supports A4, A5, and Thermal 80mm.
+     */
+    public function printLedger(Request $request, Product $product, PrintTemplateService $templateService): View
+    {
+        $product->loadMissing(['category', 'stockBalances.warehouse']);
+
+        $query = StockMovement::where('product_id', $product->id)
+            ->with(['fromWarehouse', 'toWarehouse', 'batch', 'user', 'customer', 'supplier']);
+
+        $selectedWarehouse = null;
+        if ($request->filled('warehouse_id')) {
+            $wid = (int) $request->input('warehouse_id');
+            $selectedWarehouse = Warehouse::find($wid);
+            $query->where(function ($q) use ($wid) {
+                $q->where('from_warehouse_id', $wid)
+                    ->orWhere('to_warehouse_id', $wid);
+            });
+        }
+
+        if ($request->filled('type')) {
+            $query->where('type', $request->input('type'));
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('created_at', '>=', $request->input('date_from'));
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereDate('created_at', '<=', $request->input('date_to'));
+        }
+
+        // Print order: allow ascending (chronological) or descending
+        $sortOrder = $request->input('sort', 'asc');
+        if ($sortOrder === 'desc') {
+            $query->orderByDesc('id');
+        } else {
+            $query->orderBy('created_at', 'asc')->orderBy('id', 'asc');
+        }
+
+        // Retrieve unpaginated movements up to safe report limit (1000 items)
+        $movements = $query->limit(1000)->get();
+
+        // Paper format resolution
+        $format = (string) $request->query('format', PrintTemplate::FORMAT_A4);
+        if (!in_array($format, PrintTemplateService::SUPPORTED_FORMATS, true)) {
+            $format = PrintTemplate::FORMAT_A4;
+        }
+
+        $template = $templateService->getEffectiveTemplate(PrintTemplate::DOC_PURCHASE_INVOICE, $format);
+        $companySetting = CompanySetting::getSettings();
+        $autoPrint = $request->boolean('autoprint', false);
+
+        // Movement totals
+        $totalIn = (float) $movements->where('type', StockMovement::TYPE_IN)->sum('quantity');
+        $totalOut = (float) $movements->where('type', StockMovement::TYPE_OUT)->sum('quantity');
+        $totalTransfer = (float) $movements->where('type', StockMovement::TYPE_TRANSFER)->sum('quantity');
+        $totalAdjustment = (float) $movements->where('type', StockMovement::TYPE_ADJUSTMENT)->sum('quantity');
+
+        $colorHex = $template->getSetting('general.primary_color', '#1e293b');
+        $colorClass = match ($colorHex) {
+            '#059669', '#10b981' => 'theme-emerald',
+            '#2563eb', '#3b82f6' => 'theme-blue',
+            '#7c3aed', '#8b5cf6' => 'theme-purple',
+            '#e11d48', '#f43f5e' => 'theme-rose',
+            '#d97706', '#f59e0b' => 'theme-amber',
+            '#000000' => 'theme-black',
+            default => 'theme-navy',
+        };
+
+        return view('products.ledger-print', [
+            'title' => 'طباعة كشف حركة الصنف: '.$product->name,
+            'product' => $product,
+            'movements' => $movements,
+            'movementsCount' => $movements->count(),
+            'totalIn' => $totalIn,
+            'totalOut' => $totalOut,
+            'totalTransfer' => $totalTransfer,
+            'totalAdjustment' => $totalAdjustment,
+            'selectedWarehouse' => $selectedWarehouse,
+            'currentWarehouseId' => $request->input('warehouse_id'),
+            'currentType' => $request->input('type'),
+            'currentDateFrom' => $request->input('date_from'),
+            'currentDateTo' => $request->input('date_to'),
+            'template' => $template,
+            'settings' => $template->settings,
+            'format' => $format,
+            'colorClass' => $colorClass,
+            'company' => $companySetting,
+            'autoPrint' => $autoPrint,
+            'sortOrder' => $sortOrder,
         ]);
     }
 

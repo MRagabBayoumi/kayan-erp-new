@@ -21,10 +21,18 @@
                 </form>
             @endif
 
-            <button type="button" data-action="print-window" class="erp-btn erp-btn-secondary">
-                <x-icon name="printer" size="16" />
-                <span>طباعة الفاتورة</span>
-            </button>
+            <div class="inline-flex items-center gap-1">
+                <a href="{{ route('purchases.print', [$invoice, 'format' => 'a4']) }}" target="_blank" class="erp-btn erp-btn-secondary" title="فتح نافذة طباعة رسمية على ورق A4">
+                    <x-icon name="printer" size="16" />
+                    <span>طباعة الفاتورة (A4)</span>
+                </a>
+                <a href="{{ route('purchases.print', [$invoice, 'format' => 'a5']) }}" target="_blank" class="erp-btn erp-btn-ghost text-xs px-2" title="طباعة مقاس A5">
+                    <span>A5</span>
+                </a>
+                <a href="{{ route('purchases.print', [$invoice, 'format' => 'thermal_80mm']) }}" target="_blank" class="erp-btn erp-btn-ghost text-xs px-2" title="طباعة إيصال حراري 80 مم">
+                    <span>80 مم</span>
+                </a>
+            </div>
 
             <a href="{{ route('purchases.index') }}" class="erp-btn erp-btn-ghost">
                 <x-icon name="arrow-left" size="16" />

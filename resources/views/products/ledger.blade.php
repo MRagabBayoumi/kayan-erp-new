@@ -3,10 +3,10 @@
 @section('control_panel')
     <x-control-panel title="كشف حركة الصنف: {{ $product->name }}" :breadcrumbs="['المنتجات والأصناف' => route('products.index'), $product->name => route('products.show', $product), 'كشف الحركة' => '#']">
         <x-slot:actions>
-            <button type="button" data-action="print-window" class="erp-btn erp-btn-secondary">
+            <a href="{{ route('products.ledger.print', array_merge(['product' => $product->id], request()->query())) }}" class="erp-btn erp-btn-secondary" target="_blank" title="طباعة كشف حركة الصنف">
                 <x-icon name="printer" size="16" />
                 <span>طباعة كشف الحركة</span>
-            </button>
+            </a>
             <a href="{{ route('products.show', $product) }}" class="erp-btn erp-btn-primary">
                 <x-icon name="eye" size="16" />
                 <span>تفاصيل الصنف</span>
@@ -135,6 +135,16 @@
 
         <!-- Detailed Movement Table -->
         <div class="erp-card overflow-hidden">
+            <div class="erp-card-header flex items-center justify-between">
+                <div class="erp-card-title">
+                    <x-icon name="activity" size="18" />
+                    <span>سجل الحركات التفصيلي ({{ $movements->total() }} حركة)</span>
+                </div>
+                <a href="{{ route('products.ledger.print', array_merge(['product' => $product->id], request()->query())) }}" class="erp-btn erp-btn-secondary py-1 px-2.5 text-xs" target="_blank" title="طباعة كشف الحركة">
+                    <x-icon name="printer" size="14" />
+                    <span>طباعة كشف الحركة</span>
+                </a>
+            </div>
             <div class="erp-table-responsive">
                 <table class="erp-table">
                     <thead>

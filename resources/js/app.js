@@ -16,6 +16,7 @@ import { initCustomersPage } from './pages/customers.js';
 import { initSuppliersPage } from './pages/suppliers.js';
 import { initShippingOfficesPage } from './pages/shipping-offices.js';
 import { initPurchases } from './pages/purchases.js';
+import { initPrintTemplatesPage } from './pages/print-templates.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     initThemeAndDensity();
@@ -37,6 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initSuppliersPage();
     initShippingOfficesPage();
     initPurchases();
+    initPrintTemplatesPage();
 });
 
 /**

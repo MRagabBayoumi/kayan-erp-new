@@ -14,6 +14,10 @@
                     <button type="button" data-action="adjust-show-qty" data-delta="1" class="erp-btn erp-btn-ghost font-numeric py-0.5 px-2 font-bold text-sm">+</button>
                 </div>
             </div>
+            <a href="{{ route('products.ledger.print', $product) }}" class="erp-btn erp-btn-secondary" target="_blank" title="طباعة كشف حركة الصنف">
+                <x-icon name="printer" size="16" />
+                <span>طباعة حركة الصنف</span>
+            </a>
             <a href="{{ route('products.ledger', $product) }}" class="erp-btn erp-btn-secondary" title="كشف حركة الصنف التفصيلي والرصيد التراكمي">
                 <x-icon name="activity" size="16" />
                 <span>كشف حركة الصنف</span>
@@ -47,25 +51,50 @@
 @section('content')
     <div data-page="products-show" data-product-id="{{ $product->id }}">
         <div class="erp-product-show-grid">
-            <!-- Left Column: Product Image & Barcode Card -->
+            <!-- Side Column: Product Image, Barcode & Management Actions -->
             <div class="flex flex-col gap-4">
-                <div class="erp-card text-center p-5">
-                    @if($product->image_url)
-                        <img src="{{ $product->image_url }}" alt="{{ $product->name }}" class="max-w-full max-h-[240px] object-contain mx-auto rounded-sm">
-                    @else
-                        <div class="w-full h-[180px] bg-[var(--bg-surface-alt)] rounded-sm flex flex-col items-center justify-center border border-dashed border-[var(--border-color)]">
-                            <x-icon name="package" size="48" class="opacity-35" />
-                            <small class="text-[var(--text-muted)] mt-2">لا توجد صورة مسجلة</small>
+                <!-- 1. Dedicated Product Image Card -->
+                <div class="erp-card">
+                    <div class="erp-card-header flex items-center justify-between">
+                        <div class="erp-card-title">
+                            <x-icon name="image" size="18" />
+                            <span>صورة المنتج</span>
                         </div>
-                    @endif
+                        @if($product->image_url)
+                            <a href="{{ $product->image_url }}" target="_blank" class="erp-btn erp-btn-ghost py-1 px-2 text-xs text-[var(--primary)]" title="عرض الصورة بالحجم الكامل">
+                                <x-icon name="external-link" size="13" />
+                                <span>تكبير</span>
+                            </a>
+                        @endif
+                    </div>
+                    <div class="erp-card-body p-4 flex flex-col items-center justify-center">
+                        <div class="erp-product-image-frame">
+                            @if($product->image_url)
+                                <img src="{{ $product->image_url }}" alt="{{ $product->name }}" class="erp-product-image">
+                            @else
+                                <div class="erp-product-image-empty">
+                                    <x-icon name="package" size="44" class="opacity-35" />
+                                    <small class="text-[var(--text-muted)] mt-2">لا توجد صورة مسجلة للمنتج</small>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                </div>
 
-                    <div class="mt-4 pt-4 border-t border-[var(--border-color)]">
-                        <small class="block text-[var(--text-muted)] mb-2">ملصق الباركود الحراري (38×25 مم):</small>
-                        <div class="inline-block bg-white border border-[#cbd5e1] rounded shadow-sm p-1 max-w-full">
+                <!-- 2. Thermal Barcode Label Card -->
+                <div class="erp-card">
+                    <div class="erp-card-header">
+                        <div class="erp-card-title">
+                            <x-icon name="barcode" size="18" />
+                            <span>ملصق الباركود (38×25 مم)</span>
+                        </div>
+                    </div>
+                    <div class="erp-card-body p-4 text-center flex flex-col items-center">
+                        <div class="erp-barcode-label-box">
                             {!! $completeLabelSvg !!}
                         </div>
 
-                        <div class="mt-3">
+                        <div class="mt-3 w-full">
                             <button type="button" data-action="direct-print-show" class="erp-btn erp-btn-primary w-full justify-center text-sm" title="طباعة فورية على الطابعة بدون نوافذ">
                                 <x-icon name="printer" size="16" />
                                 <span>طباعة فورية على الطابعة</span>
@@ -74,13 +103,13 @@
                     </div>
                 </div>
 
-                <!-- Delete Action Card -->
-                <div class="erp-card p-4">
+                <!-- 3. Delete Action Card -->
+                <div class="erp-card p-3">
                     <form action="{{ route('products.destroy', $product) }}" method="POST" data-confirm="تأكيد حذف المنتج نهائياً من النظام؟">
                         @csrf
                         @method('DELETE')
-                        <button type="submit" class="erp-btn erp-btn-ghost w-full text-[var(--danger)] justify-center">
-                            <x-icon name="trash" size="16" />
+                        <button type="submit" class="erp-btn erp-btn-ghost w-full text-[var(--danger)] justify-center text-xs">
+                            <x-icon name="trash" size="14" />
                             <span>حذف هذا المنتج</span>
                         </button>
                     </form>
@@ -193,6 +222,77 @@
                                     @endif
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Product Stock Movements Overview Card -->
+                <div class="erp-card">
+                    <div class="erp-card-header flex items-center justify-between">
+                        <div class="erp-card-title">
+                            <x-icon name="activity" size="18" />
+                            <span>سجل حركة المخزون للصنف</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <a href="{{ route('products.ledger.print', $product) }}" class="erp-btn erp-btn-secondary py-1 px-2.5 text-xs" target="_blank" title="طباعة كشف حركة الصنف">
+                                <x-icon name="printer" size="14" />
+                                <span>طباعة حركة الصنف</span>
+                            </a>
+                            <a href="{{ route('products.ledger', $product) }}" class="erp-btn erp-btn-ghost py-1 px-2.5 text-xs text-[var(--primary)]" title="عرض كامل كشف الحركة مع الفلاتر">
+                                <span>عرض كامل السجل</span>
+                                <x-icon name="arrow-left" size="14" />
+                            </a>
+                        </div>
+                    </div>
+                    <div class="erp-card-body p-0">
+                        <div class="erp-table-responsive">
+                            <table class="erp-table">
+                                <thead>
+                                    <tr>
+                                        <th>التاريخ</th>
+                                        <th>نوع الحركة</th>
+                                        <th>المستودع</th>
+                                        <th class="text-center">الكمية</th>
+                                        <th class="text-center">الرصيد بعد الحركة</th>
+                                        <th>البيان</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @forelse($recentMovements as $rm)
+                                        <tr>
+                                            <td class="font-numeric text-xs">{{ $rm->created_at->format('Y-m-d H:i') }}</td>
+                                            <td>
+                                                @if($rm->reference_type === 'opening_balance')
+                                                    <span class="erp-badge erp-badge-info text-[10px]">رصيد افتتاحي</span>
+                                                @else
+                                                    <span class="erp-badge {{ $rm->type_badge_class }} text-[10px]">{{ $rm->type_label }}</span>
+                                                @endif
+                                            </td>
+                                            <td class="text-xs">{{ $rm->toWarehouse->name ?? $rm->fromWarehouse->name ?? '—' }}</td>
+                                            <td class="font-numeric text-center text-xs font-bold">
+                                                @if($rm->type === 'in' || $rm->reference_type === 'opening_balance')
+                                                    <span class="text-[var(--success-text)]">+{{ number_format((float)$rm->quantity, 2) }}</span>
+                                                @elseif($rm->type === 'out')
+                                                    <span class="text-[var(--danger)]">-{{ number_format((float)$rm->quantity, 2) }}</span>
+                                                @else
+                                                    <span>{{ number_format((float)$rm->quantity, 2) }}</span>
+                                                @endif
+                                                <small class="text-[10px] text-[var(--text-muted)]">{{ $product->unit }}</small>
+                                            </td>
+                                            <td class="font-numeric text-center text-xs font-bold text-[var(--primary)]">
+                                                {{ $rm->running_balance !== null ? number_format((float)$rm->running_balance, 2) : '—' }}
+                                            </td>
+                                            <td class="text-xs text-[var(--text-muted)]">{{ $rm->notes ?: ($rm->reference_type ? $rm->reference_type.' #'.$rm->reference_id : '—') }}</td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="6" class="text-center py-6 text-xs text-[var(--text-muted)]">
+                                                لا توجد حركات مسجلة لهذا الصنف حتى الآن.
+                                            </td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>

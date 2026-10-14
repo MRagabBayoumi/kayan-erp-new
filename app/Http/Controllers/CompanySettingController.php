@@ -13,20 +13,51 @@ use Illuminate\View\View;
 class CompanySettingController extends Controller
 {
     /**
-     * Show the company, system, and barcode printer settings form.
+     * Show the company, system, barcode printer, and print template settings.
      */
     public function index(): View
     {
         $settings = CompanySetting::getSettings();
         $barcodeSettings = BarcodeSetting::getSettings();
+        $activeTab = request('tab', 'company');
 
-        return view('settings.index', [
+        $printTemplateData = [];
+        if ($activeTab === 'print_templates') {
+            $service = app(\App\Services\PrintTemplateService::class);
+            $docType = request('doc_type', \App\Models\PrintTemplate::DOC_SALES_INVOICE);
+            $paperFormat = request('paper_format', \App\Models\PrintTemplate::FORMAT_A4);
+            $templateId = request('template_id') ? (int) request('template_id') : null;
+
+            if (!in_array($docType, \App\Services\PrintTemplateService::SUPPORTED_DOCUMENTS, true)) {
+                $docType = \App\Models\PrintTemplate::DOC_SALES_INVOICE;
+            }
+            if (!in_array($paperFormat, \App\Services\PrintTemplateService::SUPPORTED_FORMATS, true)) {
+                $paperFormat = \App\Models\PrintTemplate::FORMAT_A4;
+            }
+
+            $printTemplateData = [
+                'currentDocType' => $docType,
+                'currentPaperFormat' => $paperFormat,
+                'currentTemplate' => $service->getEffectiveTemplate($docType, $paperFormat, $templateId),
+                'sampleData' => $service->getPreviewSampleData($docType, $paperFormat),
+                'defaults' => $service->getDefaultSettings($docType, $paperFormat),
+                'templatesList' => \App\Models\PrintTemplate::forDocument($docType)
+                    ->forFormat($paperFormat)
+                    ->orderByDesc('is_default')
+                    ->orderBy('name')
+                    ->get(),
+                'docTypeLabels' => \App\Models\PrintTemplate::getDocumentTypeLabels(),
+                'paperFormatLabels' => \App\Models\PrintTemplate::getPaperFormatLabels(),
+            ];
+        }
+
+        return view('settings.index', array_merge([
             'title' => 'إعدادات الشركة والنظام',
             'moduleName' => 'الإعدادات',
             'settings' => $settings,
             'barcodeSettings' => $barcodeSettings,
-            'activeTab' => request('tab', 'company'),
-        ]);
+            'activeTab' => $activeTab,
+        ], $printTemplateData));
     }
 
     /**

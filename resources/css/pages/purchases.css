@@ -1,0 +1,75 @@
+/* ==========================================================================
+   Kayan ERP — Purchases Module Styles
+   Summary KPI Card, Filter Controls & Responsive Data Layouts
+   ========================================================================== */
+
+.purchases-kpi-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+}
+
+@media (max-width: 768px) {
+    .purchases-kpi-row {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+}
+
+.purchases-kpi-stat {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 16px;
+    background-color: var(--bg-surface-alt);
+    border: 1px solid var(--border-light);
+    border-radius: var(--border-radius-sm);
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.purchases-kpi-icon-wrap {
+    width: 44px;
+    height: 44px;
+    border-radius: var(--border-radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--primary-soft);
+    color: var(--primary);
+    flex-shrink: 0;
+}
+
+.purchases-kpi-icon-wrap.success {
+    background: var(--success-soft);
+    color: var(--success);
+}
+
+.purchases-kpi-icon-wrap.warning {
+    background: var(--warning-soft);
+    color: var(--warning);
+}
+
+.purchases-kpi-info {
+    min-width: 0;
+    flex: 1;
+}
+
+.purchases-kpi-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
+.purchases-kpi-value {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--text-main);
+    line-height: 1.2;
+}
+
+.purchases-kpi-desc {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}

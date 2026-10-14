@@ -36,5 +36,8 @@ class DatabaseSeeder extends Seeder
                 'notes' => 'المستودع المركزي لفرز وتوزيع الإكسسوارات',
             ]
         );
+
+        // Default Print Templates (4 document types x 2 paper formats = 8 defaults)
+        $this->call(PrintTemplateSeeder::class);
     }
 }
