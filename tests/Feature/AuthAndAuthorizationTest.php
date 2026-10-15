@@ -3,6 +3,7 @@
 use App\Models\Category;
 use App\Models\CompanySetting;
 use App\Models\Customer;
+use App\Models\Permission;
 use App\Models\Product;
 use App\Models\PurchaseInvoice;
 use App\Models\Role;
@@ -608,9 +609,10 @@ test('database seeder throws exception if ADMIN_DEFAULT_PASSWORD is missing and 
     $seeder = new DatabaseSeeder;
 
     // 1. When user does not exist and ADMIN_DEFAULT_PASSWORD is empty/null, it must throw RuntimeException
+    User::where('email', env('ADMIN_DEFAULT_EMAIL', 'admin@kayan-erp.com'))->delete();
     $oldPass = env('ADMIN_DEFAULT_PASSWORD');
-    putenv('ADMIN_DEFAULT_PASSWORD=');
-    $_ENV['ADMIN_DEFAULT_PASSWORD'] = '';
+    unset($_SERVER['ADMIN_DEFAULT_PASSWORD'], $_ENV['ADMIN_DEFAULT_PASSWORD']);
+    putenv('ADMIN_DEFAULT_PASSWORD');
 
     expect(fn () => $seeder->run())
         ->toThrow(RuntimeException::class, 'ADMIN_DEFAULT_PASSWORD must be explicitly configured');
@@ -798,4 +800,48 @@ test('quick customer add endpoint creates customer and returns JSON response for
     ]);
 
     expect(Customer::where('phone', '01234567890')->exists())->toBeTrue();
+});
+
+test('cashier granted create-customers-pos permission can add customer and lookup without manage-purchases', function () {
+    $perm = Permission::firstOrCreate(
+        ['slug' => 'create-customers-pos'],
+        ['name' => 'إضافة عميل سريع', 'module' => 'المبيعات ونقاط البيع']
+    );
+
+    $cashierRole = Role::firstOrCreate(
+        ['slug' => 'cashier'],
+        ['name' => 'كاشير نقطة البيع', 'is_system' => true]
+    );
+    $cashierRole->permissions()->syncWithoutDetaching([$perm->id]);
+
+    $cashier = User::create([
+        'name' => 'كاشير المحل',
+        'email' => 'cashier-cust@kayan.test',
+        'password' => Hash::make('Cashier123!'),
+        'role' => User::ROLE_CASHIER,
+        'role_id' => $cashierRole->id,
+    ]);
+
+    // Cashier can lookup customers
+    $lookupResponse = $this->actingAs($cashier)->getJson(route('customers.lookup', ['q' => 'محمود']));
+    $lookupResponse->assertOk();
+
+    // Cashier can add customer via JSON (POS quick add modal)
+    $createResponse = $this->actingAs($cashier)->postJson(route('customers.store'), [
+        'name' => 'عميل تجزئة جديد',
+        'phone' => '01199887766',
+        'customer_type' => 'retail',
+        'pricing_tier' => 'retail',
+    ]);
+
+    $createResponse->assertCreated();
+    $createResponse->assertJson([
+        'success' => true,
+        'customer' => [
+            'name' => 'عميل تجزئة جديد',
+            'phone' => '01199887766',
+        ],
+    ]);
+
+    expect(Customer::where('phone', '01199887766')->exists())->toBeTrue();
 });

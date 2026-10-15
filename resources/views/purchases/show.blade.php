@@ -21,6 +21,11 @@
                 </form>
             @endif
 
+            <button type="button" data-action="python-direct-print" data-url="{{ route('purchases.direct-print', $invoice) }}" class="erp-btn erp-btn-primary" title="طباعة مباشرة بطابعة الإيصالات عبر بايثون">
+                <x-icon name="printer" size="16" />
+                <span>طباعة بايثون المباشرة</span>
+            </button>
+
             <div class="inline-flex items-center gap-1">
                 <a href="{{ route('purchases.print', [$invoice, 'format' => 'a4']) }}" target="_blank" class="erp-btn erp-btn-secondary" title="فتح نافذة طباعة رسمية على ورق A4">
                     <x-icon name="printer" size="16" />

@@ -94,10 +94,22 @@
                             {!! $completeLabelSvg !!}
                         </div>
 
-                        <div class="mt-3 w-full">
+                        <div class="mt-3 w-full flex flex-col gap-2">
+                            <div class="flex items-center justify-between bg-[var(--bg-surface-alt)] p-1.5 rounded border border-[var(--border-color)]">
+                                <span class="text-xs font-semibold text-[var(--text-muted)] mr-1">عدد النسخ:</span>
+                                <div class="inline-flex items-center bg-[var(--bg-surface)] border border-[var(--border-color)] rounded p-0.5">
+                                    <button type="button" data-action="adjust-show-qty" data-delta="-1" class="erp-btn erp-btn-ghost font-numeric py-1 px-2.5 font-bold text-sm" title="إنقاص الكمية">−</button>
+                                    <input type="number" id="cardLabelQty" value="1" min="1" max="500" class="font-numeric w-12 text-center p-1 font-bold border-0 bg-transparent text-[var(--text-main)] text-sm" title="عدد النسخ">
+                                    <button type="button" data-action="adjust-show-qty" data-delta="1" class="erp-btn erp-btn-ghost font-numeric py-1 px-2.5 font-bold text-sm" title="زيادة الكمية">+</button>
+                                </div>
+                            </div>
                             <button type="button" data-action="direct-print-show" class="erp-btn erp-btn-primary w-full justify-center text-sm" title="طباعة فورية على الطابعة بدون نوافذ">
                                 <x-icon name="printer" size="16" />
                                 <span>طباعة فورية على الطابعة</span>
+                            </button>
+                            <button type="button" data-action="open-print-modal" class="erp-btn erp-btn-secondary w-full justify-center text-xs" title="تخصيص عدد النسخ وخيارات الملصق">
+                                <x-icon name="sliders" size="14" />
+                                <span>تخصيص الكميات والخيارات</span>
                             </button>
                         </div>
                     </div>

@@ -19,6 +19,21 @@
     border-radius: 3px;
 }
 
+/* Sticky Header Table Support */
+.erp-table-sticky-header {
+    max-height: calc(100vh - 260px);
+    overflow-y: auto;
+    position: relative;
+}
+
+.erp-table-sticky-header thead th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background-color: var(--bg-surface-alt);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
 .erp-table {
     width: 100%;
     border-collapse: collapse;

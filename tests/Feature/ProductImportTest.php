@@ -251,6 +251,9 @@ test('import captures full form inputs including distributor price, pieces per p
         'initial_quantity' => 25.00,
         'remaining_quantity' => 25.00,
         'cost_price' => 45.50,
+        'retail_price' => 110.00,
+        'wholesale_price' => 75.00,
+        'distributor_price' => 65.00,
     ]);
 
     $this->assertDatabaseHas('stock_movements', [
@@ -258,5 +261,50 @@ test('import captures full form inputs including distributor price, pieces per p
         'to_warehouse_id' => $warehouse->id,
         'quantity' => 25.00,
         'reference_type' => 'opening_balance',
+    ]);
+});
+
+test('import initializes opening stock and batch for existing product with zero stock', function () {
+    $warehouse = Warehouse::firstOrCreate([
+        'code' => 'WH-EXISTING-01',
+    ], [
+        'name' => 'المستودع الرئيسي',
+        'is_default' => true,
+        'is_active' => true,
+    ]);
+
+    $cat = Category::firstOrCreate(['name' => 'عام'], ['slug' => 'general']);
+
+    // Existing product without stock or batches
+    $existing = Product::create([
+        'sku' => 'EXISTING-001',
+        'name' => 'صنف مسجل سابقاً بدون رصيد',
+        'category_id' => $cat->id,
+        'cost_price' => 20.00,
+        'wholesale_price' => 30.00,
+        'retail_price' => 45.00,
+        'opening_quantity' => 0.00,
+        'unit' => 'قطعة',
+        'is_active' => true,
+    ]);
+
+    $csvData = "\xEF\xBB\xBF"."كود الصنف,اسم المنتج,التصنيف,الباركود,سعر التكلفة,سعر الجملة,سعر التجزئة,سعر الموزع,وحدة القياس,عدد القطع في الطرد,حد الطلب الأدنى,الكمية الافتتاحية,تكلفة الرصيد الافتتاحي,المستودع المستلم,تاريخ الرصيد الافتتاحي\n"
+        ."EXISTING-001,صنف مسجل سابقاً بدون رصيد,عام,,20.00,30.00,45.00,28.00,قطعة,1,5,15.00,20.00,المستودع الرئيسي,2026-10-15\n";
+
+    $file = UploadedFile::fake()->createWithContent('existing_with_stock.csv', $csvData);
+
+    $this->post(route('products.import.review'), ['import_file' => $file])->assertStatus(200);
+    $this->post(route('products.import.confirm'), ['update_existing' => '1', 'create_categories' => '1'])->assertRedirect(route('products.index'));
+
+    $existing->refresh();
+    expect((float) $existing->opening_quantity)->toBe(15.00)
+        ->and((float) $existing->total_stock)->toBe(15.00);
+
+    $this->assertDatabaseHas('inventory_batches', [
+        'product_id' => $existing->id,
+        'warehouse_id' => $warehouse->id,
+        'remaining_quantity' => 15.00,
+        'retail_price' => 45.00,
+        'wholesale_price' => 30.00,
     ]);
 });

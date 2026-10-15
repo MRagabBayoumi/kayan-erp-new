@@ -24,4 +24,6 @@ return [
 
     'default_receipt_printer' => env('PRINTING_DEFAULT_RECEIPT_PRINTER', 'XP-80C'),
 
+    'default_document_printer' => env('PRINTING_DEFAULT_DOCUMENT_PRINTER', 'TOSHIBA Generic Printer XL'),
+
 ];

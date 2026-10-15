@@ -110,10 +110,12 @@ class InventoryBatch extends Model
      */
     public function getPriceForTier(string $tier = 'retail'): ?float
     {
+        $prod = $this->product ?? Product::find($this->product_id);
+
         $price = match (strtolower(trim($tier))) {
-            'wholesale' => $this->wholesale_price,
-            'distributor' => $this->distributor_price ?? $this->wholesale_price,
-            default => $this->retail_price,
+            'wholesale' => $this->wholesale_price ?? $prod?->wholesale_price,
+            'distributor' => $this->distributor_price ?? $this->wholesale_price ?? $prod?->distributor_price ?? $prod?->wholesale_price,
+            default => $this->retail_price ?? $prod?->retail_price,
         };
 
         return ! is_null($price) ? (float) $price : null;

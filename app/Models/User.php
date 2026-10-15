@@ -153,7 +153,17 @@ class User extends Authenticatable
             return true;
         }
 
-        return $this->roleRelation?->hasPermission($permissionSlug) ?? false;
+        if ($this->roleRelation) {
+            return $this->roleRelation->hasPermission($permissionSlug);
+        }
+
+        if ($this->role) {
+            $role = Role::where('slug', $this->role)->first();
+
+            return $role?->hasPermission($permissionSlug) ?? false;
+        }
+
+        return false;
     }
 
     /**

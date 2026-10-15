@@ -120,11 +120,11 @@ test('print template reset endpoint restores system default settings', function 
 
     $response->assertOk()
         ->assertJsonPath('success', true)
-        ->assertJsonPath('template.settings.general.custom_title', 'فاتورة مبيعات')
+        ->assertJsonPath('template.settings.general.custom_title', 'إذن صرف')
         ->assertJsonPath('template.settings.general.primary_color', '#1e293b');
 
     $template->refresh();
-    expect($template->getSetting('general.custom_title'))->toBe('فاتورة مبيعات');
+    expect($template->getSetting('general.custom_title'))->toBe('إذن صرف');
 });
 
 test('print template duplicate endpoint clones template as custom copy', function () {

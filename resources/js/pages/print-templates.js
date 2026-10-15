@@ -92,6 +92,7 @@ export function initPrintTemplatesPage() {
         settings.table_columns.show_sku = form.querySelector('[name="settings[table_columns][show_sku]"]')?.checked ?? true;
         settings.table_columns.show_barcode = form.querySelector('[name="settings[table_columns][show_barcode]"]')?.checked ?? false;
         settings.table_columns.show_unit = form.querySelector('[name="settings[table_columns][show_unit]"]')?.checked ?? true;
+        settings.table_columns.show_warehouse = form.querySelector('[name="settings[table_columns][show_warehouse]"]')?.checked ?? true;
         settings.table_columns.show_price = form.querySelector('[name="settings[table_columns][show_price]"]')?.checked ?? true;
         settings.table_columns.show_discount = form.querySelector('[name="settings[table_columns][show_discount]"]')?.checked ?? true;
         settings.table_columns.show_tax = form.querySelector('[name="settings[table_columns][show_tax]"]')?.checked ?? false;
@@ -174,9 +175,13 @@ export function initPrintTemplatesPage() {
         // Meta
         const docNumEl = paperSheet.querySelector('.preview-doc-number');
         if (docNumEl) docNumEl.style.display = settings.document_meta?.show_doc_number ? 'inline-block' : 'none';
+        const docNumRow = paperSheet.querySelector('.preview-doc-number-row');
+        if (docNumRow) docNumRow.style.display = settings.document_meta?.show_doc_number ? 'flex' : 'none';
 
         const docDateEl = paperSheet.querySelector('.preview-doc-date');
         if (docDateEl) docDateEl.style.display = settings.document_meta?.show_doc_date ? 'inline-block' : 'none';
+        const docDateRow = paperSheet.querySelector('.preview-doc-date-row');
+        if (docDateRow) docDateRow.style.display = settings.document_meta?.show_doc_date ? 'flex' : 'none';
 
         const docDueDateEl = paperSheet.querySelector('.preview-doc-due-date');
         if (docDueDateEl) docDueDateEl.style.display = settings.document_meta?.show_due_date ? 'inline-block' : 'none';
@@ -195,16 +200,25 @@ export function initPrintTemplatesPage() {
 
         // Party
         const partyLabelEl = paperSheet.querySelector('.preview-party-label');
-        if (partyLabelEl) partyLabelEl.textContent = settings.party_meta?.party_type_label || 'الطرف المقابل';
+        if (partyLabelEl) {
+            const rawLabel = settings.party_meta?.party_type_label || 'الطرف المقابل';
+            partyLabelEl.textContent = partyLabelEl.textContent.includes(':') ? `${rawLabel} :` : rawLabel;
+        }
 
         const partyNameEl = paperSheet.querySelector('.preview-party-name');
         if (partyNameEl) partyNameEl.style.display = settings.party_meta?.show_party_name ? 'block' : 'none';
+        const partyNameRow = paperSheet.querySelector('.preview-party-name-row');
+        if (partyNameRow) partyNameRow.style.display = settings.party_meta?.show_party_name ? 'flex' : 'none';
 
         const partyPhoneEl = paperSheet.querySelector('.preview-party-phone');
         if (partyPhoneEl) partyPhoneEl.style.display = settings.party_meta?.show_party_phone ? 'block' : 'none';
+        const partyPhoneRow = paperSheet.querySelector('.preview-party-phone-row');
+        if (partyPhoneRow) partyPhoneRow.style.display = settings.party_meta?.show_party_phone ? 'flex' : 'none';
 
         const partyAddrEl = paperSheet.querySelector('.preview-party-address');
         if (partyAddrEl) partyAddrEl.style.display = settings.party_meta?.show_party_address ? 'block' : 'none';
+        const partyAddrRow = paperSheet.querySelector('.preview-party-address-row');
+        if (partyAddrRow) partyAddrRow.style.display = settings.party_meta?.show_party_address ? 'flex' : 'none';
 
         const partyTaxEl = paperSheet.querySelector('.preview-party-tax-no');
         if (partyTaxEl) partyTaxEl.style.display = settings.party_meta?.show_party_tax_no ? 'block' : 'none';
@@ -218,6 +232,7 @@ export function initPrintTemplatesPage() {
             paperSheet.querySelectorAll('.col-sku').forEach(el => el.style.display = settings.table_columns?.show_sku ? '' : 'none');
             paperSheet.querySelectorAll('.col-barcode').forEach(el => el.style.display = settings.table_columns?.show_barcode ? '' : 'none');
             paperSheet.querySelectorAll('.col-unit').forEach(el => el.style.display = settings.table_columns?.show_unit ? '' : 'none');
+            paperSheet.querySelectorAll('.col-warehouse, .col-wh').forEach(el => el.style.display = settings.table_columns?.show_warehouse ? '' : 'none');
             paperSheet.querySelectorAll('.col-price').forEach(el => el.style.display = settings.table_columns?.show_price ? '' : 'none');
             paperSheet.querySelectorAll('.col-discount').forEach(el => el.style.display = settings.table_columns?.show_discount ? '' : 'none');
             paperSheet.querySelectorAll('.col-tax').forEach(el => el.style.display = settings.table_columns?.show_tax ? '' : 'none');

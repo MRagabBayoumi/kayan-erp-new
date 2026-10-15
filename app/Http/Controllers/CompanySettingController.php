@@ -26,6 +26,9 @@ class CompanySettingController extends Controller
         $printTemplateData = [];
         if ($activeTab === 'print_templates') {
             $service = app(PrintTemplateService::class);
+            if (PrintTemplate::count() === 0) {
+                $service->seedDefaultTemplates();
+            }
             $docType = request('doc_type', PrintTemplate::DOC_SALES_INVOICE);
             $paperFormat = request('paper_format', PrintTemplate::FORMAT_A4);
             $templateId = request('template_id') ? (int) request('template_id') : null;

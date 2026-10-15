@@ -3,11 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Category;
+use App\Models\CompanySetting;
 use App\Models\Product;
 use App\Models\StockMovement;
 use App\Models\Warehouse;
 use App\Services\InventoryService;
+use App\Services\Printing\PythonPrintEngineService;
 use Exception;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -136,6 +139,68 @@ class InventoryController extends Controller
             'categories' => $categories,
             'selectedCategoryId' => $categoryId,
         ]);
+    }
+
+    /**
+     * Print Low Stock Shortages report sheet.
+     */
+    public function printLowStock(Request $request): View
+    {
+        $categoryId = $request->query('category_id');
+
+        $query = Product::with(['category', 'stockBalances.warehouse'])
+            ->withSum('stockBalances', 'quantity')
+            ->where(function ($q) {
+                $q->whereRaw('(SELECT COALESCE(SUM(quantity), 0) FROM stock_balances WHERE stock_balances.product_id = products.id) <= products.min_stock_alert');
+            });
+
+        if ($categoryId) {
+            $query->byCategory((int) $categoryId);
+        }
+
+        $products = $query->orderBy('name')->get();
+        $company = CompanySetting::getSettings();
+
+        return view('inventory.low-stock-print', [
+            'products' => $products,
+            'company' => $company,
+            'selectedCategory' => $categoryId ? Category::find($categoryId) : null,
+        ]);
+    }
+
+    /**
+     * Direct print Low Stock Shortages report via the centralized Python printing engine.
+     */
+    public function directPrintLowStock(Request $request, PythonPrintEngineService $printService): JsonResponse
+    {
+        $validated = $request->validate([
+            'printer' => ['nullable', 'string', 'max:120'],
+            'category_id' => ['nullable', 'integer', 'exists:categories,id'],
+        ]);
+
+        $categoryId = $validated['category_id'] ?? $request->query('category_id');
+
+        $query = Product::with(['category', 'stockBalances.warehouse'])
+            ->withSum('stockBalances', 'quantity')
+            ->where(function ($q) {
+                $q->whereRaw('(SELECT COALESCE(SUM(quantity), 0) FROM stock_balances WHERE stock_balances.product_id = products.id) <= products.min_stock_alert');
+            });
+
+        if ($categoryId) {
+            $query->byCategory((int) $categoryId);
+        }
+
+        $products = $query->orderBy('name')->get();
+        $selectedCategory = $categoryId ? Category::find($categoryId) : null;
+        $printer = $validated['printer'] ?? null;
+
+        $result = $printService->printLowStockReport(
+            $products,
+            $selectedCategory?->name,
+            $printer
+        );
+
+        return response()->json($result, $result['success'] ? 200 : 422);
     }
 
     /**

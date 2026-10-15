@@ -210,14 +210,25 @@
                                     صنف محدد
                                 </span>
                             </label>
-                            <input 
-                                type="text" 
-                                id="quickProductInput" 
-                                class="erp-input erp-hero-search-input text-xs w-full" 
-                                placeholder="اضرب الباركود بالمسدس أو اكتب الكود..." 
-                                autocomplete="off"
-                                autofocus
-                            >
+                            <div class="relative w-full">
+                                <input 
+                                    type="text" 
+                                    id="quickProductInput" 
+                                    class="erp-input erp-hero-search-input text-xs w-full pl-9" 
+                                    placeholder="اضرب الباركود بالمسدس أو اكتب الكود..." 
+                                    autocomplete="off"
+                                    autofocus
+                                >
+                                <button 
+                                    type="button" 
+                                    data-action="open-barcode-scanner" 
+                                    data-target-input="quickProductInput" 
+                                    title="تشغيل كاميرا الموبايل لمسح الباركود"
+                                    class="absolute left-1.5 top-1/2 -translate-y-1/2 h-7 w-7 border-0 bg-[var(--primary-soft)] text-[var(--primary)] hover:bg-[var(--primary)] hover:text-white rounded inline-flex items-center justify-center cursor-pointer transition-colors"
+                                >
+                                    <x-icon name="camera" size="15" />
+                                </button>
+                            </div>
 
                             <!-- قائمة الاقتراحات الفورية Autocomplete -->
                             <div id="quickSearchResults" class="purchases-autocomplete-dropdown hidden"></div>
@@ -514,4 +525,7 @@
             </td>
         </tr>
     </template>
+
+    <!-- Barcode Camera Scanner Modal -->
+    <x-barcode-scanner-modal target-input-id="quickProductInput" />
 @endsection

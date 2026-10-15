@@ -4,8 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\CashierCashMovement;
 use App\Models\CashierShift;
+use App\Models\CompanySetting;
+use App\Models\SalesInvoice;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Services\Printing\PythonPrintEngineService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -155,11 +158,13 @@ class CashierShiftController extends Controller
     public function show(CashierShift $shift): View
     {
         $shift->load(['user', 'warehouse', 'closedBy', 'cashMovements.user', 'salesInvoices.customer']);
+        $soldItems = $this->getSoldItemsForShift($shift);
 
         return view('shifts.show', [
             'title' => "تفاصيل الوردية: {$shift->shift_number}",
             'moduleName' => 'ورديات الكاشير',
             'shift' => $shift,
+            'soldItems' => $soldItems,
         ]);
     }
 
@@ -285,12 +290,56 @@ class CashierShiftController extends Controller
     /**
      * Thermal / A4 Print summary of the shift.
      */
-    public function print(CashierShift $shift): View
+    public function print(Request $request, CashierShift $shift): View
     {
         $shift->load(['user', 'warehouse', 'closedBy', 'cashMovements.user', 'salesInvoices.customer']);
+        $company = CompanySetting::getSettings();
+        $format = (string) $request->query('format', 'thermal_80mm');
+        $soldItems = $this->getSoldItemsForShift($shift);
 
         return view('shifts.print', [
             'shift' => $shift,
+            'company' => $company,
+            'format' => $format,
+            'soldItems' => $soldItems,
         ]);
+    }
+
+    /**
+     * Direct print cashier shift receipt via the centralized Python printing engine.
+     */
+    public function directPrint(Request $request, CashierShift $shift, PythonPrintEngineService $printService): JsonResponse
+    {
+        $validated = $request->validate([
+            'printer' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        $printer = $validated['printer'] ?? null;
+        $result = $printService->printCashierShift($shift, $printer);
+
+        return response()->json($result, $result['success'] ? 200 : 422);
+    }
+
+    /**
+     * Get aggregated sold products for this shift across all posted sales invoices.
+     */
+    protected function getSoldItemsForShift(CashierShift $shift)
+    {
+        return DB::table('sales_invoice_items')
+            ->join('sales_invoices', 'sales_invoices.id', '=', 'sales_invoice_items.sales_invoice_id')
+            ->join('products', 'products.id', '=', 'sales_invoice_items.product_id')
+            ->leftJoin('units', 'units.id', '=', 'sales_invoice_items.unit_id')
+            ->where('sales_invoices.cashier_shift_id', $shift->id)
+            ->where('sales_invoices.status', SalesInvoice::STATUS_POSTED)
+            ->select(
+                'products.name as product_name',
+                'products.sku as product_sku',
+                'units.name as unit_name',
+                DB::raw('SUM(sales_invoice_items.quantity) as total_qty'),
+                DB::raw('SUM(sales_invoice_items.subtotal) as total_amount')
+            )
+            ->groupBy('products.id', 'products.name', 'products.sku', 'units.name')
+            ->orderByDesc('total_qty')
+            ->get();
     }
 }

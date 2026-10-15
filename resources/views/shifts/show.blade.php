@@ -3,6 +3,10 @@
 @section('control_panel')
     <x-control-panel title="تفاصيل الوردية: {{ $shift->shift_number }}" :breadcrumbs="['المبيعات' => route('sales.index'), 'ورديات الكاشير' => route('shifts.index'), $shift->shift_number => '#']">
         <x-slot:actions>
+            <button type="button" data-action="python-direct-print" data-url="{{ route('shifts.direct-print', $shift) }}" class="erp-btn erp-btn-primary" title="طباعة مباشرة بطابعة الإيصالات عبر بايثون">
+                <x-icon name="printer" size="16" />
+                <span>طباعة بايثون المباشرة</span>
+            </button>
             <a href="{{ route('shifts.print', $shift) }}" target="_blank" class="erp-btn erp-btn-secondary">
                 <x-icon name="printer" size="16" />
                 <span>طباعة التقرير</span>
@@ -130,8 +134,8 @@
                     </div>
                     @if($shift->closedBy)
                         <div class="flex justify-between py-1 border-b border-[var(--border-color)]">
-                            <span class="text-[var(--text-muted)]">أغلق بواسطة:</span>
-                            <span class="font-bold text-[var(--text-main)]">{{ $shift->closedBy->name }}</span>
+                            <span class="text-[var(--text-muted)]">المستلم / معتمد الإغلاق:</span>
+                            <span class="font-bold text-[var(--primary)]">{{ $shift->closedBy->name }}</span>
                         </div>
                     @endif
                     @if($shift->opening_notes)
@@ -308,6 +312,59 @@
                             <tr>
                                 <td colspan="7" class="text-center py-6 text-[var(--text-muted)]">
                                     لم يتم إصدار فواتير مبيعات مرتبطة بهذه الوردية بعد.
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 4. Sold Products Breakdown in this Shift -->
+        <div class="erp-card overflow-hidden mt-4">
+            <div class="p-3 bg-[var(--surface-muted)] border-b border-[var(--border-color)] flex items-center justify-between">
+                <h3 class="font-bold text-sm text-[var(--text-main)] flex items-center gap-2 m-0">
+                    <x-icon name="package" size="16" class="text-[var(--primary)]" />
+                    <span>تقرير الأصناف والكميات المباعة في الوردية</span>
+                </h3>
+                <span class="erp-badge erp-badge-info font-numeric">{{ isset($soldItems) ? count($soldItems) : 0 }} صنف مباع</span>
+            </div>
+            <div class="table-responsive">
+                <table class="erp-table">
+                    <thead>
+                        <tr>
+                            <th class="w-12 text-center">#</th>
+                            <th>اسم الصنف</th>
+                            <th class="w-36">كود الصنف</th>
+                            <th class="w-32 text-center">الكمية المباعة</th>
+                            <th class="w-24 text-center">وحدة القياس</th>
+                            <th class="w-36 text-left">إجمالي المبيعات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($soldItems ?? [] as $sItem)
+                            <tr>
+                                <td class="text-center font-numeric text-xs">{{ $loop->iteration }}</td>
+                                <td class="font-semibold text-xs text-[var(--text-main)]">
+                                    {{ $sItem->product_name }}
+                                </td>
+                                <td class="font-numeric font-mono text-xs">
+                                    {{ $sItem->product_sku ?: '—' }}
+                                </td>
+                                <td class="text-center font-numeric font-bold text-sm text-emerald-600">
+                                    {{ (float)$sItem->total_qty }}
+                                </td>
+                                <td class="text-center text-xs text-[var(--text-muted)]">
+                                    {{ $sItem->unit_name ?: 'قطعة' }}
+                                </td>
+                                <td class="text-left font-numeric font-bold text-sm text-[var(--primary)]">
+                                    {{ number_format((float)$sItem->total_amount, 2) }} ج.م
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="6" class="text-center py-6 text-[var(--text-muted)]">
+                                    لم يتم بيع أي أصناف مرحلة خلال هذه الوردية بعد.
                                 </td>
                             </tr>
                         @endforelse

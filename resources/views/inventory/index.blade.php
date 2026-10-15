@@ -119,7 +119,7 @@
                         data-action="open-barcode-scanner"
                         data-target-input="inventorySearchInput"
                         title="مسح الباركود بالكاميرا للبحث السريع"
-                        class="absolute left-1 h-7 w-7 border-0 bg-[var(--primary-soft)] text-[var(--primary)] rounded inline-flex items-center justify-center cursor-pointer">
+                        class="absolute left-1 top-1/2 -translate-y-1/2 h-7 w-7 border-0 bg-[var(--primary-soft)] text-[var(--primary)] rounded inline-flex items-center justify-center cursor-pointer">
                         <x-icon name="camera" size="15" />
                     </button>
                 </div>

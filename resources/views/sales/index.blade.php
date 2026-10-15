@@ -7,7 +7,7 @@
                 <x-icon name="plus" size="16" />
                 <span>فاتورة بيع جديدة</span>
             </a>
-            @can('manage-purchases')
+            @can('manage-customers')
             <a href="{{ route('customers.index') }}" class="erp-btn erp-btn-secondary">
                 <x-icon name="users" size="16" />
                 <span>دليل العملاء</span>
@@ -240,11 +240,14 @@
                                             <a href="{{ route('sales.show', $inv) }}" class="erp-btn erp-btn-ghost erp-btn-sm" title="عرض التفاصيل">
                                                 <x-icon name="eye" size="14" />
                                             </a>
-                                            <a href="{{ route('sales.print', [$inv, 'format' => 'a4']) }}" target="_blank" class="erp-btn erp-btn-ghost erp-btn-sm" title="طباعة A4">
+                                            <button type="button" data-action="python-direct-print" data-url="{{ route('sales.direct-print', $inv) }}" class="erp-btn erp-btn-ghost erp-btn-sm text-[var(--primary)]" title="طباعة فورية بايثون">
                                                 <x-icon name="printer" size="14" />
+                                            </button>
+                                            <a href="{{ route('sales.print', [$inv, 'format' => 'a4']) }}" target="_blank" class="erp-btn erp-btn-ghost erp-btn-sm" title="طباعة A4">
+                                                <x-icon name="file-text" size="14" />
                                             </a>
                                             <a href="{{ route('sales.print', [$inv, 'format' => 'thermal_80mm']) }}" target="_blank" class="erp-btn erp-btn-ghost erp-btn-sm" title="طباعة 80 مم">
-                                                <x-icon name="file-text" size="14" />
+                                                <x-icon name="printer" size="14" />
                                             </a>
                                         </div>
                                     </td>

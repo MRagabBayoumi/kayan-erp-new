@@ -48,7 +48,7 @@ class BarcodeLabelTemplate(BasePrintTemplate):
 
         # 1. Dimensions
         width_mm = float(data.get("width_mm") or 38)
-        height_mm = float(data.get("height_mm") or 15)
+        height_mm = float(data.get("height_mm") or 13)
         dpi = int(data.get("dpi") or 203)
 
         width_px = mm_to_px(width_mm, dpi)

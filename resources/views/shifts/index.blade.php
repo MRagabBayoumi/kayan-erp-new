@@ -254,8 +254,11 @@
                                         <a href="{{ route('shifts.show', $shift) }}" class="erp-btn erp-btn-ghost erp-btn-sm" title="تفاصيل الوردية">
                                             <x-icon name="eye" size="14" />
                                         </a>
-                                        <a href="{{ route('shifts.print', $shift) }}" class="erp-btn erp-btn-ghost erp-btn-sm" title="طباعة تقرير الوردية" target="_blank">
+                                        <button type="button" data-action="python-direct-print" data-url="{{ route('shifts.direct-print', $shift) }}" class="erp-btn erp-btn-ghost erp-btn-sm text-[var(--primary)]" title="طباعة فورية بايثون">
                                             <x-icon name="printer" size="14" />
+                                        </button>
+                                        <a href="{{ route('shifts.print', $shift) }}" class="erp-btn erp-btn-ghost erp-btn-sm" title="طباعة تقرير الوردية" target="_blank">
+                                            <x-icon name="file-text" size="14" />
                                         </a>
                                         @if($shift->status === 'open' && (auth()->id() === $shift->user_id || auth()->user()->isAdmin()))
                                             <button type="button" class="erp-btn erp-btn-ghost erp-btn-sm text-[var(--danger)] close-shift-trigger-btn" data-shift-id="{{ $shift->id }}" data-shift-number="{{ $shift->shift_number }}" data-expected="{{ $shift->expected_closing_balance }}" title="إغلاق الوردية">

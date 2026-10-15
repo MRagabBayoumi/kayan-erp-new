@@ -107,8 +107,13 @@ function initSalesPOS() {
     function getProductWarehouseStock(product, warehouseId = null) {
         if (!product) return 0;
         const whId = warehouseId || (warehouseSelect ? parseInt(warehouseSelect.value, 10) : null);
-        if (whId && product.stocks && product.stocks[whId] !== undefined) {
-            return parseFloat(product.stocks[whId]) || 0;
+        if (whId && product.stocks) {
+            if (product.stocks[whId] !== undefined) {
+                return parseFloat(product.stocks[whId]) || 0;
+            }
+            if (product.stocks[String(whId)] !== undefined) {
+                return parseFloat(product.stocks[String(whId)]) || 0;
+            }
         }
         return parseFloat(product.total_stock) || 0;
     }
@@ -128,13 +133,13 @@ function initSalesPOS() {
 
         if (stock <= 0) {
             quickStockBadge.classList.add('out-of-stock');
-            quickStockBadge.textContent = `نفد من المخزن (0 ${unitName})`;
+            quickStockBadge.textContent = `رصيد الصنف: 0 ${unitName} (نفد من المخزن)`;
         } else if (stock <= 5) {
             quickStockBadge.classList.add('low-stock');
-            quickStockBadge.textContent = `رصيد منخفض: ${stock} ${unitName}`;
+            quickStockBadge.textContent = `رصيد الصنف: ${stock} ${unitName} (منخفض)`;
         } else {
             quickStockBadge.classList.add('in-stock');
-            quickStockBadge.textContent = `رصيد متاح: ${stock} ${unitName}`;
+            quickStockBadge.textContent = `رصيد الصنف بالمخزن: ${stock} ${unitName}`;
         }
     }
 
@@ -245,31 +250,48 @@ function initSalesPOS() {
     if (discountValueInput) discountValueInput.addEventListener('input', recalculateTotals);
     if (shippingInput) shippingInput.addEventListener('input', recalculateTotals);
 
+    function normalizeArabic(text) {
+        if (!text) return '';
+        return text.toString().trim().toLowerCase()
+            .replace(/[أإآ]/g, 'ا')
+            .replace(/ة/g, 'ه')
+            .replace(/ى/g, 'ي')
+            .replace(/[\u064B-\u065F]/g, '');
+    }
+
     // Product Lookup logic
     function findProductByTerm(term, mode = 'barcode') {
         const clean = (term || '').trim().toLowerCase();
         if (!clean) return null;
+        const norm = normalizeArabic(clean);
 
-        if (mode === 'barcode') {
-            const exactBarcode = productsData.find(p => (p.barcode || '').toLowerCase() === clean);
-            if (exactBarcode) return exactBarcode;
-            const exactSku = productsData.find(p => (p.sku || '').toLowerCase() === clean);
-            if (exactSku) return exactSku;
-        } else if (mode === 'sku') {
-            const exactSku = productsData.find(p => (p.sku || '').toLowerCase() === clean);
-            if (exactSku) return exactSku;
-        }
+        // 1. Exact barcode match
+        const exactBarcode = productsData.find(p => (p.barcode || '').trim().toLowerCase() === clean);
+        if (exactBarcode) return exactBarcode;
 
+        // 2. Exact SKU match
+        const exactSku = productsData.find(p => (p.sku || '').trim().toLowerCase() === clean);
+        if (exactSku) return exactSku;
+
+        // 3. Exact Name match (normalized)
+        const exactName = productsData.find(p => normalizeArabic(p.name) === norm);
+        if (exactName) return exactName;
+
+        // 4. Starts with name or contains name
+        const nameMatch = productsData.find(p => normalizeArabic(p.name).includes(norm));
+        if (nameMatch) return nameMatch;
+
+        // 5. Universal fallback
         return productsData.find(p => 
-            (p.barcode || '').toLowerCase() === clean ||
-            (p.sku || '').toLowerCase() === clean ||
-            (p.name || '').toLowerCase().includes(clean)
+            (p.barcode || '').toLowerCase().includes(clean) ||
+            (p.sku || '').toLowerCase().includes(clean) ||
+            normalizeArabic(p.name).includes(norm)
         ) || null;
     }
 
     function renderSuggestions(query) {
         if (!quickSearchResults) return;
-        const q = (query || '').trim().toLowerCase();
+        const q = (query || '').trim();
         if (!q || q.length < 1) {
             quickSearchResults.classList.add('hidden');
             quickSearchResults.innerHTML = '';
@@ -277,15 +299,24 @@ function initSalesPOS() {
             return;
         }
 
+        const cleanQ = q.toLowerCase();
+        const normQ = normalizeArabic(q);
         const mode = searchModeSelect ? searchModeSelect.value : 'barcode';
+
         const matches = productsData.filter(p => {
-            if (mode === 'barcode') {
-                return (p.barcode || '').toLowerCase().includes(q) || (p.sku || '').toLowerCase().includes(q);
-            } else if (mode === 'sku') {
-                return (p.sku || '').toLowerCase().includes(q);
+            const pBarcode = (p.barcode || '').toLowerCase();
+            const pSku = (p.sku || '').toLowerCase();
+            const pNameNorm = normalizeArabic(p.name);
+
+            if (mode === 'sku') {
+                return pSku.includes(cleanQ) || pNameNorm.includes(normQ);
             }
-            return (p.name || '').toLowerCase().includes(q) || (p.sku || '').toLowerCase().includes(q);
-        }).slice(0, 8);
+            if (mode === 'name') {
+                return pNameNorm.includes(normQ) || pSku.includes(cleanQ) || pBarcode.includes(cleanQ);
+            }
+            // Universal match: works for barcode, SKU, and name seamlessly
+            return pBarcode.includes(cleanQ) || pSku.includes(cleanQ) || pNameNorm.includes(normQ);
+        }).slice(0, 10);
 
         if (matches.length === 0) {
             quickSearchResults.innerHTML = `
@@ -301,19 +332,29 @@ function initSalesPOS() {
         quickSearchResults.innerHTML = matches.map((p, idx) => {
             const price = getProductPriceForTier(p);
             const stock = getProductWarehouseStock(p);
+            let badgeClass = 'stock-in';
+            let badgeText = `رصيد: ${stock} ${p.unit || 'قطعة'}`;
+            if (stock <= 0) {
+                badgeClass = 'stock-out';
+                badgeText = 'نفد (0)';
+            } else if (stock <= 5) {
+                badgeClass = 'stock-low';
+                badgeText = `منخفض: ${stock} ${p.unit || 'قطعة'}`;
+            }
+
             return `
-                <div class="suggestion-item px-3 py-2 cursor-pointer hover:bg-[var(--surface-muted)] flex items-center justify-between text-xs border-b border-[var(--border-color)] last:border-b-0" data-index="${idx}" data-id="${p.id}">
-                    <div class="flex flex-col">
-                        <span class="font-bold text-[var(--text-main)]">${p.name}</span>
-                        <div class="flex items-center gap-2 text-[10px] text-[var(--text-muted)] font-mono">
-                            <span>كود: ${p.sku}</span>
-                            ${p.barcode ? '<span>• باركود: ' + p.barcode + '</span>' : ''}
-                            <span class="${stock <= 0 ? 'text-red-600 font-bold' : 'text-emerald-700'}">• رصيد: ${stock} ${p.unit}</span>
+                <div class="suggestion-item pos-suggestion-item" data-index="${idx}" data-id="${p.id}">
+                    <div class="flex flex-col flex-1 min-w-0 pr-1">
+                        <span class="item-title truncate font-bold">${p.name}</span>
+                        <div class="item-meta flex items-center gap-2 mt-1">
+                            <span class="font-numeric">كود: ${p.sku}</span>
+                            ${p.barcode ? '<span class="font-numeric">· باركود: ' + p.barcode + '</span>' : ''}
+                            <span class="pos-suggestion-badge ${badgeClass}">${badgeText}</span>
                         </div>
                     </div>
-                    <div class="text-left font-numeric">
-                        <span class="font-bold text-[var(--primary)] text-sm">${price.toFixed(2)}</span>
-                        <span class="text-[10px] text-[var(--text-muted)]">ج.م / ${p.unit || 'قطعة'}</span>
+                    <div class="text-left font-numeric flex flex-col items-end pl-1 shrink-0">
+                        <span class="pos-suggestion-price">${price.toFixed(2)} <span class="text-[11px] font-normal text-[var(--text-muted)]">ج.م</span></span>
+                        <span class="text-[10px] text-[var(--text-muted)] font-normal">${p.unit || 'قطعة'}</span>
                     </div>
                 </div>
             `;
@@ -399,7 +440,11 @@ function initSalesPOS() {
                 const items = quickSearchResults.querySelectorAll('.suggestion-item');
                 if (items.length > 0) {
                     activeSuggestionIndex = (activeSuggestionIndex + 1) % items.length;
-                    items.forEach((it, i) => it.classList.toggle('bg-[var(--surface-muted)]', i === activeSuggestionIndex));
+                    items.forEach((it, i) => {
+                        const isCurrent = (i === activeSuggestionIndex);
+                        it.classList.toggle('active', isCurrent);
+                        it.classList.toggle('bg-selected', isCurrent);
+                    });
                 }
                 return;
             }
@@ -409,7 +454,11 @@ function initSalesPOS() {
                 const items = quickSearchResults.querySelectorAll('.suggestion-item');
                 if (items.length > 0) {
                     activeSuggestionIndex = (activeSuggestionIndex - 1 + items.length) % items.length;
-                    items.forEach((it, i) => it.classList.toggle('bg-[var(--surface-muted)]', i === activeSuggestionIndex));
+                    items.forEach((it, i) => {
+                        const isCurrent = (i === activeSuggestionIndex);
+                        it.classList.toggle('active', isCurrent);
+                        it.classList.toggle('bg-selected', isCurrent);
+                    });
                 }
                 return;
             }
@@ -458,6 +507,19 @@ function initSalesPOS() {
 
     // Keyboard Flow: Unit -> Tab -> Qty
     if (quickUnitSelect) {
+        quickUnitSelect.addEventListener('change', () => {
+            const opt = quickUnitSelect.options[quickUnitSelect.selectedIndex];
+            const factor = parseFloat(opt?.dataset.factor || 1.0) || 1.0;
+            const pId = parseInt(quickProductId?.value || 0, 10);
+            if (pId) {
+                const prod = productsData.find(p => p.id === pId);
+                if (prod && quickPriceInput) {
+                    const basePrice = getProductPriceForTier(prod);
+                    quickPriceInput.value = (basePrice * factor).toFixed(2);
+                }
+            }
+        });
+
         quickUnitSelect.addEventListener('keydown', (e) => {
             if (e.key === 'Tab' && !e.shiftKey) {
                 e.preventDefault();
@@ -661,12 +723,22 @@ function initSalesPOS() {
         const priceLockAttrs = canEditPrice ? '' : 'readonly tabindex="-1"';
         const priceLockClass = canEditPrice ? '' : 'bg-[var(--surface-muted)] cursor-not-allowed';
 
+        const prodObj = productsData.find(p => p.id === data.productId);
+        const rowStock = prodObj ? getProductWarehouseStock(prodObj) : 0;
+        const rowUnitLabel = (prodObj && prodObj.unit) ? prodObj.unit : 'قطعة';
+
         tr.innerHTML = `
             <td class="text-center font-numeric row-counter">1</td>
             <td>
                 <input type="hidden" name="items[${rowIdx}][product_id]" value="${data.productId}" class="row-product-id">
                 <span class="font-bold text-[var(--text-main)]">${data.productName}</span>
-                <div class="text-[11px] text-[var(--text-muted)] font-numeric">كود: ${data.productSku || '—'} ${data.productBarcode ? '· باركود: ' + data.productBarcode : ''}</div>
+                <div class="text-[11px] text-[var(--text-muted)] font-numeric flex flex-wrap items-center gap-1.5 mt-0.5">
+                    <span>كود: ${data.productSku || '—'}</span>
+                    ${data.productBarcode ? '<span>· باركود: ' + data.productBarcode + '</span>' : ''}
+                    <span class="erp-badge ${rowStock <= 0 ? 'erp-badge-danger' : 'erp-badge-info'} text-[10px] py-0 px-1.5 font-bold">
+                        رصيد الصنف: ${rowStock} ${rowUnitLabel}
+                    </span>
+                </div>
             </td>
             <td>
                 <select name="items[${rowIdx}][unit_id]" class="erp-input text-xs row-unit-select">
@@ -758,9 +830,17 @@ function initSalesPOS() {
         if (unitSelect && factorHidden) {
             unitSelect.addEventListener('change', () => {
                 const opt = unitSelect.options[unitSelect.selectedIndex];
-                const factor = parseFloat(opt?.dataset.factor || 1.0) || 1.0;
-                factorHidden.value = factor;
-                recalculateTotals();
+                const newFactor = parseFloat(opt?.dataset.factor || 1.0) || 1.0;
+                const prevFactor = parseFloat(factorHidden.value || 1.0) || 1.0;
+                factorHidden.value = newFactor;
+
+                if (priceInput && prevFactor > 0) {
+                    const currentPrice = parseFloat(priceInput.value) || 0;
+                    const baseUnitPrice = currentPrice / prevFactor;
+                    priceInput.value = (baseUnitPrice * newFactor).toFixed(2);
+                }
+
+                updateRowSubtotal();
             });
         }
 
@@ -1125,6 +1205,36 @@ function initSalesPOS() {
             posCloseShiftModal.classList.add('open');
             const abInput = document.getElementById('posShiftActualBalance');
             if (abInput) setTimeout(() => abInput.focus(), 100);
+        });
+    }
+
+    const posShiftActualBalance = document.getElementById('posShiftActualBalance');
+    const posExpectedBalanceDisplay = document.getElementById('posExpectedBalanceDisplay');
+    const posLiveDiffRow = document.getElementById('posLiveDiffRow');
+    const posLiveDiffBadge = document.getElementById('posLiveDiffBadge');
+
+    if (posShiftActualBalance && posExpectedBalanceDisplay && posLiveDiffRow && posLiveDiffBadge) {
+        posShiftActualBalance.addEventListener('input', () => {
+            const val = posShiftActualBalance.value.trim();
+            if (val === '') {
+                posLiveDiffRow.classList.add('hidden');
+                return;
+            }
+            const actual = parseFloat(val) || 0;
+            const expected = parseFloat(posExpectedBalanceDisplay.dataset.expected || 0) || 0;
+            const diff = actual - expected;
+            posLiveDiffRow.classList.remove('hidden');
+
+            if (Math.abs(diff) < 0.01) {
+                posLiveDiffBadge.className = 'erp-badge erp-badge-success font-numeric font-bold text-xs py-0.5 px-2';
+                posLiveDiffBadge.textContent = 'مطابق تماماً (بدون عجز أو زيادة)';
+            } else if (diff < 0) {
+                posLiveDiffBadge.className = 'erp-badge erp-badge-danger font-numeric font-bold text-xs py-0.5 px-2';
+                posLiveDiffBadge.textContent = `عجز في الدرج: ${Math.abs(diff).toFixed(2)} ج.م`;
+            } else {
+                posLiveDiffBadge.className = 'erp-badge erp-badge-info font-numeric font-bold text-xs py-0.5 px-2';
+                posLiveDiffBadge.textContent = `زيادة في الدرج: +${diff.toFixed(2)} ج.م`;
+            }
         });
     }
 

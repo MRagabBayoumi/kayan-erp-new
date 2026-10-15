@@ -261,3 +261,206 @@
     align-items: center;
     gap: 8px;
 }
+
+/* ==========================================================================
+   Step 1: POS Hero Search Input & Dropdown Autocomplete Styling
+   ========================================================================== */
+[data-page="sales-create"] .erp-hero-search-input,
+#quickProductInput {
+    height: 44px !important;
+    font-size: 13.5px !important;
+    font-weight: 600 !important;
+    background: var(--bg-surface) !important;
+    border: 1.5px solid var(--border-color) !important;
+    border-radius: var(--border-radius-md, 8px) !important;
+    color: var(--text-main) !important;
+    padding: 0 16px !important;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+    transition: all 0.15s ease-in-out !important;
+}
+
+[data-page="sales-create"] .erp-hero-search-input:focus,
+#quickProductInput:focus {
+    border-color: var(--primary) !important;
+    background: var(--bg-surface) !important;
+    box-shadow: 0 0 0 3px var(--primary-soft), 0 2px 4px rgba(0, 0, 0, 0.08) !important;
+    outline: none !important;
+}
+
+/* Ensure quick entry containers never clip the absolute dropdown */
+[data-page="sales-create"] .purchases-quick-entry,
+[data-page="sales-create"] .purchases-quick-entry-body,
+[data-page="sales-create"] .purchases-quick-row-2,
+[data-page="sales-create"] .erp-form-group.relative {
+    overflow: visible !important;
+}
+
+[data-page="sales-create"] #quickSearchResults.purchases-autocomplete-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    left: 0;
+    min-width: 500px;
+    max-height: 340px;
+    overflow-y: auto;
+    background: var(--bg-surface);
+    border: 1.5px solid var(--border-color);
+    border-radius: var(--border-radius-md, 8px);
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.28);
+    z-index: 9999 !important;
+}
+
+.pos-suggestion-item {
+    padding: 10px 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-main);
+    background: var(--bg-surface);
+    transition: background-color 0.12s ease, border-right 0.12s ease;
+}
+
+.pos-suggestion-item:last-child {
+    border-bottom: none;
+}
+
+.pos-suggestion-item:hover,
+.pos-suggestion-item.active,
+.pos-suggestion-item.bg-selected {
+    background-color: var(--primary-soft) !important;
+    border-right: 4px solid var(--primary);
+}
+
+.pos-suggestion-item .item-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.pos-suggestion-item .item-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 3px;
+}
+
+.pos-suggestion-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 7px;
+    border-radius: 4px;
+    font-size: 10.5px;
+    font-weight: 700;
+}
+
+.pos-suggestion-badge.stock-in {
+    background: var(--success-soft);
+    color: var(--success-text);
+    border: 1px solid var(--success-border);
+}
+
+.pos-suggestion-badge.stock-low {
+    background: var(--warning-soft);
+    color: var(--warning-text);
+    border: 1px solid var(--warning-border);
+}
+
+.pos-suggestion-badge.stock-out {
+    background: var(--danger-soft);
+    color: var(--danger-text);
+    border: 1px solid var(--danger-border);
+}
+
+.pos-suggestion-price {
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--primary);
+    white-space: nowrap;
+}
+
+/* ==========================================================================
+   Step 7: Dark & Light Mode Theme Adaptations for Sales & POS
+   ========================================================================== */
+[data-theme="dark"] [data-page="sales-create"] .pos-meta-strip,
+[data-theme="dark"] [data-page="sales-create"] .purchases-table-container,
+[data-theme="dark"] [data-page="sales-create"] .pos-cashier-actions,
+[data-theme="dark"] [data-page="sales-create"] .pos-shift-banner {
+    background-color: var(--bg-surface);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] [data-page="sales-create"] .purchases-summary-card {
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-color);
+}
+
+[data-theme="dark"] [data-page="sales-create"] .purchases-summary-label {
+    color: var(--text-muted);
+}
+
+[data-theme="dark"] [data-page="sales-create"] .purchases-summary-value {
+    color: var(--text-main);
+}
+
+[data-theme="dark"] [data-page="sales-create"] .purchases-summary-unit {
+    color: var(--text-muted);
+}
+
+[data-theme="dark"] [data-page="sales-create"] .purchases-table thead th {
+    background-color: var(--bg-surface-alt);
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+[data-theme="dark"] [data-page="sales-create"] .purchases-table tbody tr {
+    background-color: var(--bg-surface);
+    border-bottom: 1px solid var(--border-color);
+}
+
+[data-theme="dark"] [data-page="sales-create"] .purchases-table tbody tr:hover {
+    background-color: var(--bg-hover);
+}
+
+[data-theme="dark"] [data-page="sales-create"] .pos-qty-stepper {
+    background-color: var(--bg-surface-alt);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] [data-page="sales-create"] .pos-qty-btn {
+    background-color: var(--bg-surface-alt);
+    color: var(--text-main);
+}
+
+[data-theme="dark"] [data-page="sales-create"] .pos-qty-btn:hover {
+    background-color: var(--bg-hover);
+}
+
+[data-theme="dark"] [data-page="sales-create"] .pos-qty-input {
+    background-color: transparent;
+    color: var(--text-main);
+}
+
+[data-theme="dark"] [data-page="sales-create"] .erp-modal-container {
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] [data-page="sales-create"] .erp-modal-header,
+[data-theme="dark"] [data-page="sales-create"] .erp-modal-footer {
+    background-color: var(--bg-surface-alt);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] [data-page="sales-create"] .shift-calc-box {
+    background-color: var(--bg-surface-alt);
+    border-color: var(--border-color);
+    color: var(--text-main);
+}
+
+

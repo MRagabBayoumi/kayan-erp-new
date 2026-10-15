@@ -133,7 +133,8 @@ def run_print_job(job_payload: Dict[str, Any], dry_run: bool = False, output_ima
 
         first_data = (batch_raw[0].get("data") if isinstance(batch_raw[0], dict) else {}) or {}
         gap_mm = float(first_data.get("gap_mm") or job_payload.get("gap_mm") or 2.0)
-        direction = int(first_data.get("direction") or job_payload.get("direction") or 1)
+        direction = int(first_data.get("direction") or job_payload.get("direction") or 0)
+        print_mode = str(first_data.get("print_mode") or job_payload.get("print_mode") or "auto")
 
         spool_result = PrinterService.submit_batch_job(
             printer_name=printer_name,
@@ -141,6 +142,7 @@ def run_print_job(job_payload: Dict[str, Any], dry_run: bool = False, output_ima
             doc_name="Kayan ERP Batch Print",
             gap_mm=gap_mm,
             direction=direction,
+            print_mode=print_mode,
             dry_run=dry_run
         )
 
@@ -194,7 +196,8 @@ def run_print_job(job_payload: Dict[str, Any], dry_run: bool = False, output_ima
 
     # 4. Spool to printer
     gap_mm = float(data.get("gap_mm") or job_payload.get("gap_mm") or 2.0)
-    direction = int(data.get("direction") or job_payload.get("direction") or 1)
+    direction = int(data.get("direction") or job_payload.get("direction") or 0)
+    print_mode = str(data.get("print_mode") or job_payload.get("print_mode") or "auto")
 
     batch_items = [
         {
@@ -216,6 +219,7 @@ def run_print_job(job_payload: Dict[str, Any], dry_run: bool = False, output_ima
         doc_name=f"Kayan ERP - {template_id}",
         gap_mm=gap_mm,
         direction=direction,
+        print_mode=print_mode,
         dry_run=dry_run
     )
 
@@ -283,7 +287,10 @@ def main():
         if hasattr(sys.stdin, 'buffer'):
             payload_str = sys.stdin.buffer.read().decode('utf-8-sig', errors='replace')
         else:
-            payload_str = sys.stdin.read().lstrip('\ufeff')
+            payload_str = sys.stdin.read()
+
+    if payload_str:
+        payload_str = payload_str.lstrip('\ufeff').strip()
 
     if not payload_str:
         parser.print_help(sys.stderr)

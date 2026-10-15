@@ -51,8 +51,15 @@
             <span class="preview-badge">
                 <span>الأصناف: {{ count($items) }}</span>
             </span>
+            @if(count($items) === 1)
+            <div class="inline-flex items-center bg-black/20 border border-white/20 rounded p-0.5 mx-1" title="تعديل عدد النسخ">
+                <button type="button" id="previewQtyMinus" class="btn btn-secondary font-bold text-sm min-w-[26px] h-[26px] py-0.5 px-2">−</button>
+                <input type="number" id="previewLabelQty" value="{{ $totalQuantity }}" min="1" max="500" class="w-12 text-center p-0.5 font-bold border-0 bg-transparent text-white text-sm" title="عدد النسخ">
+                <button type="button" id="previewQtyPlus" class="btn btn-secondary font-bold text-sm min-w-[26px] h-[26px] py-0.5 px-2">+</button>
+            </div>
+            @endif
             <span class="preview-badge preview-badge-qty">
-                <span>الملصقات: {{ $totalQuantity }} ملصق</span>
+                <span id="previewTotalLabelsText">الملصقات: {{ $totalQuantity }} ملصق</span>
             </span>
         </div>
 

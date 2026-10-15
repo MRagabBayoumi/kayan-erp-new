@@ -83,9 +83,9 @@ class InventoryService
                 'initial_quantity' => $quantity,
                 'remaining_quantity' => $quantity,
                 'cost_price' => $effectiveCost,
-                'retail_price' => $retailPrice,
-                'wholesale_price' => $wholesalePrice,
-                'distributor_price' => $distributorPrice,
+                'retail_price' => $retailPrice ?? (! is_null($product->retail_price) ? (float) $product->retail_price : null),
+                'wholesale_price' => $wholesalePrice ?? (! is_null($product->wholesale_price) ? (float) $product->wholesale_price : null),
+                'distributor_price' => $distributorPrice ?? (! is_null($product->distributor_price) ? (float) $product->distributor_price : (! is_null($product->wholesale_price) ? (float) $product->wholesale_price : null)),
                 'total_initial_cost' => $effectiveInitialCost,
                 'accumulated_cogs_deducted' => 0.00,
                 'unit_id' => $unitId,
@@ -544,19 +544,29 @@ class InventoryService
                 );
             }
 
-            // Enforce Rule 1 & Option A: Prevent sales from unpriced batches
-            if (! $allowUnpricedBatches) {
-                $accumulated = 0.0;
-                foreach ($batches as $checkBatch) {
-                    $accumulated += (float) $checkBatch->remaining_quantity;
-                    if (! $checkBatch->hasPricing()) {
-                        throw new InvalidArgumentException(
-                            "الدفعة رقم ({$checkBatch->batch_number}) للصنف ({$product->name}) ليس لها أسعار بيع معتمدة؛ يرجى اعتماد تسعيرة الدفعة أولاً قبل الصرف."
-                        );
+            // Enforce Rule 1 & Option A: Ensure pricing is available or auto-populate from product master prices
+            $accumulated = 0.0;
+            foreach ($batches as $checkBatch) {
+                $accumulated += (float) $checkBatch->remaining_quantity;
+
+                if (! $allowUnpricedBatches && ! $checkBatch->hasPricing() && is_null($overrideUnitPriceBase)) {
+                    throw new InvalidArgumentException(
+                        "الدفعة رقم ({$checkBatch->batch_number}) للصنف ({$product->name}) ليس لها أسعار بيع معتمدة؛ يرجى اعتماد تسعيرة الدفعة أولاً قبل الصرف."
+                    );
+                }
+
+                // If batch lacks explicit price tiers, auto-populate from product master prices
+                if (is_null($checkBatch->retail_price) || is_null($checkBatch->wholesale_price)) {
+                    if (! is_null($product->retail_price) || ! is_null($product->wholesale_price)) {
+                        $checkBatch->retail_price = $checkBatch->retail_price ?? (! is_null($product->retail_price) ? (float) $product->retail_price : null);
+                        $checkBatch->wholesale_price = $checkBatch->wholesale_price ?? (! is_null($product->wholesale_price) ? (float) $product->wholesale_price : null);
+                        $checkBatch->distributor_price = $checkBatch->distributor_price ?? (! is_null($product->distributor_price) ? (float) $product->distributor_price : $checkBatch->wholesale_price);
+                        $checkBatch->save();
                     }
-                    if ($accumulated >= $baseQuantity) {
-                        break;
-                    }
+                }
+
+                if ($accumulated >= $baseQuantity) {
+                    break;
                 }
             }
 

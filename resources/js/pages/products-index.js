@@ -81,9 +81,9 @@ export function initProductsIndex() {
     });
 
     // Batch Print Modal handling
-    const batchModal = page.querySelector('#batchPrintModal');
-    const openBatchBtns = page.querySelectorAll('[data-action="open-batch-modal"]');
-    const closeBatchBtns = page.querySelectorAll('[data-action="close-batch-modal"]');
+    const batchModal = document.getElementById('batchPrintModal');
+    const openBatchBtns = document.querySelectorAll('[data-action="open-batch-modal"]');
+    const closeBatchBtns = document.querySelectorAll('[data-action="close-batch-modal"]');
 
     function openBatchPrintModal() {
         const selected = getSelectedCheckboxes();
@@ -92,7 +92,7 @@ export function initProductsIndex() {
             return;
         }
 
-        const tbody = page.querySelector('#batchModalTableBody');
+        const tbody = document.getElementById('batchModalTableBody');
         if (!tbody) return;
         tbody.innerHTML = '';
 
@@ -107,10 +107,10 @@ export function initProductsIndex() {
                 <td><strong class="text-main font-sm">${name}</strong></td>
                 <td><span class="font-numeric text-primary font-bold font-sm">${sku}</span></td>
                 <td class="text-center">
-                    <div class="batch-qty-control">
-                        <button type="button" class="erp-btn erp-btn-secondary font-numeric" data-action="adjust-item-qty" data-id="${id}" data-delta="-1">−</button>
-                        <input type="number" id="batch_qty_${id}" class="erp-input font-numeric batch-qty-input" data-id="${id}" value="1" min="1" max="500">
-                        <button type="button" class="erp-btn erp-btn-secondary font-numeric" data-action="adjust-item-qty" data-id="${id}" data-delta="1">+</button>
+                    <div class="erp-batch-qty-control inline-flex items-center gap-1">
+                        <button type="button" class="erp-btn erp-btn-secondary font-numeric py-1 px-2.5 font-bold" data-action="adjust-item-qty" data-id="${id}" data-delta="-1" title="إنقاص الكمية">−</button>
+                        <input type="number" id="batch_qty_${id}" class="erp-input font-numeric batch-qty-input erp-batch-qty-input text-center font-bold w-14" data-id="${id}" value="1" min="1" max="500">
+                        <button type="button" class="erp-btn erp-btn-secondary font-numeric py-1 px-2.5 font-bold" data-action="adjust-item-qty" data-id="${id}" data-delta="1" title="زيادة الكمية">+</button>
                     </div>
                 </td>
             `;
@@ -120,6 +120,7 @@ export function initProductsIndex() {
         recalculateBatchTotal();
 
         if (batchModal) {
+            batchModal.classList.remove('hidden');
             batchModal.classList.add('open');
             batchModal.style.display = 'flex';
         }
@@ -128,31 +129,40 @@ export function initProductsIndex() {
     function closeBatchPrintModal() {
         if (batchModal) {
             batchModal.classList.remove('open');
+            batchModal.classList.add('hidden');
             batchModal.style.display = 'none';
         }
     }
 
-    openBatchBtns.forEach(btn => btn.addEventListener('click', openBatchPrintModal));
-    closeBatchBtns.forEach(btn => btn.addEventListener('click', closeBatchPrintModal));
+    openBatchBtns.forEach(btn => btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        openBatchPrintModal();
+    }));
+    closeBatchBtns.forEach(btn => btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        closeBatchPrintModal();
+    }));
 
     if (batchModal) {
         batchModal.addEventListener('click', (e) => {
             if (e.target === batchModal) closeBatchPrintModal();
         });
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && batchModal.classList.contains('open')) {
+            if (e.key === 'Escape' && (batchModal.classList.contains('open') || batchModal.style.display === 'flex')) {
                 closeBatchPrintModal();
             }
         });
     }
 
-    // Batch quantity adjust handlers inside modal
-    page.addEventListener('click', (e) => {
+    // Batch quantity adjust handlers inside modal (bind globally to document)
+    document.addEventListener('click', (e) => {
         const adjustBtn = e.target.closest('[data-action="adjust-item-qty"]');
         if (adjustBtn) {
+            e.preventDefault();
+            e.stopPropagation();
             const id = adjustBtn.dataset.id;
             const delta = parseInt(adjustBtn.dataset.delta, 10) || 0;
-            const input = page.querySelector('#batch_qty_' + id);
+            const input = document.getElementById('batch_qty_' + id);
             if (input) {
                 const current = parseInt(input.value, 10) || 1;
                 input.value = Math.max(1, Math.min(500, current + delta));
@@ -161,17 +171,18 @@ export function initProductsIndex() {
         }
     });
 
-    page.addEventListener('input', (e) => {
-        if (e.target.classList.contains('batch-qty-input')) {
+    document.addEventListener('input', (e) => {
+        if (e.target.classList && e.target.classList.contains('batch-qty-input')) {
             recalculateBatchTotal();
         }
     });
 
     // Preset quantity buttons (1, 2, 5, 10, 20)
-    page.querySelectorAll('[data-preset-qty]').forEach(btn => {
-        btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-preset-qty]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
             const val = parseInt(btn.dataset.presetQty, 10) || 1;
-            page.querySelectorAll('.batch-qty-input').forEach(inp => {
+            document.querySelectorAll('.batch-qty-input').forEach(inp => {
                 inp.value = val;
             });
             recalculateBatchTotal();

@@ -7,7 +7,12 @@
 
     <title>{{ $title ?? 'تسجيل الدخول' }} | {{ $globalCompanySetting?->company_name ?? config('app.name', 'Kayan ERP') }}</title>
 
+    @if(!empty($globalCompanySetting?->logo_url))
+        <link rel="icon" type="image/png" href="{{ $globalCompanySetting->logo_url }}">
+        <link rel="apple-touch-icon" href="{{ $globalCompanySetting->logo_url }}">
+    @endif
     <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
+    <link rel="alternate icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">

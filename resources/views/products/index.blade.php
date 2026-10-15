@@ -68,7 +68,7 @@
                         data-action="open-barcode-scanner"
                         data-target-input="productSearchInput"
                         title="مسح الباركود بالكاميرا للبحث السريع"
-                        class="absolute left-1 h-7 w-7 border-0 bg-[var(--primary-soft)] text-[var(--primary)] rounded inline-flex items-center justify-center cursor-pointer">
+                        class="absolute left-1 top-1/2 -translate-y-1/2 h-7 w-7 border-0 bg-[var(--primary-soft)] text-[var(--primary)] rounded inline-flex items-center justify-center cursor-pointer">
                         <x-icon name="camera" size="15" />
                     </button>
                 </div>
@@ -131,23 +131,24 @@
                     @endif
                 </div>
             @else
-                <div class="erp-table-responsive">
+                <div class="erp-table-responsive erp-table-sticky-header">
                     <table class="erp-table">
                         <thead>
                             <tr>
                                 <th class="w-10 text-center">
                                     <input type="checkbox" id="selectAllCheckbox" title="تحديد جميع الأصناف" class="cursor-pointer w-4 h-4">
                                 </th>
-                                <th class="w-[50px] text-center">الصورة</th>
-                                <th class="w-[130px]">كود الصنف (SKU)</th>
-                                <th>اسم المنتج</th>
-                                <th class="w-[140px]">التصنيف</th>
-                                <th class="w-[150px]">الباركود</th>
-                                <th class="w-[110px] text-left">سعر الجملة</th>
-                                <th class="w-[110px] text-left">سعر التجزئة</th>
-                                <th class="w-20 text-center">الوحدة</th>
-                                <th class="w-20 text-center">الحالة</th>
-                                <th class="w-[140px] text-center">إجراءات</th>
+                                <th>اسم الصنف</th>
+                                <th class="w-[130px]">التصنيف</th>
+                                <th class="w-[120px]">كود الصنف</th>
+                                <th class="w-[130px]">باركود</th>
+                                <th class="w-[100px] text-left">سعر الشراء</th>
+                                <th class="w-[100px] text-left">سعر التجزئة</th>
+                                <th class="w-[100px] text-left">الجملة</th>
+                                <th class="w-[100px] text-left">الموزع</th>
+                                <th class="w-20 text-center">وحدة القياس</th>
+                                <th class="w-24 text-center">رصيد الصنف</th>
+                                <th class="w-[130px] text-center">إجراءات</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -164,41 +165,37 @@
                                                data-barcode="{{ $product->barcode ?: $product->sku }}">
                                     </td>
 
-                                    <!-- Image Thumbnail -->
-                                    <td class="text-center">
-                                        <a href="{{ route('products.show', $product) }}" class="inline-block" title="عرض تفاصيل الصنف: {{ $product->name }}">
+                                    <!-- 1. اسم الصنف (عرض الصورة فقط إذا وجدت دون أي صورة فارغة) -->
+                                    <td>
+                                        <div class="flex items-center gap-2">
                                             @if($product->image_url)
-                                                <img src="{{ $product->image_url }}" alt="{{ $product->name }}" class="w-9 h-9 object-cover rounded-sm border border-[var(--border-color)] inline-block">
-                                            @else
-                                                <div class="w-9 h-9 bg-[var(--bg-surface-alt)] rounded-sm inline-flex items-center justify-center opacity-60 border border-dashed border-[var(--border-color)]">
-                                                    <x-icon name="package" size="18" />
-                                                </div>
+                                                <a href="{{ route('products.show', $product) }}" class="inline-block shrink-0" title="{{ $product->name }}">
+                                                    <img src="{{ $product->image_url }}" alt="{{ $product->name }}" class="w-7 h-7 object-cover rounded border border-[var(--border-color)]">
+                                                </a>
                                             @endif
-                                        </a>
+                                            <div class="min-w-0">
+                                                <a href="{{ route('products.show', $product) }}" class="font-bold text-[var(--text-main)] hover:text-[var(--primary)] block truncate" title="عرض تفاصيل الصنف">
+                                                    {{ $product->name }}
+                                                </a>
+                                            </div>
+                                        </div>
                                     </td>
 
-                                    <!-- SKU -->
+                                    <!-- 2. التصنيف -->
+                                    <td>
+                                        <span class="erp-badge erp-badge-neutral text-xs">
+                                            {{ $product->category?->name ?? 'غير محدد' }}
+                                        </span>
+                                    </td>
+
+                                    <!-- 3. كود الصنف -->
                                     <td>
                                         <a href="{{ route('products.show', $product) }}" class="font-numeric font-bold text-[var(--primary)] hover:underline inline-block" title="عرض تفاصيل الصنف">
                                             {{ $product->sku }}
                                         </a>
                                     </td>
 
-                                    <!-- Name -->
-                                    <td>
-                                        <a href="{{ route('products.show', $product) }}" class="font-semibold text-[var(--text-main)] hover:text-[var(--primary)] block" title="عرض تفاصيل الصنف">
-                                            {{ $product->name }}
-                                        </a>
-                                    </td>
-
-                                    <!-- Category -->
-                                    <td>
-                                        <span class="erp-badge erp-badge-neutral">
-                                            {{ $product->category?->name ?? 'غير محدد' }}
-                                        </span>
-                                    </td>
-
-                                    <!-- Barcode -->
+                                    <!-- 4. باركود -->
                                     <td>
                                         @if($product->barcode)
                                             <span class="font-numeric font-mono bg-[var(--bg-surface-alt)] py-0.5 px-1.5 rounded text-xs border border-[var(--border-color)]">
@@ -209,33 +206,43 @@
                                         @endif
                                     </td>
 
-                                    <!-- Wholesale Price -->
+                                    <!-- 5. سعر الشراء -->
+                                    <td class="text-left font-numeric">
+                                        <span>{{ number_format((float)$product->cost_price, 2) }}</span>
+                                        <small class="text-[var(--text-muted)] text-[10px]">ج.م</small>
+                                    </td>
+
+                                    <!-- 6. سعر التجزئة -->
+                                    <td class="text-left font-numeric">
+                                        <strong class="text-[var(--primary)]">{{ number_format((float)$product->retail_price, 2) }}</strong>
+                                        <small class="text-[var(--text-muted)] text-[10px]">ج.م</small>
+                                    </td>
+
+                                    <!-- 7. الجملة -->
                                     <td class="text-left font-numeric">
                                         <strong class="text-[var(--success-text)]">{{ number_format((float)$product->wholesale_price, 2) }}</strong>
                                         <small class="text-[var(--text-muted)] text-[10px]">ج.م</small>
                                     </td>
 
-                                    <!-- Retail Price -->
+                                    <!-- 8. الموزع -->
                                     <td class="text-left font-numeric">
-                                        <span>{{ number_format((float)$product->retail_price, 2) }}</span>
+                                        <span>{{ number_format((float)($product->distributor_price ?? 0), 2) }}</span>
                                         <small class="text-[var(--text-muted)] text-[10px]">ج.م</small>
                                     </td>
 
-                                    <!-- Unit -->
-                                    <td class="text-center">
-                                        <span class="text-xs text-[var(--text-muted)]">{{ $product->unit }}</span>
+                                    <!-- 9. وحدة القياس -->
+                                    <td class="text-center text-xs text-[var(--text-muted)]">
+                                        {{ $product->unit }}
                                     </td>
 
-                                    <!-- Status -->
-                                    <td class="text-center">
-                                        @if($product->is_active)
-                                            <span class="erp-badge erp-badge-success text-[11px]">نشط</span>
-                                        @else
-                                            <span class="erp-badge erp-badge-danger text-[11px]">معطل</span>
-                                        @endif
+                                    <!-- 10. رصيد الصنف -->
+                                    <td class="text-center font-numeric font-bold text-xs">
+                                        <span class="erp-badge {{ $product->total_stock <= 0 ? 'erp-badge-danger' : ($product->is_low_stock ? 'erp-badge-warning' : 'erp-badge-success') }}">
+                                            {{ number_format($product->total_stock) }}
+                                        </span>
                                     </td>
 
-                                    <!-- Actions -->
+                                    <!-- 11. إجراءات -->
                                     <td class="text-center">
                                         <div class="flex items-center justify-center gap-1">
                                             <button type="button" class="erp-btn erp-btn-ghost erp-btn-icon" title="طباعة فورية للملصق ({{ (int) ($barcodeSettings->label_width_mm ?? 38) }}×{{ (int) ($barcodeSettings->label_height_mm ?? 15) }} مم) بدون نوافذ" data-action="direct-print-row" data-product-id="{{ $product->id }}">

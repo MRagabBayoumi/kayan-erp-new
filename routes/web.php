@@ -73,6 +73,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/products/{product}', [ProductController::class, 'show'])->whereNumber('product')->name('products.show');
         Route::get('/products/{product}/barcode-svg', [ProductController::class, 'barcodeSvg'])->whereNumber('product')->name('products.barcode-svg');
         Route::get('/products/{product}/ledger/print', [ProductController::class, 'printLedger'])->whereNumber('product')->name('products.ledger.print');
+        Route::post('/products/{product}/ledger/direct-print', [ProductController::class, 'directPrintLedger'])->whereNumber('product')->name('products.ledger.direct-print');
         Route::get('/products/{product}/ledger', [ProductController::class, 'ledger'])->whereNumber('product')->name('products.ledger');
         Route::get('/products/{product}/print-label', [ProductController::class, 'printLabel'])->whereNumber('product')->name('products.print-label');
         Route::match(['get', 'post'], '/products/print-labels/batch', [ProductController::class, 'printBatchLabels'])->name('products.print-batch');
@@ -125,6 +126,7 @@ Route::middleware('auth')->group(function () {
             ->name('sales.void');
 
         Route::get('/sales/{sale}/print', [SalesInvoiceController::class, 'print'])->name('sales.print');
+        Route::post('/sales/{sale}/direct-print', [SalesInvoiceController::class, 'directPrint'])->name('sales.direct-print');
         Route::resource('sales', SalesInvoiceController::class)->except(['edit', 'update', 'destroy']);
 
         // Cashier Shifts & Cash Drawer
@@ -132,6 +134,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/shifts', [CashierShiftController::class, 'store'])->name('shifts.store');
         Route::get('/shifts/{shift}', [CashierShiftController::class, 'show'])->name('shifts.show');
         Route::get('/shifts/{shift}/print', [CashierShiftController::class, 'print'])->name('shifts.print');
+        Route::post('/shifts/{shift}/direct-print', [CashierShiftController::class, 'directPrint'])->name('shifts.direct-print');
         Route::post('/shifts/{shift}/movement', [CashierShiftController::class, 'movement'])->name('shifts.movement');
         Route::post('/shifts/{shift}/close', [CashierShiftController::class, 'close'])->name('shifts.close');
     });
@@ -142,14 +145,26 @@ Route::middleware('auth')->group(function () {
         Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');
         Route::get('/inventory/movements', [InventoryController::class, 'movements'])->name('inventory.movements');
         Route::get('/inventory/low-stock', [InventoryController::class, 'lowStock'])->name('inventory.low-stock');
+        Route::get('/inventory/low-stock/print', [InventoryController::class, 'printLowStock'])->name('inventory.low-stock.print');
+        Route::post('/inventory/low-stock/direct-print', [InventoryController::class, 'directPrintLowStock'])->name('inventory.low-stock.direct-print');
         Route::post('/inventory/movements', [InventoryController::class, 'storeMovement'])->name('inventory.movements.store');
     });
 
-    // Directory of Customers, Suppliers & Shipping Offices (Admin & Warehouse)
-    Route::middleware('can:manage-purchases')->group(function () {
-        Route::get('/customers/lookup', [CustomerController::class, 'lookup'])->name('customers.lookup');
-        Route::resource('customers', CustomerController::class);
+    // Directory of Customers & POS Customer Creation
+    Route::get('/customers/lookup', [CustomerController::class, 'lookup'])
+        ->middleware('can:access-customers')
+        ->name('customers.lookup');
 
+    Route::post('/customers', [CustomerController::class, 'store'])
+        ->middleware('can:create-customers-pos')
+        ->name('customers.store');
+
+    Route::middleware('can:manage-customers')->group(function () {
+        Route::resource('customers', CustomerController::class)->except(['store']);
+    });
+
+    // Directory of Suppliers & Shipping Offices (Purchases & Inventory)
+    Route::middleware('can:manage-purchases')->group(function () {
         Route::get('/suppliers/lookup', [SupplierController::class, 'lookup'])->name('suppliers.lookup');
         Route::resource('suppliers', SupplierController::class);
 

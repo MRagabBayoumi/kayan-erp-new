@@ -134,34 +134,44 @@ function initPurchaseCreate() {
         discountValueInput.addEventListener('input', recalculateTotals);
     }
 
+    function normalizeArabic(text) {
+        if (!text) return '';
+        return text.toString().trim().toLowerCase()
+            .replace(/[أإآ]/g, 'ا')
+            .replace(/ة/g, 'ه')
+            .replace(/ى/g, 'ي')
+            .replace(/[\u064B-\u065F]/g, '');
+    }
+
     // Product Autocomplete and Barcode Lookup
     function findProductByTerm(term, mode = 'barcode') {
         const clean = (term || '').trim().toLowerCase();
         if (!clean) return null;
+        const norm = normalizeArabic(clean);
 
-        if (mode === 'barcode') {
-            // First check exact barcode match
-            const exactBarcode = productsData.find(p => (p.barcode || '').toLowerCase() === clean);
-            if (exactBarcode) return exactBarcode;
-            // Fallback to SKU
-            const exactSku = productsData.find(p => (p.sku || '').toLowerCase() === clean);
-            if (exactSku) return exactSku;
-        } else if (mode === 'sku') {
-            const exactSku = productsData.find(p => (p.sku || '').toLowerCase() === clean);
-            if (exactSku) return exactSku;
-        }
+        // First check exact barcode match
+        const exactBarcode = productsData.find(p => (p.barcode || '').trim().toLowerCase() === clean);
+        if (exactBarcode) return exactBarcode;
 
-        // Fuzzy match if nothing exact
+        // Fallback to SKU
+        const exactSku = productsData.find(p => (p.sku || '').trim().toLowerCase() === clean);
+        if (exactSku) return exactSku;
+
+        // Exact Name match (normalized)
+        const exactName = productsData.find(p => normalizeArabic(p.name) === norm);
+        if (exactName) return exactName;
+
+        // Partial match
         return productsData.find(p => 
-            (p.barcode || '').toLowerCase() === clean ||
-            (p.sku || '').toLowerCase() === clean ||
-            (p.name || '').toLowerCase().includes(clean)
+            (p.barcode || '').toLowerCase().includes(clean) ||
+            (p.sku || '').toLowerCase().includes(clean) ||
+            normalizeArabic(p.name).includes(norm)
         ) || null;
     }
 
     function renderSuggestions(query) {
         if (!quickSearchResults) return;
-        const q = (query || '').trim().toLowerCase();
+        const q = (query || '').trim();
         if (!q || q.length < 1) {
             quickSearchResults.classList.add('hidden');
             quickSearchResults.innerHTML = '';
@@ -169,15 +179,23 @@ function initPurchaseCreate() {
             return;
         }
 
+        const cleanQ = q.toLowerCase();
+        const normQ = normalizeArabic(q);
         const mode = searchModeSelect ? searchModeSelect.value : 'barcode';
+
         const matches = productsData.filter(p => {
-            if (mode === 'barcode') {
-                return (p.barcode || '').toLowerCase().includes(q) || (p.sku || '').toLowerCase().includes(q);
-            } else if (mode === 'sku') {
-                return (p.sku || '').toLowerCase().includes(q);
+            const pBarcode = (p.barcode || '').toLowerCase();
+            const pSku = (p.sku || '').toLowerCase();
+            const pNameNorm = normalizeArabic(p.name);
+
+            if (mode === 'sku') {
+                return pSku.includes(cleanQ) || pNameNorm.includes(normQ);
             }
-            return (p.name || '').toLowerCase().includes(q) || (p.sku || '').toLowerCase().includes(q);
-        }).slice(0, 8);
+            if (mode === 'name') {
+                return pNameNorm.includes(normQ) || pSku.includes(cleanQ) || pBarcode.includes(cleanQ);
+            }
+            return pBarcode.includes(cleanQ) || pSku.includes(cleanQ) || pNameNorm.includes(normQ);
+        }).slice(0, 10);
 
         if (matches.length === 0) {
             quickSearchResults.innerHTML = `

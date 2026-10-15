@@ -3,7 +3,15 @@
 @section('control_panel')
     <x-control-panel title="نواقص وتنبيهات المخزون" :breadcrumbs="['المخزون والمنتجات' => route('inventory.index'), 'نواقص المخزون' => route('inventory.low-stock')]">
         <x-slot:actions>
-            <a href="{{ route('inventory.index') }}" class="erp-btn erp-btn-primary">
+            <button type="button" data-action="python-direct-print" data-url="{{ route('inventory.low-stock.direct-print', request()->query()) }}" class="erp-btn erp-btn-primary" title="طباعة مباشرة عبر بايثون">
+                <x-icon name="printer" size="16" />
+                <span>طباعة بايثون المباشرة</span>
+            </button>
+            <a href="{{ route('inventory.low-stock.print', request()->query()) }}" target="_blank" class="erp-btn erp-btn-secondary" title="معاينة وطباعة عبر المتصفح">
+                <x-icon name="printer" size="16" />
+                <span>معاينة وطباعة</span>
+            </a>
+            <a href="{{ route('inventory.index') }}" class="erp-btn erp-btn-secondary">
                 <x-icon name="plus" size="16" />
                 <span>تسجيل إيداع مخزون</span>
             </a>
@@ -67,7 +75,7 @@
                     <th class="text-center">العجز / المطلوب</th>
                     <th class="text-center">الحالة</th>
                     <th class="text-left">سعر التكلفة</th>
-                    <th class="w-[120px] text-center">إجراء سريع</th>
+                    <th class="w-[130px] text-center">الإجراءات</th>
                 </tr>
             </thead>
             <tbody>
@@ -81,13 +89,17 @@
                     <tr>
                         <td class="font-numeric text-[var(--text-muted)]">{{ $loop->iteration + ($products->currentPage() - 1) * $products->perPage() }}</td>
                         <td>
-                            <span class="font-numeric font-bold text-[var(--text-main)]">{{ $product->sku }}</span>
+                            <a href="{{ route('products.show', $product) }}" class="font-numeric font-bold text-[var(--primary)] hover:underline block" title="عرض تفاصيل الصنف">
+                                {{ $product->sku }}
+                            </a>
                             @if($product->barcode)
                                 <div class="font-numeric text-[11px] text-[var(--text-muted)]">{{ $product->barcode }}</div>
                             @endif
                         </td>
                         <td>
-                            <div class="font-semibold text-[var(--text-main)]">{{ $product->name }}</div>
+                            <a href="{{ route('products.show', $product) }}" class="font-semibold text-[var(--text-main)] hover:text-[var(--primary)] block truncate" title="عرض تفاصيل الصنف">
+                                {{ $product->name }}
+                            </a>
                             <span class="text-[11px] text-[var(--text-muted)]">الوحدة: {{ $product->unit }}</span>
                         </td>
                         <td>
@@ -117,10 +129,15 @@
                             {{ number_format($product->cost_price, 2) }} ج.م
                         </td>
                         <td class="text-center">
-                            <a href="{{ route('inventory.index') }}?search={{ urlencode($product->sku) }}" class="erp-btn erp-btn-sm erp-btn-secondary">
-                                <x-icon name="plus" size="13" />
-                                <span>إيداع</span>
-                            </a>
+                            <div class="flex items-center justify-center gap-1">
+                                <a href="{{ route('products.show', $product) }}" class="erp-btn erp-btn-sm erp-btn-ghost erp-btn-icon" title="عرض تفاصيل الصنف">
+                                    <x-icon name="eye" size="14" />
+                                </a>
+                                <a href="{{ route('inventory.index') }}?search={{ urlencode($product->sku) }}" class="erp-btn erp-btn-sm erp-btn-secondary" title="إيداع مخزني">
+                                    <x-icon name="plus" size="13" />
+                                    <span>إيداع</span>
+                                </a>
+                            </div>
                         </td>
                     </tr>
                 @empty

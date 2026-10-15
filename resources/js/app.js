@@ -43,6 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initSales();
     initShifts();
     initPrintTemplatesPage();
+    initDirectPythonPrint();
 });
 
 /**
@@ -355,5 +356,64 @@ function initGlobalSearch() {
             }
         });
     }
+}
+
+/**
+ * Global Direct Python Printing Handler
+ */
+function initDirectPythonPrint() {
+    document.addEventListener('click', async (e) => {
+        const btn = e.target.closest('[data-action="python-direct-print"]');
+        if (!btn) return;
+
+        e.preventDefault();
+        const url = btn.dataset.url;
+        if (!url) return;
+
+        const originalHtml = btn.innerHTML;
+        const originalDisabled = btn.disabled;
+        btn.disabled = true;
+        btn.innerHTML = `
+            <svg style="animation: spin 1s linear infinite;" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+            </svg>
+            <span>جاري الإرسال للطابعة...</span>
+        `;
+
+        try {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({}),
+            });
+
+            const data = await res.json();
+            if (res.ok && data.success) {
+                btn.innerHTML = `
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    <span>تمت الطباعة بنجاح ✓</span>
+                `;
+                setTimeout(() => {
+                    btn.innerHTML = originalHtml;
+                    btn.disabled = originalDisabled;
+                }, 3000);
+            } else {
+                alert(`فشل أمر الطباعة: ${data.message || 'خطأ غير محدد'}`);
+                btn.innerHTML = originalHtml;
+                btn.disabled = originalDisabled;
+            }
+        } catch (err) {
+            alert('حدث خطأ في الاتصال بالخادم أثناء إرسال أمر الطباعة المباشرة.');
+            btn.innerHTML = originalHtml;
+            btn.disabled = originalDisabled;
+        }
+    });
 }
 

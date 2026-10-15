@@ -19,6 +19,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -33,7 +34,7 @@ class ProductController extends Controller
     {
         $categories = Category::active()->orderBy('name')->get();
 
-        $query = Product::with('category');
+        $query = Product::with(['category', 'stockBalances']);
 
         if ($request->filled('search')) {
             $query->search($request->input('search'));
@@ -394,15 +395,59 @@ class ProductController extends Controller
      */
     public function destroy(Product $product): RedirectResponse
     {
-        if ($product->image_path && Storage::disk('public')->exists($product->image_path)) {
-            Storage::disk('public')->delete($product->image_path);
+        // 1. Check if product is referenced in commercial invoices or returns
+        $hasSales = Schema::hasTable('sales_invoice_items')
+            ? DB::table('sales_invoice_items')->where('product_id', $product->id)->exists()
+            : false;
+
+        $hasPurchases = Schema::hasTable('purchase_invoice_items')
+            ? DB::table('purchase_invoice_items')->where('product_id', $product->id)->exists()
+            : false;
+
+        $hasReturns = Schema::hasTable('sales_return_items')
+            ? DB::table('sales_return_items')->where('product_id', $product->id)->exists()
+            : false;
+
+        // If referenced in commercial transactions, block deletion to preserve financial integrity
+        if ($hasSales || $hasPurchases || $hasReturns) {
+            return redirect()->route('products.index')
+                ->with('status', 'error')
+                ->with('message', 'لا يمكن حذف هذا المنتج ('.$product->name.') لوجود فواتير مبيعات أو مشتريات أو مرتجعات مرتبطة به. يمكنك تعطيل الصنف بدلاً من حذفه.');
         }
 
-        $product->delete();
+        try {
+            DB::transaction(function () use ($product) {
+                // Remove cost movements & stock movements (such as opening balances)
+                if (Schema::hasTable('batch_cost_movements')) {
+                    DB::table('batch_cost_movements')->where('product_id', $product->id)->delete();
+                }
+                if (Schema::hasTable('stock_movements')) {
+                    DB::table('stock_movements')->where('product_id', $product->id)->delete();
+                }
+                if (Schema::hasTable('stock_balances')) {
+                    DB::table('stock_balances')->where('product_id', $product->id)->delete();
+                }
+                if (Schema::hasTable('inventory_batches')) {
+                    DB::table('inventory_batches')->where('product_id', $product->id)->delete();
+                }
 
-        return redirect()->route('products.index')
-            ->with('status', 'success')
-            ->with('message', 'تم حذف المنتج بنجاح.');
+                if ($product->image_path && Storage::disk('public')->exists($product->image_path)) {
+                    Storage::disk('public')->delete($product->image_path);
+                }
+
+                $product->delete();
+            });
+
+            return redirect()->route('products.index')
+                ->with('status', 'success')
+                ->with('message', 'تم حذف المنتج بنجاح.');
+        } catch (\Throwable $e) {
+            report($e);
+
+            return redirect()->route('products.index')
+                ->with('status', 'error')
+                ->with('message', 'تعذر حذف المنتج: '.$e->getMessage());
+        }
     }
 
     /**
@@ -848,5 +893,44 @@ class ProductController extends Controller
             'currentDateFrom' => $request->input('date_from'),
             'currentDateTo' => $request->input('date_to'),
         ]);
+    }
+
+    /**
+     * Direct print product stock movement ledger via the centralized Python printing engine.
+     */
+    public function directPrintLedger(Request $request, Product $product, PythonPrintEngineService $printService): JsonResponse
+    {
+        $validated = $request->validate([
+            'printer' => ['nullable', 'string', 'max:120'],
+            'format' => ['nullable', 'string', 'in:a4,a5'],
+        ]);
+
+        $query = StockMovement::where('product_id', $product->id)
+            ->with(['fromWarehouse', 'toWarehouse', 'user', 'customer', 'supplier']);
+
+        if ($request->filled('warehouse_id')) {
+            $wid = (int) $request->input('warehouse_id');
+            $query->where(function ($q) use ($wid) {
+                $q->where('from_warehouse_id', $wid)
+                    ->orWhere('to_warehouse_id', $wid);
+            });
+        }
+        if ($request->filled('type')) {
+            $query->where('type', $request->input('type'));
+        }
+        if ($request->filled('date_from')) {
+            $query->whereDate('created_at', '>=', $request->input('date_from'));
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('created_at', '<=', $request->input('date_to'));
+        }
+
+        $movements = $query->orderBy('created_at', 'asc')->orderBy('id', 'asc')->limit(1000)->get();
+        $format = $validated['format'] ?? $request->query('format', 'a4');
+        $printer = $validated['printer'] ?? null;
+
+        $result = $printService->printProductLedger($product, $movements, $format, $printer);
+
+        return response()->json($result, $result['success'] ? 200 : 422);
     }
 }

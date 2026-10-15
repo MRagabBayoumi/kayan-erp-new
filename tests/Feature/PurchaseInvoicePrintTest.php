@@ -242,7 +242,7 @@ test('12. operates with full fallback defaults when print_templates table is com
     $template = $response->viewData('template');
     expect($template)->toBeInstanceOf(PrintTemplate::class)
         ->and($template->is_default)->toBeTrue()
-        ->and($template->getSetting('general.custom_title'))->toBe('فاتورة مشتريات وتوريد');
+        ->and($template->getSetting('general.custom_title'))->toBe('إذن استلام');
 });
 
 test('13. financial section renders exact stored model values and does not show false discount or tax rows', function () {

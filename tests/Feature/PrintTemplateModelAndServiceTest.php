@@ -171,7 +171,7 @@ test('getEffectiveTemplate returns persisted default, custom template by ID, or 
     expect($fallback)->toBeInstanceOf(PrintTemplate::class)
         ->and($fallback->exists)->toBeFalse()
         ->and($fallback->is_default)->toBeTrue()
-        ->and($fallback->getSetting('general.custom_title'))->toBe('فاتورة مبيعات');
+        ->and($fallback->getSetting('general.custom_title'))->toBe('إذن صرف');
 
     // 2. After seeding defaults: returns persisted default
     $service->seedDefaultTemplates();

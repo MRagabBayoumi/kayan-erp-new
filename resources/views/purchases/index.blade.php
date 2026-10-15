@@ -196,8 +196,12 @@
                                             <x-icon name="eye" size="14" />
                                         </a>
 
-                                        <a href="{{ route('purchases.print', [$inv, 'format' => 'a4']) }}" target="_blank" class="erp-btn erp-btn-ghost erp-btn-icon text-[var(--primary)]" title="طباعة الفاتورة">
+                                        <button type="button" data-action="python-direct-print" data-url="{{ route('purchases.direct-print', $inv) }}" class="erp-btn erp-btn-ghost erp-btn-icon text-[var(--primary)]" title="طباعة فورية بايثون">
                                             <x-icon name="printer" size="14" />
+                                        </button>
+
+                                        <a href="{{ route('purchases.print', [$inv, 'format' => 'a4']) }}" target="_blank" class="erp-btn erp-btn-ghost erp-btn-icon text-[var(--primary)]" title="طباعة الفاتورة (A4)">
+                                            <x-icon name="file-text" size="14" />
                                         </a>
 
                                         @if($inv->status === 'draft')

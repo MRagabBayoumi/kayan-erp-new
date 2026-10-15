@@ -60,7 +60,7 @@
             @endif
 
             <!-- Template Settings Form -->
-            <form id="printTemplateForm" action="{{ route('settings.print-templates.update', $currentTemplate->id) }}" method="POST">
+            <form id="printTemplateForm" action="{{ $currentTemplate->id ? route('settings.print-templates.update', $currentTemplate->id) : '#' }}" method="POST">
                 @csrf
                 @method('PUT')
 
@@ -293,6 +293,13 @@
                             </label>
                         </div>
                         <div class="designer-toggle-row">
+                            <label for="sw_col_wh">المخزن</label>
+                            <label class="designer-switch">
+                                <input type="checkbox" id="sw_col_wh" name="settings[table_columns][show_warehouse]" value="1" {{ $currentTemplate->getSetting('table_columns.show_warehouse', true) ? 'checked' : '' }}>
+                                <span class="designer-slider"></span>
+                            </label>
+                        </div>
+                        <div class="designer-toggle-row">
                             <label for="sw_col_price">سعر الوحدة</label>
                             <label class="designer-switch">
                                 <input type="checkbox" id="sw_col_price" name="settings[table_columns][show_price]" value="1" {{ $currentTemplate->getSetting('table_columns.show_price') ? 'checked' : '' }}>
@@ -501,207 +508,279 @@
                         {{ $sampleData['watermark'] ?? 'معاينة تجريبية' }}
                     </div>
 
-                    <!-- Mockup Header -->
-                    <div class="doc-mockup-header">
-                        <div class="preview-header-brand">
-                            <div class="preview-logo doc-mockup-logo-md mb-2">
-                                <div class="w-12 h-12 rounded bg-slate-800 text-white font-bold flex items-center justify-center text-sm">
-                                    LOGO
+                    @if($currentPaperFormat === 'thermal_80mm')
+                        <!-- Thermal Receipt Mockup -->
+                        <div class="thermal-receipt-mockup">
+                            <div class="doc-mockup-header">
+                                <div class="preview-header-brand">
+                                    <div class="preview-logo doc-mockup-logo-sm mb-1" style="{{ $currentTemplate->getSetting('general.show_logo') ? '' : 'display:none;' }}">
+                                        <div class="w-10 h-10 rounded bg-slate-800 text-white font-bold flex items-center justify-center text-xs">
+                                            LOGO
+                                        </div>
+                                    </div>
+                                    <div class="preview-company-name font-bold text-sm text-slate-800" style="{{ $currentTemplate->getSetting('general.show_company_name') ? '' : 'display:none;' }}">
+                                        {{ $sampleData['company']['name'] ?? 'شركة كيان للتجارة والتوزيع' }}
+                                    </div>
+                                    <div class="preview-company-phone text-xs text-slate-600" style="{{ $currentTemplate->getSetting('general.show_company_phone') ? '' : 'display:none;' }}">
+                                        هاتف: {{ $sampleData['company']['phone'] ?? '01012345678' }}
+                                    </div>
+                                    <div class="preview-company-address text-[11px] text-slate-500" style="{{ $currentTemplate->getSetting('general.show_company_address') ? '' : 'display:none;' }}">
+                                        {{ $sampleData['company']['address'] ?? 'المنصورة، مصر' }}
+                                    </div>
+                                </div>
+
+                                <div class="preview-header-doc text-center mt-2">
+                                    <div class="preview-doc-title doc-mockup-title">
+                                        {{ $currentTemplate->getSetting('general.custom_title', $sampleData['document']['type_label']) }}
+                                    </div>
+                                    <div class="preview-doc-subtitle text-xs text-slate-500" style="{{ $currentTemplate->getSetting('general.custom_subtitle') ? '' : 'display:none;' }}">
+                                        {{ $currentTemplate->getSetting('general.custom_subtitle', '') }}
+                                    </div>
                                 </div>
                             </div>
-                            <div class="preview-company-name font-bold text-base text-slate-800">
-                                {{ $sampleData['company']['name'] ?? 'شركة كيان للتجارة والتوزيع' }}
-                            </div>
-                            <div class="preview-company-phone text-xs text-slate-600">
-                                هاتف: {{ $sampleData['company']['phone'] ?? '01012345678' }}
-                            </div>
-                            <div class="preview-company-address text-xs text-slate-500">
-                                {{ $sampleData['company']['address'] ?? 'المنصورة، مصر' }}
-                            </div>
-                        </div>
 
-                        <div class="preview-header-doc text-left">
-                            <div class="preview-doc-title doc-mockup-title">
-                                {{ $currentTemplate->getSetting('general.custom_title', $sampleData['document']['type_label']) }}
+                            <div class="doc-mockup-meta-grid">
+                                <div>
+                                    <span class="preview-doc-number font-semibold text-slate-800 ml-2" style="{{ $currentTemplate->getSetting('document_meta.show_doc_number') ? '' : 'display:none;' }}">
+                                        رقم: {{ $sampleData['document']['number'] ?? 'INV-001' }}
+                                    </span>
+                                    <span class="preview-doc-date text-slate-600 ml-2" style="{{ $currentTemplate->getSetting('document_meta.show_doc_date') ? '' : 'display:none;' }}">
+                                        {{ $sampleData['document']['date'] ?? '2026-10-14' }}
+                                    </span>
+                                </div>
+                                <div>
+                                    <span class="preview-party-label font-bold text-xs text-slate-700">
+                                        {{ $currentTemplate->getSetting('party_meta.party_type_label', 'الطرف') }}:
+                                    </span>
+                                    <span class="preview-party-name font-semibold text-slate-800" style="{{ $currentTemplate->getSetting('party_meta.show_party_name') ? '' : 'display:none;' }}">
+                                        {{ $sampleData['party']['name'] ?? 'محل الأناقة' }}
+                                    </span>
+                                </div>
                             </div>
-                            <div class="preview-doc-subtitle text-xs text-slate-500">
-                                {{ $currentTemplate->getSetting('general.custom_subtitle', '') }}
-                            </div>
-                        </div>
-                    </div>
 
-                    <!-- Mockup Document Metadata -->
-                    <div class="doc-mockup-meta-grid">
-                        <div>
-                            <span class="preview-doc-number font-semibold text-slate-800 ml-3">
-                                رقم المستند: {{ $sampleData['document']['number'] ?? 'INV-001' }}
-                            </span>
-                            <span class="preview-doc-date text-slate-600 ml-3">
-                                التاريخ: {{ $sampleData['document']['date'] ?? '2026-10-14' }}
-                            </span>
-                            <span class="preview-doc-due-date text-slate-500 ml-3">
-                                الاستحقاق: {{ $sampleData['document']['due_date'] ?? '2026-10-21' }}
-                            </span>
-                        </div>
-                        <div class="text-left">
-                            <span class="preview-doc-warehouse text-slate-600 ml-3">
-                                المستودع: {{ $sampleData['document']['warehouse'] ?? 'المخزن الرئيسي' }}
-                            </span>
-                            <span class="preview-doc-badge erp-badge erp-badge-success text-xs">
-                                {{ $sampleData['document']['status'] ?? 'مؤكدة' }}
-                            </span>
-                        </div>
-                        <div class="col-span-2 flex justify-between items-center pt-2">
-                            <div class="preview-doc-barcode text-xs font-mono text-slate-700">
-                                ||| | |||| | ||| {{ $sampleData['document']['barcode'] ?? '123456' }}
-                            </div>
-                            <div class="preview-doc-qr text-xs font-mono text-slate-600">
-                                [ QR Code ]
-                            </div>
-                        </div>
-                    </div>
+                            @if(isset($sampleData['items']))
+                                <table class="doc-mockup-table">
+                                    <thead>
+                                        <tr>
+                                            <th class="col-index">#</th>
+                                            <th class="col-name text-right">الصنف</th>
+                                            <th class="col-qty text-center">الكمية</th>
+                                            <th class="col-price text-left">السعر</th>
+                                            <th class="col-total text-left">الإجمالي</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($sampleData['items'] as $item)
+                                            <tr>
+                                                <td class="col-index text-center">{{ $item['index'] }}</td>
+                                                <td class="col-name font-medium">{{ $item['name'] }}</td>
+                                                <td class="col-qty text-center font-semibold">{{ number_format($item['quantity'], 2) }}</td>
+                                                <td class="col-price text-left font-mono">{{ number_format($item['unit_price'], 2) }}</td>
+                                                <td class="col-total text-left font-mono font-bold">{{ number_format($item['subtotal'], 2) }}</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            @endif
 
-                    <!-- Mockup Party Metadata -->
-                    <div class="doc-mockup-parties">
-                        <div class="p-2.5 rounded bg-slate-50 border border-slate-200">
-                            <span class="preview-party-label font-bold text-xs text-slate-700 ml-2">
-                                {{ $currentTemplate->getSetting('party_meta.party_type_label', 'الطرف المقابل') }}:
-                            </span>
-                            <span class="preview-party-name font-semibold text-slate-800">
-                                {{ $sampleData['party']['name'] ?? 'محل الأناقة' }}
-                            </span>
-                            <div class="preview-party-phone text-xs text-slate-600 mt-1">
-                                هاتف: {{ $sampleData['party']['phone'] ?? '01123456789' }}
-                            </div>
-                            <div class="preview-party-address text-xs text-slate-500">
-                                {{ $sampleData['party']['address'] ?? 'شارع الجمهورية' }}
+                            @if(isset($sampleData['financial']))
+                                <div class="doc-mockup-totals-box">
+                                    <table class="doc-mockup-totals-table">
+                                        <tr class="row-subtotal">
+                                            <td class="text-slate-600">المجموع:</td>
+                                            <td class="text-left font-mono font-semibold">{{ number_format($sampleData['financial']['subtotal'], 2) }} ج.م</td>
+                                        </tr>
+                                        <tr class="row-net-total grand-total-row">
+                                            <td>الصافي:</td>
+                                            <td class="text-left font-mono">{{ number_format($sampleData['financial']['net_total'], 2) }} ج.م</td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            @endif
+
+                            <div class="preview-notes-box doc-mockup-notes">
+                                <span class="notes-content">{{ $currentTemplate->getSetting('notes_and_terms.notes_text') }}</span>
                             </div>
                         </div>
-                    </div>
+                    @else
+                        <!-- =================================================================
+                             A4 / A5 Enterprise Dispatch Layout (مطابق لصورة الفاتورة الفعلية)
+                             ================================================================= -->
+                        <div class="dispatch-mockup-container">
+                            <!-- 1. Header: 3 Columns -->
+                            <header class="dispatch-header">
+                                <!-- Right Column: Document Number & Client Info -->
+                                <div class="dispatch-col-right">
+                                    <div class="dispatch-badge-original">Original</div>
+                                    <div class="dispatch-field preview-doc-number-row" style="{{ $currentTemplate->getSetting('document_meta.show_doc_number') ? '' : 'display:none;' }}">
+                                        <span class="dispatch-field-label">رقم المستند :</span>
+                                        <strong class="dispatch-field-val preview-doc-number font-numeric">{{ $sampleData['document']['number'] ?? 'INV-001' }}</strong>
+                                    </div>
+                                    <div class="dispatch-field preview-party-code-row">
+                                        <span class="dispatch-field-label">كود الطرف :</span>
+                                        <span class="dispatch-field-val font-numeric">{{ $sampleData['party']['code'] ?? '1' }}</span>
+                                    </div>
+                                    <div class="dispatch-field preview-party-name-row" style="{{ $currentTemplate->getSetting('party_meta.show_party_name') ? '' : 'display:none;' }}">
+                                        <span class="dispatch-field-label preview-party-label">{{ $currentTemplate->getSetting('party_meta.party_type_label', 'اسم العميل') }} :</span>
+                                        <strong class="dispatch-field-val preview-party-name">{{ $sampleData['party']['name'] ?? 'محل الأناقة' }}</strong>
+                                    </div>
+                                    <div class="dispatch-field preview-party-phone-row" style="{{ $currentTemplate->getSetting('party_meta.show_party_phone') ? '' : 'display:none;' }}">
+                                        <span class="dispatch-field-label">رقم التليفون :</span>
+                                        <span class="dispatch-field-val preview-party-phone font-numeric">{{ $sampleData['party']['phone'] ?? '01123456789' }}</span>
+                                    </div>
+                                </div>
 
-                    <!-- Mockup Items Table (For Invoices) -->
-                    @if(isset($sampleData['items']))
-                        <table class="doc-mockup-table">
-                            <thead>
-                                <tr>
-                                    <th class="col-index">#</th>
-                                    <th class="col-name text-right">الصنف والبيان</th>
-                                    <th class="col-sku text-center">الكود</th>
-                                    <th class="col-unit text-center">الوحدة</th>
-                                    <th class="col-qty text-center">الكمية</th>
-                                    <th class="col-price text-left">السعر</th>
-                                    <th class="col-discount text-left">الخصم</th>
-                                    <th class="col-total text-left">الإجمالي</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($sampleData['items'] as $item)
-                                    <tr>
-                                        <td class="col-index text-center">{{ $item['index'] }}</td>
-                                        <td class="col-name font-medium">
-                                            {{ $item['name'] }}
-                                            <div class="col-notes text-[10px] text-slate-500">{{ $item['notes'] }}</div>
-                                        </td>
-                                        <td class="col-sku text-center font-mono text-xs">{{ $item['sku'] }}</td>
-                                        <td class="col-unit text-center text-xs">{{ $item['unit'] }}</td>
-                                        <td class="col-qty text-center font-semibold">{{ number_format($item['quantity'], 2) }}</td>
-                                        <td class="col-price text-left font-mono">{{ number_format($item['unit_price'], 2) }}</td>
-                                        <td class="col-discount text-left font-mono">{{ number_format($item['discount'], 2) }}</td>
-                                        <td class="col-total text-left font-mono font-bold">{{ number_format($item['subtotal'], 2) }}</td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
+                                <!-- Center Column: Official Stamp Box -->
+                                <div class="dispatch-col-center">
+                                    <div class="dispatch-stamp-frame">
+                                        <span class="stamp-stars">★★★★★</span>
+                                        <span class="stamp-title preview-doc-title">{{ $currentTemplate->getSetting('general.custom_title', $sampleData['document']['type_label']) }}</span>
+                                        <span class="stamp-date font-numeric">{{ \Carbon\Carbon::parse($sampleData['document']['date'] ?? now())->format('d/m/Y') }}</span>
+                                        <span class="stamp-stars">★★★★★</span>
+                                    </div>
+                                    <div class="preview-doc-subtitle text-[11px] text-slate-500 mt-1" style="{{ $currentTemplate->getSetting('general.custom_subtitle') ? '' : 'display:none;' }}">
+                                        {{ $currentTemplate->getSetting('general.custom_subtitle', '') }}
+                                    </div>
+                                </div>
+
+                                <!-- Left Column: Date & Time, Address, Shipping Company -->
+                                <div class="dispatch-col-left">
+                                    <div class="dispatch-field preview-doc-date-row" style="{{ $currentTemplate->getSetting('document_meta.show_doc_date') ? '' : 'display:none;' }}">
+                                        <span class="dispatch-field-label">التاريخ :</span>
+                                        <span class="dispatch-field-val preview-doc-date font-numeric">{{ \Carbon\Carbon::parse($sampleData['document']['date'] ?? now())->format('d/m/Y 14:30:00') }}</span>
+                                    </div>
+                                    <div class="dispatch-field preview-party-address-row" style="{{ $currentTemplate->getSetting('party_meta.show_party_address') ? '' : 'display:none;' }}">
+                                        <span class="dispatch-field-label">العنوان :</span>
+                                        <span class="dispatch-field-val preview-party-address">{{ $sampleData['party']['address'] ?? 'شارع الجمهورية، المنصورة' }}</span>
+                                    </div>
+                                    <div class="dispatch-field preview-shipping-row">
+                                        <span class="dispatch-field-label">شركة الشحن :</span>
+                                        <span class="dispatch-field-val">{{ $sampleData['party']['shipping_company'] ?? 'عميل معرض / شحن داخلي' }}</span>
+                                    </div>
+                                </div>
+                            </header>
+
+                            <!-- 2. High-Contrast Solid Grid Table (8 أعمدة مطابقة للصورة تماماً) -->
+                            @if(isset($sampleData['items']))
+                                <table class="dispatch-table doc-mockup-table">
+                                    <thead>
+                                        <tr>
+                                            <th class="col-index col-seq" style="{{ $currentTemplate->getSetting('table_columns.show_index') ? '' : 'display:none;' }}">م</th>
+                                            <th class="col-sku" style="{{ $currentTemplate->getSetting('table_columns.show_sku') ? '' : 'display:none;' }}">كود الصنف</th>
+                                            <th class="col-name">اسم الصنف</th>
+                                            <th class="col-qty">الكمية</th>
+                                            <th class="col-unit" style="{{ $currentTemplate->getSetting('table_columns.show_unit') ? '' : 'display:none;' }}">وحده القياس</th>
+                                            <th class="col-warehouse col-wh" style="{{ $currentTemplate->getSetting('table_columns.show_warehouse', true) ? '' : 'display:none;' }}">المخزن</th>
+                                            <th class="col-price" style="{{ $currentTemplate->getSetting('table_columns.show_price') ? '' : 'display:none;' }}">السعر</th>
+                                            <th class="col-discount" style="{{ $currentTemplate->getSetting('table_columns.show_discount') ? '' : 'display:none;' }}">الخصم</th>
+                                            <th class="col-total" style="{{ $currentTemplate->getSetting('table_columns.show_total') ? '' : 'display:none;' }}">الاجمالي</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($sampleData['items'] as $item)
+                                            <tr>
+                                                <td class="col-index col-seq font-numeric" style="{{ $currentTemplate->getSetting('table_columns.show_index') ? '' : 'display:none;' }}">{{ $item['index'] }}</td>
+                                                <td class="col-sku font-numeric" style="{{ $currentTemplate->getSetting('table_columns.show_sku') ? '' : 'display:none;' }}">{{ $item['sku'] }}</td>
+                                                <td class="col-name font-bold">
+                                                    {{ $item['name'] }}
+                                                    @if(!empty($item['notes']))
+                                                        <div class="col-notes text-[10px] text-slate-500 font-normal" style="{{ $currentTemplate->getSetting('table_columns.show_notes') ? '' : 'display:none;' }}">{{ $item['notes'] }}</div>
+                                                    @endif
+                                                </td>
+                                                <td class="col-qty font-numeric">{{ number_format($item['quantity'], 2) }}</td>
+                                                <td class="col-unit" style="{{ $currentTemplate->getSetting('table_columns.show_unit') ? '' : 'display:none;' }}">{{ $item['unit'] }}</td>
+                                                <td class="col-warehouse col-wh font-numeric" style="{{ $currentTemplate->getSetting('table_columns.show_warehouse', true) ? '' : 'display:none;' }}">{{ $item['warehouse'] ?? '20' }}</td>
+                                                <td class="col-price font-numeric" style="{{ $currentTemplate->getSetting('table_columns.show_price') ? '' : 'display:none;' }}">{{ number_format($item['unit_price'], 2) }}</td>
+                                                <td class="col-discount font-numeric text-rose-600" style="{{ $currentTemplate->getSetting('table_columns.show_discount') ? '' : 'display:none;' }}">{{ number_format($item['discount'], 2) }}</td>
+                                                <td class="col-total font-numeric font-bold" style="{{ $currentTemplate->getSetting('table_columns.show_total') ? '' : 'display:none;' }}">{{ number_format($item['subtotal'], 2) }}</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            @elseif(isset($sampleData['transactions']))
+                                <table class="dispatch-table doc-mockup-table">
+                                    <thead>
+                                        <tr>
+                                            <th class="text-center">التاريخ</th>
+                                            <th class="text-center">رقم المرجع</th>
+                                            <th class="text-right">البيان والحركة</th>
+                                            <th class="text-left">مدين</th>
+                                            <th class="text-left">دائن</th>
+                                            <th class="text-left">الرصيد</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($sampleData['transactions'] as $tx)
+                                            <tr>
+                                                <td class="text-center text-xs font-numeric">{{ $tx['date'] }}</td>
+                                                <td class="text-center text-xs font-numeric">{{ $tx['ref_number'] }}</td>
+                                                <td class="text-xs">{{ $tx['description'] }}</td>
+                                                <td class="text-left text-xs font-numeric">{{ $tx['debit'] > 0 ? number_format($tx['debit'], 2) : '-' }}</td>
+                                                <td class="text-left text-xs font-numeric">{{ $tx['credit'] > 0 ? number_format($tx['credit'], 2) : '-' }}</td>
+                                                <td class="text-left text-xs font-numeric font-bold">{{ number_format($tx['balance'], 2) }}</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            @endif
+
+                            <!-- 3. Notes & Financial Totals Section -->
+                            <div class="dispatch-bottom-section">
+                                <div class="dispatch-notes-area preview-notes-box" style="{{ $currentTemplate->getSetting('notes_and_terms.show_notes') ? '' : 'display:none;' }}">
+                                    <div class="dispatch-notes-header">ملاحظات</div>
+                                    <div class="dispatch-notes-body font-numeric notes-content">
+                                        {{ $currentTemplate->getSetting('notes_and_terms.notes_text') }}
+                                    </div>
+                                </div>
+
+                                @if(isset($sampleData['financial']))
+                                    <div class="dispatch-totals-area doc-mockup-totals-box">
+                                        <table class="dispatch-totals-table font-numeric">
+                                            <tr class="row-subtotal" style="{{ $currentTemplate->getSetting('financial_summary.show_subtotal') ? '' : 'display:none;' }}">
+                                                <td class="tot-label">المجموع:</td>
+                                                <td class="tot-val">{{ number_format($sampleData['financial']['subtotal'], 2) }} ج.م</td>
+                                            </tr>
+                                            <tr class="row-discount" style="{{ $currentTemplate->getSetting('financial_summary.show_discount') ? '' : 'display:none;' }}">
+                                                <td class="tot-label">الخصم:</td>
+                                                <td class="tot-val">- {{ number_format($sampleData['financial']['discount'], 2) }} ج.م</td>
+                                            </tr>
+                                            <tr class="row-shipping" style="{{ $currentTemplate->getSetting('financial_summary.show_shipping') ? '' : 'display:none;' }}">
+                                                <td class="tot-label">الشحن:</td>
+                                                <td class="tot-val">+ {{ number_format($sampleData['financial']['shipping'], 2) }} ج.م</td>
+                                            </tr>
+                                            <tr class="row-net-total tot-grand" style="{{ $currentTemplate->getSetting('financial_summary.show_net_total') ? '' : 'display:none;' }}">
+                                                <td class="tot-label">الصافي:</td>
+                                                <td class="tot-val">{{ number_format($sampleData['financial']['net_total'], 2) }} ج.م</td>
+                                            </tr>
+                                            <tr class="row-paid" style="{{ $currentTemplate->getSetting('financial_summary.show_paid') ? '' : 'display:none;' }}">
+                                                <td class="tot-label">المدفوع:</td>
+                                                <td class="tot-val">{{ number_format($sampleData['financial']['paid'], 2) }} ج.م</td>
+                                            </tr>
+                                            <tr class="row-remaining" style="{{ $currentTemplate->getSetting('financial_summary.show_remaining') ? '' : 'display:none;' }}">
+                                                <td class="tot-label">المتبقي:</td>
+                                                <td class="tot-val">{{ number_format($sampleData['financial']['remaining'], 2) }} ج.م</td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                @endif
+                            </div>
+
+                            <!-- 4. Pinned Bottom Info Bar -->
+                            <div class="dispatch-footer-bar">
+                                <div class="footer-box box-user">
+                                    <span class="box-label">اسم المستخدم :</span>
+                                    <strong class="box-val">{{ auth()->user()?->name ?? 'مدير النظام' }}</strong>
+                                </div>
+                                <div class="footer-box box-pages">
+                                    <span>الصفحات من 1 إلي 1</span>
+                                </div>
+                                <div class="footer-box box-time">
+                                    <span class="box-label">تاريخ ووقت الطباعة :</span>
+                                    <span class="box-val font-numeric">{{ now()->format('d/m/Y h:i a') }}</span>
+                                </div>
+                            </div>
+                        </div>
                     @endif
-
-                    <!-- Mockup Transactions Table (For Statements) -->
-                    @if(isset($sampleData['transactions']))
-                        <table class="doc-mockup-table">
-                            <thead>
-                                <tr>
-                                    <th class="text-center">التاريخ</th>
-                                    <th class="text-center">رقم المرجع</th>
-                                    <th class="text-right">البيان والحركة</th>
-                                    <th class="text-left">مدين</th>
-                                    <th class="text-left">دائن</th>
-                                    <th class="text-left">الرصيد</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($sampleData['transactions'] as $tx)
-                                    <tr>
-                                        <td class="text-center text-xs font-mono">{{ $tx['date'] }}</td>
-                                        <td class="text-center text-xs font-mono">{{ $tx['ref_number'] }}</td>
-                                        <td class="text-xs">{{ $tx['description'] }}</td>
-                                        <td class="text-left text-xs font-mono">{{ $tx['debit'] > 0 ? number_format($tx['debit'], 2) : '-' }}</td>
-                                        <td class="text-left text-xs font-mono">{{ $tx['credit'] > 0 ? number_format($tx['credit'], 2) : '-' }}</td>
-                                        <td class="text-left text-xs font-mono font-bold">{{ number_format($tx['balance'], 2) }}</td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    @endif
-
-                    <!-- Mockup Financial Totals Box -->
-                    @if(isset($sampleData['financial']))
-                        <div class="doc-mockup-totals-box">
-                            <table class="doc-mockup-totals-table">
-                                <tr class="row-subtotal">
-                                    <td class="text-slate-600">المجموع الفرعي:</td>
-                                    <td class="text-left font-mono font-semibold">{{ number_format($sampleData['financial']['subtotal'], 2) }} ج.م</td>
-                                </tr>
-                                <tr class="row-discount">
-                                    <td class="text-slate-600">الخصم:</td>
-                                    <td class="text-left font-mono text-rose-600">{{ number_format($sampleData['financial']['discount'], 2) }} ج.م</td>
-                                </tr>
-                                <tr class="row-shipping">
-                                    <td class="text-slate-600">الشحن:</td>
-                                    <td class="text-left font-mono">{{ number_format($sampleData['financial']['shipping'], 2) }} ج.م</td>
-                                </tr>
-                                <tr class="row-net-total grand-total-row">
-                                    <td>الصافي النهائي:</td>
-                                    <td class="text-left font-mono">{{ number_format($sampleData['financial']['net_total'], 2) }} ج.م</td>
-                                </tr>
-                                <tr class="row-paid">
-                                    <td class="text-slate-600">المدفوع:</td>
-                                    <td class="text-left font-mono text-emerald-700">{{ number_format($sampleData['financial']['paid'], 2) }} ج.م</td>
-                                </tr>
-                                <tr class="row-remaining">
-                                    <td class="text-slate-600">المتبقي:</td>
-                                    <td class="text-left font-mono font-bold text-amber-700">{{ number_format($sampleData['financial']['remaining'], 2) }} ج.م</td>
-                                </tr>
-                            </table>
-                        </div>
-                    @endif
-
-                    <!-- Mockup Notes and Terms -->
-                    <div class="preview-notes-box doc-mockup-notes">
-                        <span class="font-bold">ملاحظات:</span>
-                        <span class="notes-content">{{ $currentTemplate->getSetting('notes_and_terms.notes_text') }}</span>
-                    </div>
-
-                    <div class="preview-terms-box text-xs text-slate-500 mb-4 p-2 bg-slate-50 rounded border border-slate-200">
-                        <span class="font-semibold block mb-0.5">الشروط والأحكام:</span>
-                        <span class="terms-content">{{ $currentTemplate->getSetting('notes_and_terms.terms_text') }}</span>
-                    </div>
-
-                    <!-- Mockup Signatures & Stamp -->
-                    <div class="doc-mockup-signatures">
-                        <div class="sig-box">
-                            <span class="first-party-title font-semibold">{{ $currentTemplate->getSetting('signatures.first_party_title', 'الطرف الأول') }}</span>
-                            <div class="sig-line"></div>
-                        </div>
-
-                        <div class="doc-mockup-stamp-box">
-                            <span>موضع الختم</span>
-                        </div>
-
-                        <div class="sig-box">
-                            <span class="second-party-title font-semibold">{{ $currentTemplate->getSetting('signatures.second_party_title', 'المسؤول') }}</span>
-                            <div class="sig-line"></div>
-                        </div>
-                    </div>
-
                 </div>
             </div>
         </div>

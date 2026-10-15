@@ -10,15 +10,31 @@ export function initProductShow() {
     if (!page) return;
 
     const productId = page.dataset.productId;
-    const showQtyInput = page.querySelector('#showLabelQty');
-    const modalQtyInput = page.querySelector('#labelQuantity');
-    const printModal = page.querySelector('#printBarcodeModal');
+    const modalQtyInput = document.getElementById('labelQuantity');
+    const printModal = document.getElementById('printBarcodeModal');
 
-    // 1. Direct Print from Show via Centralized Python Engine (handles both control-panel and card buttons)
+    function getShowQty() {
+        const input = document.getElementById('showLabelQty') || document.getElementById('cardLabelQty');
+        const val = parseInt(input ? input.value : 1, 10);
+        return Math.max(1, Math.min(500, isNaN(val) ? 1 : val));
+    }
+
+    function setShowQty(val) {
+        const clamped = Math.max(1, Math.min(500, parseInt(val, 10) || 1));
+        const showInput = document.getElementById('showLabelQty');
+        const cardInput = document.getElementById('cardLabelQty');
+        if (showInput) showInput.value = clamped;
+        if (cardInput) cardInput.value = clamped;
+        if (modalQtyInput) modalQtyInput.value = clamped;
+        return clamped;
+    }
+
+    // 1. Direct Print from Show via Centralized Python Engine
     document.querySelectorAll('[data-action="direct-print-show"]').forEach(btn => {
-        btn.addEventListener('click', async () => {
-            const qty = parseInt(showQtyInput ? showQtyInput.value : 1, 10) || 1;
-            showPrintToast('جاري إرسال الملصق مباشرة إلى طابعة الباركود...');
+        btn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            const qty = getShowQty();
+            showPrintToast(`جاري إرسال ${qty} ملصق مباشرة إلى طابعة الباركود...`);
 
             const originalDisabled = btn.disabled;
             btn.disabled = true;
@@ -49,20 +65,38 @@ export function initProductShow() {
         });
     });
 
-    // 2. Adjust Show Qty
+    // 2. Adjust Show Qty buttons (+ and - in control panel and card)
     document.querySelectorAll('[data-action="adjust-show-qty"]').forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
             const delta = parseInt(btn.dataset.delta, 10) || 0;
-            if (showQtyInput) {
-                const current = parseInt(showQtyInput.value, 10) || 1;
-                showQtyInput.value = Math.max(1, Math.min(500, current + delta));
-            }
+            const current = getShowQty();
+            setShowQty(current + delta);
         });
+    });
+
+    // Listen to direct manual typing into quantity fields
+    ['showLabelQty', 'cardLabelQty'].forEach(id => {
+        const inp = document.getElementById(id);
+        if (inp) {
+            inp.addEventListener('input', () => {
+                setShowQty(inp.value);
+            });
+            inp.addEventListener('change', () => {
+                setShowQty(inp.value);
+            });
+        }
     });
 
     // 3. Print Modal Handlers
     function openPrintModal() {
         if (printModal) {
+            const currentQty = getShowQty();
+            if (modalQtyInput) {
+                modalQtyInput.value = currentQty;
+            }
+            printModal.classList.remove('hidden');
             printModal.classList.add('open');
             printModal.style.display = 'flex';
         }
@@ -71,16 +105,23 @@ export function initProductShow() {
     function closePrintModal() {
         if (printModal) {
             printModal.classList.remove('open');
+            printModal.classList.add('hidden');
             printModal.style.display = 'none';
         }
     }
 
-    page.querySelectorAll('[data-action="open-print-modal"]').forEach(btn => {
-        btn.addEventListener('click', openPrintModal);
+    document.querySelectorAll('[data-action="open-print-modal"]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            openPrintModal();
+        });
     });
 
-    page.querySelectorAll('[data-action="close-print-modal"]').forEach(btn => {
-        btn.addEventListener('click', closePrintModal);
+    document.querySelectorAll('[data-action="close-print-modal"]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            closePrintModal();
+        });
     });
 
     if (printModal) {
@@ -88,36 +129,48 @@ export function initProductShow() {
             if (e.target === printModal) closePrintModal();
         });
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && printModal.classList.contains('open')) {
+            if (e.key === 'Escape' && (printModal.classList.contains('open') || printModal.style.display === 'flex')) {
                 closePrintModal();
             }
         });
     }
 
     // Modal Qty Adjust
-    page.querySelectorAll('[data-action="adjust-modal-qty"]').forEach(btn => {
-        btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-action="adjust-modal-qty"]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
             const delta = parseInt(btn.dataset.delta, 10) || 0;
             if (modalQtyInput) {
                 const current = parseInt(modalQtyInput.value, 10) || 1;
-                modalQtyInput.value = Math.max(1, Math.min(500, current + delta));
+                const next = Math.max(1, Math.min(500, current + delta));
+                modalQtyInput.value = next;
+                setShowQty(next);
             }
         });
     });
 
     // Modal Preset Qty (1, 5, 10, 20, 50)
-    page.querySelectorAll('[data-action="set-modal-qty"]').forEach(btn => {
-        btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-action="set-modal-qty"]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
             const val = parseInt(btn.dataset.qty, 10) || 1;
             if (modalQtyInput) {
                 modalQtyInput.value = val;
+                setShowQty(val);
             }
         });
     });
 
+    if (modalQtyInput) {
+        modalQtyInput.addEventListener('input', () => {
+            setShowQty(modalQtyInput.value);
+        });
+    }
+
     // Open Print Preview or Direct Print from Modal
-    page.querySelectorAll('[data-action="open-print-preview"], [data-action="submit-print-preview"]').forEach(btn => {
-        btn.addEventListener('click', async () => {
+    document.querySelectorAll('[data-action="open-print-preview"], [data-action="submit-print-preview"]').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            e.preventDefault();
             const autoPrint = btn.dataset.autoPrint === 'true' || btn.dataset.autoprint === 'true';
             const qty = parseInt(modalQtyInput ? modalQtyInput.value : 1, 10) || 1;
 
@@ -148,7 +201,7 @@ export function initProductShow() {
                     showPrintToast('حدث خطأ في الاتصال بالخادم أثناء إرسال أمر الطباعة.');
                 }
             } else {
-                // Pure screen preview in new tab (without auto-print dialog)
+                // Pure screen preview in new tab
                 window.open(`/products/${productId}/print-label?quantity=${qty}`, '_blank');
                 closePrintModal();
             }

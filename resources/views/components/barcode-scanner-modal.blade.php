@@ -41,9 +41,9 @@
                 </button>
 
                 <!-- Native Camera Snap Fallback for Devices without live BarcodeDetector -->
-                <label class="erp-btn erp-btn-secondary cursor-pointer text-xs">
+                <label id="barcodeSnapBtn" class="erp-btn erp-btn-secondary cursor-pointer text-xs">
                     <x-icon name="camera" size="14" />
-                    <span>التقاط صورة للباركود</span>
+                    <span>التقاط صورة للباركود (كاميرا الهاتف)</span>
                     <input type="file" id="barcodeFileCapture" accept="image/*" capture="environment" class="hidden">
                 </label>
             </div>

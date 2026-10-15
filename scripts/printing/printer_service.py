@@ -363,47 +363,47 @@ class PrinterService:
         cls.validate_printer(printer_name)
 
         dc = None
-        hdc = None
         try:
-            first_img = items[0]["image"]
-            width_mm = round((first_img.width / 203.0) * 25.4, 1)
-            height_mm = round((first_img.height / 203.0) * 25.4, 1)
+            dc = win32ui.CreateDC()
+            dc.CreatePrinterDC(printer_name)
 
-            try:
-                hprinter = win32print.OpenPrinter(printer_name)
-                devmode = win32print.GetPrinter(hprinter, 2)['pDevMode']
-                devmode.PaperSize = 256  # DMPAPER_USER
-                devmode.PaperWidth = int(round(width_mm * 10))
-                devmode.PaperLength = int(round(height_mm * 10))
-                devmode.Fields |= (win32con.DM_PAPERSIZE | win32con.DM_PAPERWIDTH | win32con.DM_PAPERLENGTH)
-                win32print.ClosePrinter(hprinter)
-
-                hdc = win32gui.CreateDC('WINSPOOL', printer_name, devmode)
-                dc = win32ui.CreateDCFromHandle(hdc)
-            except Exception:
-                dc = win32ui.CreateDC()
-                dc.CreatePrinterDC(printer_name)
+            dpi_x = dc.GetDeviceCaps(win32con.LOGPIXELSX) or 203
+            dpi_y = dc.GetDeviceCaps(win32con.LOGPIXELSY) or 203
+            horz_res = dc.GetDeviceCaps(win32con.HORZRES) or 0
+            vert_res = dc.GetDeviceCaps(win32con.VERTRES) or 0
 
             dc.StartDoc(doc_name)
 
             for item in items:
                 img = item["image"]
                 copies = max(1, int(item.get("copies") or 1))
+                img_dpi = int(item.get("dpi") or 203)
                 w, h = img.size
                 dib = ImageWin.Dib(img)
 
+                # Compute scaled target dimensions on device DC
+                scale_x = float(dpi_x) / float(img_dpi)
+                scale_y = float(dpi_y) / float(img_dpi)
+                dst_w = int(round(w * scale_x))
+                dst_h = int(round(h * scale_y))
+
+                # If document is an office page (e.g. A4/A5 on 600 DPI printer),
+                # clamp proportionally to printable area if needed
+                if horz_res > 1000 and dst_w > horz_res:
+                    ratio = float(horz_res) / float(dst_w)
+                    dst_w = horz_res
+                    dst_h = int(round(dst_h * ratio))
+                if vert_res > 1000 and dst_h > vert_res:
+                    ratio = float(vert_res) / float(dst_h)
+                    dst_h = vert_res
+                    dst_w = int(round(dst_w * ratio))
+
                 for _ in range(copies):
                     dc.StartPage()
-                    dib.draw(dc.GetHandleOutput(), (0, 0, w, h))
+                    dib.draw(dc.GetHandleOutput(), (0, 0, dst_w, dst_h))
                     dc.EndPage()
 
             dc.EndDoc()
-
-            if hdc is not None:
-                try:
-                    win32gui.DeleteDC(hdc)
-                except Exception:
-                    pass
 
             return {
                 "success": True,
@@ -433,22 +433,21 @@ class PrinterService:
         items: List[Dict[str, Any]],
         doc_name: str = "Kayan ERP Print Job",
         gap_mm: float = 2.0,
-        direction: int = 1,
+        direction: int = 0,
         include_direction: bool = True,
+        print_mode: str = "auto",
         dry_run: bool = False
     ) -> Dict[str, Any]:
         """
         Submit a batch sequence of product labels to the Windows print spooler.
-        Automatically routes TSPL-compatible printers to RAW TSPL batch mode,
-        and falls back to Windows GDI for general printers.
-
-        Args:
-            include_direction: Passed to RAW TSPL path only. Set False for H2 diagnostic test.
+        Supports print_mode: 'auto' (default), 'raw_tspl', or 'gdi'.
         """
         if not items:
             raise ValueError("No items provided for printing.")
 
-        if cls.is_tspl_compatible(printer_name):
+        mode_req = str(print_mode or "auto").lower().strip()
+
+        if mode_req == "raw_tspl" or (mode_req == "auto" and cls.is_tspl_compatible(printer_name)):
             try:
                 return cls.submit_batch_job_raw_tspl(
                     printer_name=printer_name,
@@ -460,6 +459,8 @@ class PrinterService:
                     dry_run=dry_run,
                 )
             except Exception as e:
+                if mode_req == "raw_tspl":
+                    raise
                 sys.stderr.write(
                     f"Warning: TSPL RAW batch mode failed for '{printer_name}', falling back to GDI: {e}\n"
                 )

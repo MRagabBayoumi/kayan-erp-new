@@ -49,7 +49,7 @@ class PurchaseInvoiceTemplate(BasePrintTemplate):
         company_name = str(data.get("company_name") or "شركة كيان للتجارة والتوزيع")
         invoice_number = str(data.get("invoice_number"))
         supplier_name = str(data.get("supplier_name"))
-        invoice_date = str(data.get("date") or "")
+        invoice_date = str(data.get("date") or data.get("invoice_date") or "")
         items = data.get("items") or []
         total_amount = float(data.get("total_amount") or 0.0)
 

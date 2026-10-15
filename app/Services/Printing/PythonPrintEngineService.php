@@ -3,10 +3,14 @@
 namespace App\Services\Printing;
 
 use App\Models\BarcodeSetting;
+use App\Models\CashierShift;
+use App\Models\CompanySetting;
 use App\Models\Product;
 use App\Models\PurchaseInvoice;
+use App\Models\SalesInvoice;
 use App\Services\BarcodeGeneratorService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\Process\Exception\ProcessTimedOutException;
 use Symfony\Component\Process\Process;
@@ -102,6 +106,10 @@ class PythonPrintEngineService
             'copies' => $copies,
             'printer_name' => $targetPrinter,
         ];
+
+        if (app()->environment('testing')) {
+            $dryRun = true;
+        }
 
         $command = [$this->pythonPath, $this->engineScript, '--stdin'];
 
@@ -369,6 +377,10 @@ class PythonPrintEngineService
             'batch' => $batchItems,
         ];
 
+        if (app()->environment('testing')) {
+            $dryRun = true;
+        }
+
         $command = [$this->pythonPath, $this->engineScript, '--stdin'];
         if ($dryRun) {
             $command[] = '--dry-run';
@@ -435,40 +447,309 @@ class PythonPrintEngineService
     }
 
     /**
-     * Print an 80mm thermal receipt for a purchase invoice.
-     *
-     * @param  PurchaseInvoice  $invoice  Authoritative invoice instance
-     * @param  string|null  $printer  Target printer (e.g. XP-80C)
-     * @param  bool  $dryRun  If true, render only without sending to spooler
-     * @return array<string, mixed>
+     * Print a purchase invoice as an 80mm thermal receipt or A4/A5 office document.
+     * Supports both signature variants:
+     * - ($invoice, $format, $printer, $dryRun)
+     * - ($invoice, $printer, $dryRun)
      */
-    public function printPurchaseInvoice(PurchaseInvoice $invoice, ?string $printer = null, bool $dryRun = false): array
+    public function printPurchaseInvoice(PurchaseInvoice $invoice, mixed $formatOrPrinter = 'thermal_80mm', mixed $printerOrDryRun = null, bool $dryRun = false): array
     {
-        $invoice->loadMissing(['supplier', 'warehouse', 'items.product']);
+        $format = 'thermal_80mm';
+        $printer = null;
 
-        $items = $invoice->items->map(function ($item) {
+        if (is_bool($printerOrDryRun)) {
+            $dryRun = $printerOrDryRun;
+            if (is_string($formatOrPrinter) && in_array(strtolower($formatOrPrinter), ['thermal_80mm', 'a4', 'a5'], true)) {
+                $format = strtolower($formatOrPrinter);
+            } else {
+                $printer = is_string($formatOrPrinter) ? $formatOrPrinter : null;
+            }
+        } else {
+            if (is_string($formatOrPrinter) && in_array(strtolower($formatOrPrinter), ['thermal_80mm', 'a4', 'a5'], true)) {
+                $format = strtolower($formatOrPrinter);
+            }
+            $printer = is_string($printerOrDryRun) ? $printerOrDryRun : null;
+        }
+
+        $invoice->loadMissing(['supplier', 'warehouse', 'creator', 'items.product']);
+        $companySetting = CompanySetting::getSettings();
+        $isDoc = in_array($format, ['a4', 'a5'], true);
+
+        $items = $invoice->items->map(function ($item) use ($invoice) {
             return [
+                'sku' => $item->product?->sku ?? '',
                 'name' => $item->product?->name ?? 'صنف غير محدد',
                 'quantity' => (float) $item->quantity,
+                'unit' => $item->product?->unit ?? 'قطعة',
+                'warehouse' => $invoice->warehouse?->name ?? 'الرئيسي',
                 'price' => (float) ($item->unit_cost ?? $item->unit_price ?? 0),
+                'cost_price' => (float) ($item->unit_cost ?? $item->unit_price ?? 0),
                 'total' => (float) ($item->subtotal ?? $item->total_price ?? 0),
             ];
         })->toArray();
 
+        $formattedDate = $invoice->invoice_date ? $invoice->invoice_date->format('Y-m-d') : now()->format('Y-m-d');
+
         $data = [
+            'format' => $format,
+            'company_name' => $companySetting->company_name ?: 'شركة كيان للتجارة والتوزيع',
+            'company_phone' => $companySetting->phone ?: '',
+            'company_address' => $companySetting->address ?: '',
             'invoice_number' => $invoice->invoice_number,
-            'invoice_date' => $invoice->invoice_date ? $invoice->invoice_date->format('Y-m-d') : now()->format('Y-m-d'),
+            'date' => $formattedDate,
+            'invoice_date' => $formattedDate,
+            'supplier_code' => $invoice->supplier?->code ?? ($invoice->supplier?->id ? (string) $invoice->supplier->id : ''),
             'supplier_name' => $invoice->supplier?->name ?? 'مورد عام',
+            'supplier_phone' => $invoice->supplier?->phone ?? '',
+            'supplier_address' => $invoice->supplier?->address ?? '',
             'warehouse_name' => $invoice->warehouse?->name ?? 'المخزن الرئيسي',
+            'creator_name' => $invoice->creator?->name ?? 'أمين المستودع',
+            'shipping_company' => 'استلام مستودع',
+            'shipping_amount' => (float) ($invoice->shipping_cost ?? 0),
+            'notes' => $invoice->notes ?? '',
+            'subtotal' => (float) ($invoice->subtotal ?? $invoice->total_amount),
             'total_amount' => (float) $invoice->total_amount,
             'paid_amount' => (float) ($invoice->paid_amount ?? 0),
             'remaining_amount' => (float) ($invoice->remaining_amount ?? 0),
             'items' => $items,
         ];
 
+        $templateId = $isDoc ? 'purchase_invoice_document' : 'purchase_invoice_receipt';
+        $defaultPrinter = $isDoc
+            ? config('printing.default_document_printer', 'TOSHIBA Generic Printer XL')
+            : config('printing.default_receipt_printer', 'XP-80C');
+        $targetPrinter = $printer ?: $defaultPrinter;
+
+        return $this->executeJob($templateId, $data, 1, $targetPrinter, $dryRun);
+    }
+
+    /**
+     * Print a sales invoice (POS) as an 80mm thermal receipt or A4/A5 office document.
+     * Supports both signature variants:
+     * - ($sale, $format, $printer, $dryRun)
+     * - ($sale, $printer, $dryRun)
+     */
+    public function printSalesInvoice(SalesInvoice $sale, mixed $formatOrPrinter = 'thermal_80mm', mixed $printerOrDryRun = null, bool $dryRun = false): array
+    {
+        $format = 'thermal_80mm';
+        $printer = null;
+
+        if (is_bool($printerOrDryRun)) {
+            $dryRun = $printerOrDryRun;
+            if (is_string($formatOrPrinter) && in_array(strtolower($formatOrPrinter), ['thermal_80mm', 'a4', 'a5'], true)) {
+                $format = strtolower($formatOrPrinter);
+            } else {
+                $printer = is_string($formatOrPrinter) ? $formatOrPrinter : null;
+            }
+        } else {
+            if (is_string($formatOrPrinter) && in_array(strtolower($formatOrPrinter), ['thermal_80mm', 'a4', 'a5'], true)) {
+                $format = strtolower($formatOrPrinter);
+            }
+            $printer = is_string($printerOrDryRun) ? $printerOrDryRun : null;
+        }
+
+        $sale->loadMissing(['customer', 'warehouse', 'creator', 'items.product', 'items.unit']);
+        $companySetting = CompanySetting::getSettings();
+        $isDoc = in_array($format, ['a4', 'a5'], true);
+
+        $items = $sale->items->map(function ($item) use ($sale) {
+            return [
+                'sku' => $item->product?->sku ?? '',
+                'name' => $item->product?->name ?? 'صنف غير محدد',
+                'quantity' => (float) $item->quantity,
+                'unit' => $item->unit?->name ?? $item->product?->unit ?? 'قطعة',
+                'warehouse' => $sale->warehouse?->name ?? 'الرئيسي',
+                'price' => (float) $item->unit_price,
+                'unit_price' => (float) $item->unit_price,
+                'total' => (float) $item->subtotal,
+            ];
+        })->toArray();
+
+        $formattedDate = $sale->invoice_date ? $sale->invoice_date->format('Y-m-d H:i') : now()->format('Y-m-d H:i');
+
+        $data = [
+            'format' => $format,
+            'company_name' => $companySetting->company_name ?: 'شركة كيان التجارية',
+            'company_phone' => $companySetting->phone ?: '',
+            'company_address' => $companySetting->address ?: '',
+            'invoice_number' => $sale->invoice_number,
+            'customer_code' => $sale->customer?->code ?? ($sale->customer?->id ? (string) $sale->customer->id : ''),
+            'customer_name' => $sale->customer?->name ?? 'عميل نقدي',
+            'customer_phone' => $sale->customer?->phone ?? '',
+            'customer_address' => $sale->customer?->address ?? '',
+            'cashier_name' => $sale->creator?->name ?? 'كاشير',
+            'warehouse_name' => $sale->warehouse?->name ?? 'المستودع الرئيسي',
+            'shipping_company' => 'تسليم مباشر',
+            'shipping_amount' => (float) ($sale->shipping_cost ?? 0),
+            'notes' => $sale->notes ?? '',
+            'date' => $formattedDate,
+            'invoice_date' => $formattedDate,
+            'subtotal' => (float) $sale->subtotal,
+            'discount_amount' => (float) ($sale->discount_amount ?? 0),
+            'total_amount' => (float) $sale->total_amount,
+            'paid_amount' => (float) ($sale->paid_amount ?? $sale->total_amount),
+            'change_amount' => (float) ($sale->change_amount ?? 0),
+            'remaining_amount' => max(0.0, (float) $sale->total_amount - (float) ($sale->paid_amount ?? $sale->total_amount)),
+            'items' => $items,
+        ];
+
+        $templateId = $isDoc ? 'sales_invoice_document' : 'sales_invoice_receipt';
+        $defaultPrinter = $isDoc
+            ? config('printing.default_document_printer', 'TOSHIBA Generic Printer XL')
+            : config('printing.default_receipt_printer', 'XP-80C');
+        $targetPrinter = $printer ?: $defaultPrinter;
+
+        return $this->executeJob($templateId, $data, 1, $targetPrinter, $dryRun);
+    }
+
+    /**
+     * Print an 80mm thermal receipt for a cashier shift closure.
+     *
+     * @param  CashierShift  $shift  Authoritative cashier shift instance
+     * @param  string|null  $printer  Target printer (e.g. XP-80C)
+     * @param  bool  $dryRun  If true, render only without sending to spooler
+     * @return array<string, mixed>
+     */
+    public function printCashierShift(CashierShift $shift, ?string $printer = null, bool $dryRun = false): array
+    {
+        $shift->loadMissing(['user', 'warehouse', 'closedBy']);
+        $companySetting = CompanySetting::getSettings();
+
+        // Get aggregated sold items
+        $soldItems = DB::table('sales_invoice_items')
+            ->join('sales_invoices', 'sales_invoices.id', '=', 'sales_invoice_items.sales_invoice_id')
+            ->join('products', 'products.id', '=', 'sales_invoice_items.product_id')
+            ->where('sales_invoices.cashier_shift_id', $shift->id)
+            ->where('sales_invoices.status', SalesInvoice::STATUS_POSTED)
+            ->select(
+                'products.name as name',
+                DB::raw('SUM(sales_invoice_items.quantity) as quantity'),
+                DB::raw('SUM(sales_invoice_items.subtotal) as total')
+            )
+            ->groupBy('products.id', 'products.name')
+            ->orderByDesc('quantity')
+            ->get()
+            ->map(function ($row) {
+                return [
+                    'name' => (string) $row->name,
+                    'quantity' => (float) $row->quantity,
+                    'total' => (float) $row->total,
+                ];
+            })
+            ->toArray();
+
+        $data = [
+            'company_name' => $companySetting->company_name ?: 'شركة كيان التجارية',
+            'shift_number' => $shift->shift_number,
+            'cashier_name' => $shift->user?->name ?? 'كاشير',
+            'closed_by' => $shift->closedBy?->name ?? '',
+            'warehouse_name' => $shift->warehouse?->name ?? 'الفرع الرئيسي',
+            'opened_at' => $shift->opened_at ? $shift->opened_at->format('Y-m-d H:i') : '',
+            'closed_at' => $shift->closed_at ? $shift->closed_at->format('Y-m-d H:i') : '',
+            'opening_balance' => (float) $shift->opening_balance,
+            'cash_sales' => (float) $shift->cash_sales_amount,
+            'cash_additions' => (float) $shift->cash_additions_amount,
+            'cash_expenses' => (float) $shift->cash_expenses_amount,
+            'cash_returns' => (float) $shift->cash_returns_amount,
+            'expected_balance' => (float) $shift->expected_closing_balance,
+            'actual_balance' => (float) $shift->actual_closing_balance,
+            'difference' => (float) $shift->difference,
+            'sold_items' => $soldItems,
+        ];
+
         $receiptPrinter = $printer ?: config('printing.default_receipt_printer', 'XP-80C');
 
-        return $this->executeJob('purchase_invoice_receipt', $data, 1, $receiptPrinter, $dryRun);
+        return $this->executeJob('shift_closing_receipt', $data, 1, $receiptPrinter, $dryRun);
+    }
+
+    /**
+     * Print a product stock movement ledger as an A4/A5 office document.
+     *
+     * @param  Product  $product  Authoritative product instance
+     * @param  iterable  $movements  Collection or array of StockMovement models
+     * @param  string|null  $format  Paper format ('a4', 'a5')
+     * @param  string|null  $printer  Target printer
+     * @param  bool  $dryRun  If true, render only without sending to spooler
+     * @return array<string, mixed>
+     */
+    public function printProductLedger(Product $product, iterable $movements, ?string $format = 'a4', ?string $printer = null, bool $dryRun = false): array
+    {
+        $companySetting = CompanySetting::getSettings();
+        $fmt = strtolower((string) ($format ?: 'a4'));
+
+        $movementsData = [];
+        $runningBalance = 0.0;
+
+        foreach ($movements as $m) {
+            $qty = (float) ($m->quantity ?? 0);
+            $type = (string) ($m->type ?? 'movement');
+            $typeName = method_exists($m, 'getTypeArabicName') ? $m->getTypeArabicName() : $type;
+
+            $movementsData[] = [
+                'date' => $m->created_at ? $m->created_at->format('Y-m-d H:i') : '',
+                'type_name' => $typeName,
+                'reference' => (string) ($m->reference_number ?? $m->reference ?? '-'),
+                'quantity_in' => $qty > 0 ? $qty : 0,
+                'quantity_out' => $qty < 0 ? abs($qty) : 0,
+                'balance_after' => (float) ($m->balance_after ?? 0),
+            ];
+        }
+
+        $data = [
+            'format' => $fmt,
+            'company_name' => $companySetting->company_name ?: 'شركة كيان للتجارة والتوزيع',
+            'product_name' => $product->name,
+            'sku' => $product->sku ?? '',
+            'barcode' => $product->barcode ?? '',
+            'current_balance' => (float) ($product->total_stock ?? $product->stock_balances_sum_quantity ?? 0),
+            'unit' => $product->unit ?? 'قطعة',
+            'movements' => $movementsData,
+        ];
+
+        $targetPrinter = $printer ?: config('printing.default_document_printer', 'TOSHIBA Generic Printer XL');
+
+        return $this->executeJob('product_ledger_document', $data, 1, $targetPrinter, $dryRun);
+    }
+
+    /**
+     * Print a low stock inventory shortages report as an A4 document.
+     *
+     * @param  iterable  $products  Collection or array of Product models with stock balances
+     * @param  string|null  $categoryName  Optional category filter name
+     * @param  string|null  $printer  Target printer
+     * @param  bool  $dryRun  If true, render only without sending to spooler
+     * @return array<string, mixed>
+     */
+    public function printLowStockReport(iterable $products, ?string $categoryName = null, ?string $printer = null, bool $dryRun = false): array
+    {
+        $companySetting = CompanySetting::getSettings();
+
+        $productsData = [];
+        foreach ($products as $p) {
+            $curStock = (float) ($p->total_stock ?? $p->stock_balances_sum_quantity ?? 0);
+            $minAlert = (float) ($p->min_stock_alert ?? $p->minimum_stock ?? 0);
+
+            $productsData[] = [
+                'sku' => $p->sku ?? $p->barcode ?? '-',
+                'barcode' => $p->barcode ?? '',
+                'name' => $p->name,
+                'min_stock_alert' => $minAlert,
+                'current_stock' => $curStock,
+                'category_name' => $p->category?->name ?? '',
+            ];
+        }
+
+        $data = [
+            'format' => 'a4',
+            'company_name' => $companySetting->company_name ?: 'شركة كيان للتجارة والتوزيع',
+            'report_date' => now()->format('Y-m-d H:i'),
+            'category_name' => $categoryName ?: 'جميع التصنيفات',
+            'products' => $productsData,
+        ];
+
+        $targetPrinter = $printer ?: config('printing.default_document_printer', 'TOSHIBA Generic Printer XL');
+
+        return $this->executeJob('low_stock_document', $data, 1, $targetPrinter, $dryRun);
     }
 
     /**

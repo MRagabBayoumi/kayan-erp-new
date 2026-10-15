@@ -33,6 +33,16 @@
          data-can-edit-price="{{ $canEditPrice ? 'true' : 'false' }}">
         
         <!-- Validation Errors Alert -->
+        @if(session('error'))
+            <div class="erp-alert erp-alert-danger mb-4" role="alert">
+                <x-icon name="alert-triangle" size="18" />
+                <div>
+                    <strong>تعذر إتمام العملية:</strong>
+                    <div class="text-xs mt-1">{{ session('error') }}</div>
+                </div>
+            </div>
+        @endif
+
         @if($errors->any())
             <div class="erp-alert erp-alert-danger mb-4" role="alert">
                 <x-icon name="alert-triangle" size="16" />
@@ -71,20 +81,22 @@
                 </div>
             </div>
         @else
-            <div class="pos-shift-banner no-shift mb-3">
-                <div class="pos-shift-info">
-                    <span class="shift-status-badge closed">لا توجد وردية مفتوحة</span>
-                    <span class="text-xs text-[var(--text-muted)]">
-                        يجب فتح وردية كاشير وإدخال رصيد بداية العهدة للربط المالي للدرج وضمان تتبع المبيعات النقدية.
-                    </span>
+            @unless(auth()->user()?->isAdmin())
+                <div class="pos-shift-banner no-shift mb-3">
+                    <div class="pos-shift-info">
+                        <span class="shift-status-badge closed">لا توجد وردية مفتوحة</span>
+                        <span class="text-xs text-[var(--text-muted)]">
+                            يجب فتح وردية كاشير وإدخال رصيد بداية العهدة للربط المالي للدرج وضمان تتبع المبيعات النقدية.
+                        </span>
+                    </div>
+                    <div class="pos-shift-actions">
+                        <button type="button" id="posOpenShiftTriggerBtn" class="erp-btn erp-btn-primary erp-btn-sm">
+                            <x-icon name="plus" size="14" />
+                            <span>فتح وردية الآن</span>
+                        </button>
+                    </div>
                 </div>
-                <div class="pos-shift-actions">
-                    <button type="button" id="posOpenShiftTriggerBtn" class="erp-btn erp-btn-primary erp-btn-sm">
-                        <x-icon name="plus" size="14" />
-                        <span>فتح وردية الآن</span>
-                    </button>
-                </div>
-            </div>
+            @endunless
         @endif
 
         <form id="salesForm" action="{{ route('sales.store') }}" method="POST" class="flex flex-col gap-4">
@@ -299,18 +311,29 @@
                                     <span id="quickSearchInputLabel">مربع البحث / قراءة الباركود</span>
                                 </span>
                                 <!-- Live Available Stock Badge -->
-                                <span id="quickStockBadge" class="hidden pos-stock-badge in-stock">
-                                    رصيد: 0 قطعة
+                                <span id="quickStockBadge" class="hidden pos-stock-badge in-stock font-bold">
+                                    رصيد الصنف بالمخزن: 0 قطعة
                                 </span>
                             </label>
-                            <input 
-                                type="text" 
-                                id="quickProductInput" 
-                                class="erp-input erp-hero-search-input text-xs w-full font-semibold" 
-                                placeholder="اضرب الباركود بمسدس الباركود (F2)..." 
-                                autocomplete="off"
-                                autofocus
-                            >
+                            <div class="relative w-full">
+                                <input 
+                                    type="text" 
+                                    id="quickProductInput" 
+                                    class="erp-input erp-hero-search-input text-xs w-full font-semibold pl-9" 
+                                    placeholder="اضرب الباركود بمسدس الباركود (F2)..." 
+                                    autocomplete="off"
+                                    autofocus
+                                >
+                                <button 
+                                    type="button" 
+                                    data-action="open-barcode-scanner" 
+                                    data-target-input="quickProductInput" 
+                                    title="تشغيل كاميرا الموبايل لمسح الباركود"
+                                    class="absolute left-1.5 top-1/2 -translate-y-1/2 h-7 w-7 border-0 bg-[var(--primary-soft)] text-[var(--primary)] hover:bg-[var(--primary)] hover:text-white rounded inline-flex items-center justify-center cursor-pointer transition-colors"
+                                >
+                                    <x-icon name="camera" size="15" />
+                                </button>
+                            </div>
 
                             <!-- Instant Autocomplete Dropdown -->
                             <div id="quickSearchResults" class="purchases-autocomplete-dropdown hidden"></div>
@@ -705,10 +728,22 @@
                     <form method="POST" action="{{ route('shifts.close', $activeShift) }}">
                         @csrf
                         <div class="erp-modal-body">
-                            <div class="shift-calc-box mt-0">
+                            <div class="shift-calc-box mt-0 mb-3">
+                                <div class="shift-calc-row">
+                                    <span>كاشير الوردية:</span>
+                                    <strong class="text-[var(--text-main)]">{{ $activeShift->user?->name }}</strong>
+                                </div>
+                                <div class="shift-calc-row">
+                                    <span>المستلم / معتمد الإغلاق:</span>
+                                    <strong class="text-[var(--primary)]">{{ auth()->user()->name }}</strong>
+                                </div>
                                 <div class="shift-calc-row">
                                     <span>الرصيد الدفتري المتوقع بالدرج:</span>
-                                    <strong class="font-numeric text-emerald-500">{{ number_format($activeShift->expected_closing_balance, 2) }} ج.م</strong>
+                                    <strong id="posExpectedBalanceDisplay" data-expected="{{ $activeShift->expected_closing_balance }}" class="font-numeric text-emerald-500">{{ number_format($activeShift->expected_closing_balance, 2) }} ج.م</strong>
+                                </div>
+                                <div id="posLiveDiffRow" class="shift-calc-row hidden">
+                                    <span>حالة مطابقة الدرج:</span>
+                                    <span id="posLiveDiffBadge" class="erp-badge font-numeric font-bold text-xs py-0.5 px-2"></span>
                                 </div>
                             </div>
 
@@ -717,7 +752,7 @@
                                     الجرد النقدي الفعلي في الدرج (ج.م) <span class="text-[var(--danger)]">*</span>
                                 </label>
                                 <input type="number" step="0.01" min="0" id="posShiftActualBalance" name="actual_closing_balance" class="erp-input font-numeric text-base font-bold" placeholder="0.00" required>
-                                <span class="text-[11px] text-[var(--text-muted)]">قم بعد النقدية الموجودة في الدرج بالكامل وإدخالها هنا.</span>
+                                <span class="text-[11px] text-[var(--text-muted)]">قم بعد النقدية المستلمة في الدرج بالكامل وإدخالها هنا.</span>
                             </div>
 
                             @cannot('close-shifts')
@@ -758,4 +793,7 @@
             </div>
         @endif
     </div>
+
+    <!-- Barcode Camera Scanner Modal -->
+    <x-barcode-scanner-modal target-input-id="quickProductInput" />
 @endsection

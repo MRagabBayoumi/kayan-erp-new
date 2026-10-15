@@ -1,8 +1,9 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl" class="{{ $template->color_scheme ?? 'emerald' }}">
+<html lang="ar" dir="rtl" class="{{ $colorClass ?? ($template->color_scheme ?? 'theme-navy') }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $title }}</title>
 
     <!-- Google Fonts: Cairo -->
@@ -40,9 +41,13 @@
         </div>
 
         <div class="toolbar-actions">
-            <button type="button" data-action="print-now" class="toolbar-btn toolbar-btn-primary">
+            <button type="button" data-action="python-direct-print" data-url="{{ route('sales.direct-print', $invoice) }}" class="toolbar-btn toolbar-btn-primary" title="طباعة مباشرة عبر بايثون">
                 <x-icon name="printer" size="16" />
-                <span>طباعة الآن</span>
+                <span>طباعة بايثون المباشرة</span>
+            </button>
+            <button type="button" data-action="print-now" class="toolbar-btn toolbar-btn-secondary">
+                <x-icon name="printer" size="16" />
+                <span>طباعة المتصفح</span>
             </button>
             <button type="button" data-action="close-window" class="toolbar-btn toolbar-btn-secondary">
                 <x-icon name="x" size="14" />
@@ -59,266 +64,232 @@
             data-density="{{ $template->getSetting('table_columns.density', 'comfortable') }}"
             data-font-size="{{ $template->getSetting('general.font_size', 'md') }}"
         >
-            <!-- 1. Document Header -->
-            <header class="doc-header">
-                <div class="doc-brand">
-                    @if($template->getSetting('general.show_logo', true) && !empty($company?->logo_url))
-                        <div class="doc-logo-wrap logo-size-{{ $template->getSetting('general.logo_size', 'md') }}">
-                            <img src="{{ $company->logo_url }}" alt="{{ $company->company_name ?? 'الشركة' }}">
-                        </div>
-                    @endif
-
-                    <div>
-                        @if($template->getSetting('general.show_company_name', true))
-                            <h1 class="doc-company-title">
-                                {{ $company?->company_name ?: 'شركة كيان التجارية' }}
-                            </h1>
-                        @endif
-
-                        <div class="doc-company-meta font-numeric">
-                            @if($template->getSetting('general.show_company_phone', true) && !empty($company?->company_phone))
-                                <div>هاتف: {{ $company->company_phone }}</div>
-                            @endif
-                            @if($template->getSetting('general.show_company_address', true) && !empty($company?->company_address))
-                                <div>{{ $company->company_address }}</div>
-                            @endif
-                        </div>
+        @if($format !== 'thermal_80mm')
+            <!-- =================================================================
+                 A4 / A5 Enterprise Dispatch Invoice Layout (مطابق لصورة الفاتورة الفعلية)
+                 ================================================================= -->
+            
+            <!-- 1. Header: 3 Columns (Document & Client Info, Stamp Box, Date & Shipping) -->
+            <header class="dispatch-header">
+                <!-- Right Column: Document Number & Client Info -->
+                <div class="dispatch-col-right">
+                    <div class="dispatch-badge-original">{{ $template->getSetting('general.custom_subtitle', 'Original') }}</div>
+                    <div class="dispatch-field">
+                        <span class="dispatch-field-label">رقم المستند :</span>
+                        <strong class="dispatch-field-val font-numeric">{{ $invoice->invoice_number }}</strong>
+                    </div>
+                    <div class="dispatch-field">
+                        <span class="dispatch-field-label">كود العميل :</span>
+                        <span class="dispatch-field-val font-numeric">{{ $invoice->customer->code ?? $invoice->customer->id ?? '—' }}</span>
+                    </div>
+                    <div class="dispatch-field">
+                        <span class="dispatch-field-label">{{ $template->getSetting('party_meta.party_type_label', 'اسم العميل') }} :</span>
+                        <strong class="dispatch-field-val">{{ $invoice->customer->name ?? 'عميل نقدي' }}</strong>
+                    </div>
+                    <div class="dispatch-field">
+                        <span class="dispatch-field-label">رقم التليفون :</span>
+                        <span class="dispatch-field-val font-numeric">{{ $invoice->customer->phone ?? '—' }}</span>
                     </div>
                 </div>
 
-                <div class="doc-title-block">
-                    <h2 class="doc-main-title">
-                        فاتورة مبيعات ضريبية
-                    </h2>
-                    @if($template->getSetting('general.custom_subtitle'))
-                        <div class="doc-subtitle">
-                            {{ $template->getSetting('general.custom_subtitle') }}
-                        </div>
-                    @endif
+                <!-- Center Column: Official Stamp Box -->
+                <div class="dispatch-col-center">
+                    <div class="dispatch-stamp-frame">
+                        <span class="stamp-stars">★★★★★</span>
+                        <span class="stamp-title">{{ $template->getSetting('general.custom_title', 'إذن صرف') }}</span>
+                        @if($sub = $template->getSetting('general.custom_subtitle'))
+                            <span class="stamp-sub-title">{{ $sub }}</span>
+                        @endif
+                        <span class="stamp-date font-numeric">{{ \Carbon\Carbon::parse($invoice->invoice_date ?? now())->format('d/m/Y') }}</span>
+                        <span class="stamp-stars">★★★★★</span>
+                    </div>
+                </div>
 
-                    @if($template->getSetting('document_meta.show_status_badge', true))
-                        <div>
-                            <span class="doc-status-badge status-{{ $invoice->status }}">
-                                {{ $invoice->status_label }}
-                            </span>
-                        </div>
-                    @endif
+                <!-- Left Column: Date & Time, Address, Shipping Company -->
+                <div class="dispatch-col-left">
+                    <div class="dispatch-field">
+                        <span class="dispatch-field-label">التاريخ :</span>
+                        <span class="dispatch-field-val font-numeric">{{ \Carbon\Carbon::parse($invoice->invoice_date ?? $invoice->created_at ?? now())->format('d/m/Y H:i:s') }}</span>
+                    </div>
+                    <div class="dispatch-field">
+                        <span class="dispatch-field-label">العنوان :</span>
+                        <span class="dispatch-field-val">{{ $invoice->customer->address ?? ($invoice->warehouse->name ?? 'الجيزة/مصر') }}</span>
+                    </div>
+                    <div class="dispatch-field">
+                        <span class="dispatch-field-label">شركة الشحن :</span>
+                        <span class="dispatch-field-val">{{ $invoice->shippingOffice->name ?? 'عميل معرض' }}</span>
+                    </div>
                 </div>
             </header>
 
-            <!-- 2. Invoice Metadata & Customer Information -->
-            <section class="doc-meta-section">
-                <!-- Meta Info Panel -->
-                <div class="doc-panel">
-                    <div class="doc-panel-heading">بيانات المستند</div>
-                    <div class="doc-info-list">
-                        @if($template->getSetting('document_meta.show_doc_number', true))
-                            <div class="doc-info-row">
-                                <span class="doc-info-label">رقم الفاتورة:</span>
-                                <span class="doc-info-val font-numeric">{{ $invoice->invoice_number }}</span>
-                            </div>
-                        @endif
-
-                        @if($template->getSetting('document_meta.show_doc_date', true))
-                            <div class="doc-info-row">
-                                <span class="doc-info-label">تاريخ الفاتورة:</span>
-                                <span class="doc-info-val font-numeric">{{ \Carbon\Carbon::parse($invoice->invoice_date)->format('Y-m-d') }}</span>
-                            </div>
-                        @endif
-
-                        @if($template->getSetting('document_meta.show_warehouse', true))
-                            <div class="doc-info-row">
-                                <span class="doc-info-label">مستودع الصرف:</span>
-                                <span class="doc-info-val">{{ $invoice->warehouse->name ?? 'المستودع الرئيسي' }}</span>
-                            </div>
-                        @endif
-
-                        @if(!empty($invoice->creator))
-                            <div class="doc-info-row">
-                                <span class="doc-info-label">المسؤول:</span>
-                                <span class="doc-info-val">{{ $invoice->creator->name }}</span>
-                            </div>
-                        @endif
-                    </div>
-                </div>
-
-                <!-- Customer Info Panel -->
-                <div class="doc-panel">
-                    <div class="doc-panel-heading">
-                        بيانات العميل
-                    </div>
-                    <div class="doc-info-list">
-                        <div class="doc-info-row">
-                            <span class="doc-info-label">اسم العميل:</span>
-                            <span class="doc-info-val">{{ $invoice->customer->name ?? 'عميل نقدي' }}</span>
-                        </div>
-
-                        @if(!empty($invoice->customer?->phone))
-                            <div class="doc-info-row">
-                                <span class="doc-info-label">الهاتف:</span>
-                                <span class="doc-info-val font-numeric">{{ $invoice->customer->phone }}</span>
-                            </div>
-                        @endif
-
-                        @if(!empty($invoice->customer?->address))
-                            <div class="doc-info-row">
-                                <span class="doc-info-label">العنوان:</span>
-                                <span class="doc-info-val">{{ $invoice->customer->address }}</span>
-                            </div>
-                        @endif
-
-                        <div class="doc-info-row">
-                            <span class="doc-info-label">فئة التسعير:</span>
-                            <span class="doc-info-val">
-                                @if($invoice->price_tier === 'distributor')
-                                    سعر موزع
-                                @elseif($invoice->price_tier === 'wholesale')
-                                    سعر جملة
-                                @else
-                                    سعر قطاعي
-                                @endif
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- 3. Invoiced Line Items Table -->
-            <table class="doc-table">
+            <!-- 2. High-Contrast Solid Grid Table (8 أعمدة مطابقة للصورة تماماً) -->
+            <table class="dispatch-table">
                 <thead>
                     <tr>
-                        @if($template->getSetting('table_columns.show_index', true))
-                            <th class="doc-table-num">#</th>
-                        @endif
-                        <th>الصنف والوصف</th>
-                        @if($template->getSetting('table_columns.show_sku', true) && $format !== 'thermal_80mm')
-                            <th>كود SKU</th>
-                        @endif
-                        @if($template->getSetting('table_columns.show_unit', true))
-                            <th class="doc-table-num">الوحدة</th>
-                        @endif
-                        <th class="doc-table-num">الكمية</th>
-                        @if($template->getSetting('table_columns.show_price', true))
-                            <th class="doc-table-price">سعر الوحدة</th>
-                        @endif
-                        @if($format !== 'thermal_80mm')
-                            <th class="doc-table-price">الخصم</th>
-                        @endif
-                        @if($template->getSetting('table_columns.show_total', true))
-                            <th class="doc-table-price">الإجمالي</th>
-                        @endif
+                        <th class="col-seq">م</th>
+                        <th class="col-sku">كود الصنف</th>
+                        <th class="col-name">اسم الصنف</th>
+                        <th class="col-qty">الكمية</th>
+                        <th class="col-unit">وحده القياس</th>
+                        <th class="col-wh">المخزن</th>
+                        <th class="col-price">السعر</th>
+                        <th class="col-total">الاجمالي</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($invoice->items as $index => $item)
+                    @foreach($invoice->items as $idx => $item)
                         <tr>
-                            @if($template->getSetting('table_columns.show_index', true))
-                                <td class="doc-table-num font-numeric">{{ $index + 1 }}</td>
-                            @endif
-                            <td>
+                            <td class="col-seq font-numeric">{{ $idx + 1 }}</td>
+                            <td class="col-sku font-numeric">{{ $item->product->sku ?? $item->product->barcode ?? '—' }}</td>
+                            <td class="col-name">
                                 <strong>{{ $item->product->name ?? 'صنف غير محدد' }}</strong>
-                                @if($format === 'thermal_80mm' && !empty($item->product?->sku))
-                                    <span class="item-sku font-numeric">{{ $item->product->sku }}</span>
-                                @endif
                             </td>
-                            @if($template->getSetting('table_columns.show_sku', true) && $format !== 'thermal_80mm')
-                                <td class="font-numeric">{{ $item->product->sku ?? '—' }}</td>
-                            @endif
-                            @if($template->getSetting('table_columns.show_unit', true))
-                                <td class="doc-table-num">{{ $item->unit->name ?? 'قطعة' }}</td>
-                            @endif
-                            <td class="doc-table-num font-numeric">
-                                {{ number_format((float)$item->quantity, (fmod((float)$item->quantity, 1) === 0.0 ? 0 : 2)) }}
-                            </td>
-                            @if($template->getSetting('table_columns.show_price', true))
-                                <td class="doc-table-price font-numeric">
-                                    {{ number_format((float)$item->unit_price, 2) }} ج.م
-                                </td>
-                            @endif
-                            @if($format !== 'thermal_80mm')
-                                <td class="doc-table-price font-numeric">
-                                    {{ (float)$item->line_discount > 0 ? number_format((float)$item->line_discount, 2) . ' ج.م' : '—' }}
-                                </td>
-                            @endif
-                            @if($template->getSetting('table_columns.show_total', true))
-                                <td class="doc-table-price font-numeric">
-                                    {{ number_format((float)$item->subtotal, 2) }} ج.م
-                                </td>
-                            @endif
+                            <td class="col-qty font-numeric">{{ (float)$item->quantity == (int)$item->quantity ? (int)$item->quantity : number_format((float)$item->quantity, 2) }}</td>
+                            <td class="col-unit">{{ $item->unit->name ?? $item->product->unit ?? 'قطعة' }}</td>
+                            <td class="col-wh font-numeric">{{ $invoice->warehouse->code ?? $invoice->warehouse->id ?? '20' }}</td>
+                            <td class="col-price font-numeric">{{ number_format((float)$item->unit_price, 2) }}</td>
+                            <td class="col-total font-numeric">{{ number_format((float)$item->subtotal, 2) }}</td>
                         </tr>
                     @endforeach
                 </tbody>
             </table>
 
-            <!-- 4. Financial Summary Section -->
+            <!-- 3. Notes & Financial Totals Section -->
+            <div class="dispatch-bottom-section">
+                <div class="dispatch-notes-area">
+                    <div class="dispatch-notes-header">ملاحظات</div>
+                    <div class="dispatch-notes-body font-numeric">
+                        {{ $invoice->notes ?: ($invoice->creator ? 'ع م *' . $invoice->creator->name . ' *معتمد' : 'فاتورة مبيعات معتمدة') }}
+                    </div>
+                </div>
+
+                <div class="dispatch-totals-area">
+                    <table class="dispatch-totals-table font-numeric">
+                        <tr>
+                            <td class="tot-label">المجموع:</td>
+                            <td class="tot-val">{{ number_format((float)$invoice->subtotal, 2) }} ج.م</td>
+                        </tr>
+                        @if((float)$invoice->discount_amount > 0)
+                            <tr>
+                                <td class="tot-label">الخصم:</td>
+                                <td class="tot-val">- {{ number_format((float)$invoice->discount_amount, 2) }} ج.م</td>
+                            </tr>
+                        @endif
+                        @if((float)$invoice->shipping_cost > 0)
+                            <tr>
+                                <td class="tot-label">الشحن:</td>
+                                <td class="tot-val">+ {{ number_format((float)$invoice->shipping_cost, 2) }} ج.م</td>
+                            </tr>
+                        @endif
+                        <tr class="tot-grand">
+                            <td class="tot-label">الصافي:</td>
+                            <td class="tot-val">{{ number_format((float)$invoice->total_amount, 2) }} ج.م</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 4. Bottom Info Bar (اسم المستخدم، الصفحات، تاريخ ووقت الطباعة) -->
+            <div class="dispatch-footer-bar">
+                <div class="footer-box box-user">
+                    <span class="box-label">اسم المستخدم :</span>
+                    <strong class="box-val">{{ $invoice->creator->name ?? auth()->user()?->name ?? 'كاشير' }}</strong>
+                </div>
+                <div class="footer-box box-pages">
+                    <span>الصفحات من 1 إلي 1</span>
+                </div>
+                <div class="footer-box box-time">
+                    <span class="box-label">تاريخ ووقت الطباعة :</span>
+                    <span class="box-val font-numeric">{{ now()->format('d/m/Y h:i a') }}</span>
+                </div>
+            </div>
+
+        @else
+            <!-- =================================================================
+                 Thermal 80mm Cashier Layout
+                 ================================================================= -->
+            <header class="doc-header">
+                <div class="doc-brand">
+                    <div>
+                        <h1 class="doc-company-title">{{ $company?->company_name ?: 'شركة كيان التجارية' }}</h1>
+                        <div class="doc-company-meta font-numeric">
+                            @if(!empty($company?->company_phone))
+                                <div>هاتف: {{ $company->company_phone }}</div>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+                <div class="doc-title-block">
+                    <h2 class="doc-main-title">{{ $template->getSetting('general.custom_title', 'فاتورة مبيعات') }}</h2>
+                    <div class="font-numeric font-bold text-sm">{{ $invoice->invoice_number }}</div>
+                </div>
+            </header>
+
+            <section class="doc-meta-section">
+                <div class="doc-panel">
+                    <div class="doc-info-list font-numeric">
+                        <div class="doc-info-row">
+                            <span class="doc-info-label">التاريخ:</span>
+                            <span class="doc-info-val">{{ \Carbon\Carbon::parse($invoice->invoice_date)->format('Y-m-d H:i') }}</span>
+                        </div>
+                        <div class="doc-info-row">
+                            <span class="doc-info-label">العميل:</span>
+                            <span class="doc-info-val">{{ $invoice->customer->name ?? 'عميل نقدي' }}</span>
+                        </div>
+                        <div class="doc-info-row">
+                            <span class="doc-info-label">الكاشير:</span>
+                            <span class="doc-info-val">{{ $invoice->creator->name ?? 'كاشير' }}</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <table class="doc-table">
+                <thead>
+                    <tr>
+                        <th>الصنف</th>
+                        <th class="doc-table-num">الكمية</th>
+                        <th class="doc-table-price">السعر</th>
+                        <th class="doc-table-price">الإجمالي</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($invoice->items as $item)
+                        <tr>
+                            <td>
+                                <strong>{{ $item->product->name ?? 'صنف' }}</strong>
+                            </td>
+                            <td class="doc-table-num font-numeric">{{ (float)$item->quantity }}</td>
+                            <td class="doc-table-price font-numeric">{{ number_format((float)$item->unit_price, 2) }}</td>
+                            <td class="doc-table-price font-numeric">{{ number_format((float)$item->subtotal, 2) }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+
             <section class="doc-summary-section">
                 <table class="doc-summary-table font-numeric">
-                    @if($template->getSetting('financial_summary.show_subtotal', true))
-                        <tr>
-                            <td class="doc-summary-label">المجموع الفرعي:</td>
-                            <td class="doc-summary-val">{{ number_format((float)$invoice->subtotal, 2) }} ج.م</td>
-                        </tr>
-                    @endif
-
+                    <tr>
+                        <td class="doc-summary-label">المجموع:</td>
+                        <td class="doc-summary-val">{{ number_format((float)$invoice->subtotal, 2) }} ج.م</td>
+                    </tr>
                     @if((float)$invoice->discount_amount > 0)
                         <tr>
-                            <td class="doc-summary-label">خصم الفاتورة:</td>
+                            <td class="doc-summary-label">الخصم:</td>
                             <td class="doc-summary-val">- {{ number_format((float)$invoice->discount_amount, 2) }} ج.م</td>
                         </tr>
                     @endif
-
-                    @if($template->getSetting('financial_summary.show_shipping', true) && (float)$invoice->shipping_cost > 0)
-                        <tr>
-                            <td class="doc-summary-label">مصاريف الشحن / التوصيل:</td>
-                            <td class="doc-summary-val">+ {{ number_format((float)$invoice->shipping_cost, 2) }} ج.م</td>
-                        </tr>
-                    @endif
-
-                    @if($template->getSetting('financial_summary.show_net_total', true))
-                        <tr class="doc-grand-total">
-                            <td class="doc-summary-label">صافي إجمالي الفاتورة:</td>
-                            <td class="doc-summary-val">{{ number_format((float)$invoice->total_amount, 2) }} ج.م</td>
-                        </tr>
-                    @endif
+                    <tr class="doc-grand-total">
+                        <td class="doc-summary-label">الإجمالي النهائي:</td>
+                        <td class="doc-summary-val">{{ number_format((float)$invoice->total_amount, 2) }} ج.م</td>
+                    </tr>
                 </table>
             </section>
 
-            <!-- 5. Notes & Commercial Terms -->
-            @if(!empty($invoice->notes) || !empty($template->getSetting('notes_and_terms.terms_text')))
-                <section class="doc-notes-box">
-                    @if(!empty($invoice->notes))
-                        <div><strong>ملاحظات الفاتورة:</strong> {{ $invoice->notes }}</div>
-                    @endif
-                    @if(!empty($template->getSetting('notes_and_terms.terms_text')))
-                        <div class="mt-1">{{ $template->getSetting('notes_and_terms.terms_text') }}</div>
-                    @endif
-                </section>
-            @endif
-
-            <!-- 6. Formal Signatures & Stamp -->
-            @if($template->getSetting('notes_and_terms.show_signatures', true) && $format !== 'thermal_80mm')
-                <footer class="doc-signatures-wrap">
-                    <div class="sig-box">
-                        <div>المستلم / العميل</div>
-                        <div class="sig-line">التوقيع بالاستلام</div>
-                    </div>
-
-                    @if($template->getSetting('notes_and_terms.show_stamp', true))
-                        <div class="stamp-box">
-                            <span>ختم الشركة</span>
-                        </div>
-                    @endif
-
-                    <div class="sig-box">
-                        <div>مسؤول المبيعات والخزينة</div>
-                        <div class="sig-line">التوقيع والاعتماد</div>
-                    </div>
-                </footer>
-            @endif
-
             <div class="doc-footer-note font-numeric">
-                تم إصدار هذا المستند عبر نظام Kayan ERP في {{ now()->format('Y-m-d H:i') }}
+                {{ $template->getSetting('notes_and_terms.notes_text', 'شكراً لزيارتكم') }} · {{ now()->format('Y-m-d H:i') }}
             </div>
+        @endif
         </article>
     </main>
 

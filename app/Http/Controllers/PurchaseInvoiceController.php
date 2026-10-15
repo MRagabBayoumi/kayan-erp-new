@@ -284,16 +284,18 @@ class PurchaseInvoiceController extends Controller
     }
 
     /**
-     * Direct print purchase invoice receipt via the centralized Python printing engine.
+     * Direct print purchase invoice receipt or A4/A5 document via the centralized Python printing engine.
      */
     public function directPrint(Request $request, PurchaseInvoice $purchase, PythonPrintEngineService $printService): JsonResponse
     {
         $validated = $request->validate([
             'printer' => ['nullable', 'string', 'max:120'],
+            'format' => ['nullable', 'string', 'in:thermal_80mm,a4,a5'],
         ]);
 
         $printer = $validated['printer'] ?? null;
-        $result = $printService->printPurchaseInvoice($purchase, $printer);
+        $format = $validated['format'] ?? $request->query('format', 'thermal_80mm');
+        $result = $printService->printPurchaseInvoice($purchase, $format, $printer);
 
         return response()->json($result, $result['success'] ? 200 : 422);
     }

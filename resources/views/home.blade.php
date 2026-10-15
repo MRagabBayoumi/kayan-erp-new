@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('control_panel')
-    <x-control-panel title="تطبيقات BayoSoft ERP" :breadcrumbs="['الرئيسية' => '#']">
+    <x-control-panel title="تطبيقات {{ $globalCompanySetting?->company_name ?? config('app.name', 'Kayan ERP') }}" :breadcrumbs="['الرئيسية' => '#']">
         <x-slot:actions>
             @can('access-sales')
                 <a href="{{ route('sales.create') }}" class="erp-btn erp-btn-primary">
@@ -51,15 +51,20 @@
 
         <!-- Welcome Apps Hub Hero -->
         <div class="home-hero-card mb-5">
-            <div class="home-hero-content">
-                <div class="home-hero-badge">
-                    <x-icon name="grid" size="14" />
-                    <span>منظومة BayoSoft ERP السحابية المتكاملة</span>
+            <div class="flex items-center gap-4">
+                @if(!empty($globalCompanySetting?->logo_url))
+                    <img src="{{ $globalCompanySetting->logo_url }}" alt="{{ $globalCompanySetting?->company_name ?? 'Kayan' }}" class="h-16 w-16 object-contain rounded-lg border border-[var(--border-color)] bg-white p-1 shrink-0">
+                @endif
+                <div class="home-hero-content">
+                    <div class="home-hero-badge">
+                        <x-icon name="grid" size="14" />
+                        <span>منظومة {{ $globalCompanySetting?->company_name ?? config('app.name', 'Kayan ERP') }} المتكاملة</span>
+                    </div>
+                    <h1 class="home-hero-title">مرحباً بك، {{ auth()->user()->name }}</h1>
+                    <p class="home-hero-desc">
+                        اختر التطبيق المطلوب للمتابعة. تظهر لك أدناه التطبيقات والصلاحيات المخصصة لحسابك ومكان عملك.
+                    </p>
                 </div>
-                <h1 class="home-hero-title">مرحباً بك، {{ auth()->user()->name }}</h1>
-                <p class="home-hero-desc">
-                    اختر التطبيق المطلوب للمتابعة. تظهر لك أدناه التطبيقات والصلاحيات المخصصة لحسابك ومكان عملك.
-                </p>
             </div>
             <div class="home-hero-meta">
                 <div class="home-hero-workplace">

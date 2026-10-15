@@ -3,8 +3,12 @@
     <div class="erp-app-launcher-card" role="dialog" aria-modal="true" aria-labelledby="launcherTitle">
         <div class="erp-launcher-header">
             <div class="erp-launcher-title" id="launcherTitle">
-                <x-icon name="layout-grid" size="18" />
-                <span>تطبيقات {{ config('app.name', 'BayoSoft ERP') }}</span>
+                @if(!empty($globalCompanySetting?->logo_url))
+                    <img src="{{ $globalCompanySetting->logo_url }}" alt="Logo" class="h-5 w-5 object-contain rounded inline-block">
+                @else
+                    <x-icon name="layout-grid" size="18" />
+                @endif
+                <span>تطبيقات {{ $globalCompanySetting?->company_name ?? config('app.name', 'Kayan ERP') }}</span>
             </div>
             <button id="appLauncherClose" type="button" class="erp-btn erp-btn-ghost erp-btn-icon" title="إغلاق (Esc)">
                 <x-icon name="x" size="16" />

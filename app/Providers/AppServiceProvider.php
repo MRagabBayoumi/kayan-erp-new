@@ -61,6 +61,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('manage-shifts', fn (User $user) => $user->hasPermission('manage-shifts') || $user->hasRole([User::ROLE_ADMIN, User::ROLE_CASHIER]));
         Gate::define('close-shifts', fn (User $user) => $user->hasPermission('close-shifts') || $user->isAdmin());
         Gate::define('create-customers-pos', fn (User $user) => $user->hasPermission('create-customers-pos') || $user->hasPermission('manage-customers') || $user->isAdmin());
+        Gate::define('manage-customers', fn (User $user) => $user->hasPermission('manage-customers') || $user->isAdmin());
+        Gate::define('access-customers', fn (User $user) => $user->hasPermission('manage-customers') || $user->hasPermission('create-customers-pos') || $user->hasPermission('access-sales') || $user->isAdmin());
         Gate::define('manage-company-settings', fn (User $user) => $user->hasPermission('manage-company-settings') || $user->isAdmin());
         Gate::define('manage-print-templates', fn (User $user) => $user->hasPermission('manage-print-templates') || $user->isAdmin());
         Gate::define('manage-users', fn (User $user) => $user->hasPermission('manage-users') || $user->isAdmin());

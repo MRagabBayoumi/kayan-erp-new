@@ -23,7 +23,7 @@
 
 .erp-modal-overlay.open,
 .erp-modal-overlay[style*="display: flex"] {
-    display: flex;
+    display: flex !important;
     opacity: 1;
 }
 

@@ -26,8 +26,12 @@
 
         <!-- Brand Name -->
         <a href="{{ url('/') }}" class="erp-brand">
-            <span class="erp-brand-badge">B</span>
-            <span>{{ config('app.name', 'BayoSoft ERP') }}</span>
+            @if(!empty($globalCompanySetting?->logo_url))
+                <img src="{{ $globalCompanySetting->logo_url }}" alt="{{ $globalCompanySetting?->company_name ?? 'Kayan ERP' }}" class="h-6 w-6 object-contain rounded">
+            @else
+                <span class="erp-brand-badge">K</span>
+            @endif
+            <span>{{ $globalCompanySetting?->company_name ?? config('app.name', 'Kayan ERP') }}</span>
         </a>
 
         <div class="erp-topbar-divider"></div>

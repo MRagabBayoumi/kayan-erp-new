@@ -32,7 +32,7 @@
         <!-- Overview & Applications -->
         <div class="erp-nav-section">
             <div class="erp-nav-section-title">التطبيقات العامة</div>
-            <a href="{{ route('home') }}" class="erp-nav-item {{ request()->routeIs('home') ? 'active' : '' }}" title="تطبيقات BayoSoft ERP">
+            <a href="{{ route('home') }}" class="erp-nav-item {{ request()->routeIs('home') ? 'active' : '' }}" title="تطبيقات {{ $globalCompanySetting?->company_name ?? config('app.name', 'Kayan ERP') }}">
                 <div class="erp-nav-content">
                     <span class="erp-nav-icon"><x-icon name="grid" size="18" /></span>
                     <span class="erp-nav-label">تطبيقات النظام</span>
@@ -72,7 +72,7 @@
                 </div>
             </a>
             @endcan
-            @can('manage-purchases')
+            @can('manage-customers')
             <a href="{{ route('customers.index') }}" class="erp-nav-item {{ request()->is('customers*') ? 'active' : '' }}" title="العملاء وتجار الجملة">
                 <div class="erp-nav-content">
                     <span class="erp-nav-icon"><x-icon name="users" size="18" /></span>

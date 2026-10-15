@@ -85,6 +85,52 @@ export function initPrintLabelPage() {
         directBtn.addEventListener('click', () => triggerDirectPrint(directBtn));
     }
 
+    // Dynamic Quantity Stepper in Preview Toolbar
+    const qtyMinusBtn = document.getElementById('previewQtyMinus');
+    const qtyPlusBtn = document.getElementById('previewQtyPlus');
+    const qtyInput = document.getElementById('previewLabelQty');
+    const totalLabelsText = document.getElementById('previewTotalLabelsText');
+
+    function updatePreviewQty(newQty) {
+        const clamped = Math.max(1, Math.min(500, parseInt(newQty, 10) || 1));
+        if (qtyInput) qtyInput.value = clamped;
+        if (directBtn) {
+            directBtn.dataset.quantity = clamped;
+            const textSpan = directBtn.querySelector('span');
+            if (textSpan) {
+                textSpan.textContent = `طباعة حرارية فورية (${clamped} ملصق)`;
+            }
+        }
+        if (totalLabelsText) {
+            totalLabelsText.textContent = `الملصقات: ${clamped} ملصق`;
+        }
+    }
+
+    if (qtyMinusBtn) {
+        qtyMinusBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const current = parseInt(qtyInput ? qtyInput.value : 1, 10) || 1;
+            updatePreviewQty(current - 1);
+        });
+    }
+
+    if (qtyPlusBtn) {
+        qtyPlusBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const current = parseInt(qtyInput ? qtyInput.value : 1, 10) || 1;
+            updatePreviewQty(current + 1);
+        });
+    }
+
+    if (qtyInput) {
+        qtyInput.addEventListener('input', () => {
+            updatePreviewQty(qtyInput.value);
+        });
+        qtyInput.addEventListener('change', () => {
+            updatePreviewQty(qtyInput.value);
+        });
+    }
+
     // Print button (browser manual fallback)
     document.querySelectorAll('[data-action="print-now"]').forEach(btn => {
         btn.addEventListener('click', () => {

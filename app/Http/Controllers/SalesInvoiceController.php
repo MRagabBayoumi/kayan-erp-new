@@ -12,11 +12,14 @@ use App\Models\SalesInvoiceItem;
 use App\Models\Unit;
 use App\Models\Warehouse;
 use App\Services\InventoryService;
+use App\Services\Printing\PythonPrintEngineService;
 use App\Services\PrintTemplateService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 
 class SalesInvoiceController extends Controller
@@ -142,6 +145,12 @@ class SalesInvoiceController extends Controller
         ])->values();
 
         $activeShift = $user ? CashierShift::getActiveShift($user->id) : null;
+        if (! $activeShift && $user && $user->isAdmin()) {
+            $activeShift = CashierShift::open()
+                ->where('warehouse_id', $user->warehouse_id ?? $defaultWarehouse?->id ?? Warehouse::first()?->id)
+                ->latest('id')
+                ->first();
+        }
 
         return view('sales.create', [
             'title' => 'شاشة نقاط البيع وفاتورة المبيعات (POS)',
@@ -208,6 +217,9 @@ class SalesInvoiceController extends Controller
         if (! $activeShift && $user) {
             $activeShift = CashierShift::getActiveShift($user->id);
         }
+        if (! $activeShift) {
+            $activeShift = CashierShift::open()->where('warehouse_id', (int) $validated['warehouse_id'])->latest('id')->first();
+        }
 
         if ($user && $user->isCashier() && ! $activeShift) {
             return back()->withInput()->withErrors([
@@ -219,81 +231,91 @@ class SalesInvoiceController extends Controller
         $discountType = $validated['discount_type'] ?? 'fixed';
         $discountValue = (float) ($validated['discount_value'] ?? 0.00);
 
-        $invoice = DB::transaction(function () use ($validated, $shippingCost, $discountType, $discountValue, $request, $inventoryService, $activeShift) {
-            $subtotal = 0.00;
-            $itemsData = [];
+        try {
+            $invoice = DB::transaction(function () use ($validated, $shippingCost, $discountType, $discountValue, $request, $inventoryService, $activeShift) {
+                $subtotal = 0.00;
+                $itemsData = [];
 
-            foreach ($validated['items'] as $itemInput) {
-                $qty = (float) $itemInput['quantity'];
-                $price = (float) $itemInput['unit_price'];
-                $lineDiscount = (float) ($itemInput['line_discount'] ?? 0.00);
-                $factor = (float) ($itemInput['conversion_factor'] ?? 1.0000);
-                $baseQty = round($qty * $factor, 4);
+                foreach ($validated['items'] as $itemInput) {
+                    $qty = (float) $itemInput['quantity'];
+                    $price = (float) $itemInput['unit_price'];
+                    $lineDiscount = (float) ($itemInput['line_discount'] ?? 0.00);
+                    $factor = (float) ($itemInput['conversion_factor'] ?? 1.0000);
+                    $baseQty = round($qty * $factor, 4);
 
-                $lineSubtotal = max(0.00, round(($qty * $price) - $lineDiscount, 2));
-                $subtotal += $lineSubtotal;
+                    $lineSubtotal = max(0.00, round(($qty * $price) - $lineDiscount, 2));
+                    $subtotal += $lineSubtotal;
 
-                $itemsData[] = [
-                    'product_id' => (int) $itemInput['product_id'],
-                    'unit_id' => ! empty($itemInput['unit_id']) ? (int) $itemInput['unit_id'] : null,
-                    'conversion_factor' => $factor,
-                    'quantity' => $qty,
-                    'base_quantity' => $baseQty,
-                    'unit_price' => $price,
-                    'line_discount' => $lineDiscount,
-                    'subtotal' => $lineSubtotal,
+                    $itemsData[] = [
+                        'product_id' => (int) $itemInput['product_id'],
+                        'unit_id' => ! empty($itemInput['unit_id']) ? (int) $itemInput['unit_id'] : null,
+                        'conversion_factor' => $factor,
+                        'quantity' => $qty,
+                        'base_quantity' => $baseQty,
+                        'unit_price' => $price,
+                        'line_discount' => $lineDiscount,
+                        'subtotal' => $lineSubtotal,
+                        'total_cogs' => 0.00,
+                        'total_profit' => 0.00,
+                        'notes' => $itemInput['notes'] ?? null,
+                    ];
+                }
+
+                $discountAmount = 0.00;
+                if ($discountValue > 0) {
+                    if ($discountType === 'percentage') {
+                        $discountAmount = round(($subtotal * min(100, $discountValue)) / 100, 2);
+                    } else {
+                        $discountAmount = min($subtotal, $discountValue);
+                    }
+                }
+
+                $totalAmount = max(0, round($subtotal - $discountAmount + $shippingCost, 2));
+
+                $invoice = SalesInvoice::create([
+                    'invoice_number' => SalesInvoice::generateInvoiceNumber(),
+                    'customer_id' => (int) $validated['customer_id'],
+                    'warehouse_id' => (int) $validated['warehouse_id'],
+                    'cashier_shift_id' => $activeShift?->id,
+                    'invoice_date' => $validated['invoice_date'],
+                    'price_tier' => $validated['price_tier'],
+                    'status' => SalesInvoice::STATUS_DRAFT,
+                    'subtotal' => $subtotal,
+                    'discount_type' => $discountType,
+                    'discount_value' => $discountValue,
+                    'discount_amount' => $discountAmount,
+                    'shipping_cost' => $shippingCost,
+                    'total_amount' => $totalAmount,
                     'total_cogs' => 0.00,
                     'total_profit' => 0.00,
-                    'notes' => $itemInput['notes'] ?? null,
-                ];
-            }
+                    'notes' => $validated['notes'] ?? null,
+                    'created_by' => auth()->id(),
+                ]);
 
-            $discountAmount = 0.00;
-            if ($discountValue > 0) {
-                if ($discountType === 'percentage') {
-                    $discountAmount = round(($subtotal * min(100, $discountValue)) / 100, 2);
-                } else {
-                    $discountAmount = min($subtotal, $discountValue);
+                foreach ($itemsData as $row) {
+                    $row['sales_invoice_id'] = $invoice->id;
+                    SalesInvoiceItem::create($row);
                 }
-            }
 
-            $totalAmount = max(0, round($subtotal - $discountAmount + $shippingCost, 2));
+                // Direct posting if requested
+                if ($request->input('action') === 'post') {
+                    $this->executePosting($invoice, $inventoryService);
+                    if ($activeShift) {
+                        $activeShift->recordCashSale($invoice->total_amount, $invoice->id);
+                    }
+                }
 
-            $invoice = SalesInvoice::create([
-                'invoice_number' => SalesInvoice::generateInvoiceNumber(),
-                'customer_id' => (int) $validated['customer_id'],
-                'warehouse_id' => (int) $validated['warehouse_id'],
-                'cashier_shift_id' => $activeShift?->id,
-                'invoice_date' => $validated['invoice_date'],
-                'price_tier' => $validated['price_tier'],
-                'status' => SalesInvoice::STATUS_DRAFT,
-                'subtotal' => $subtotal,
-                'discount_type' => $discountType,
-                'discount_value' => $discountValue,
-                'discount_amount' => $discountAmount,
-                'shipping_cost' => $shippingCost,
-                'total_amount' => $totalAmount,
-                'total_cogs' => 0.00,
-                'total_profit' => 0.00,
-                'notes' => $validated['notes'] ?? null,
-                'created_by' => auth()->id(),
+                return $invoice;
+            });
+        } catch (\Throwable $e) {
+            Log::error('SalesInvoice store error: '.$e->getMessage(), [
+                'exception' => $e,
             ]);
 
-            foreach ($itemsData as $row) {
-                $row['sales_invoice_id'] = $invoice->id;
-                SalesInvoiceItem::create($row);
-            }
-
-            // Direct posting if requested
-            if ($request->input('action') === 'post') {
-                $this->executePosting($invoice, $inventoryService);
-                if ($activeShift) {
-                    $activeShift->recordCashSale($invoice->total_amount, $invoice->id);
-                }
-            }
-
-            return $invoice;
-        });
+            return back()->withInput()->withErrors([
+                'error' => $e->getMessage(),
+            ])->with('error', $e->getMessage());
+        }
 
         $message = $invoice->status === SalesInvoice::STATUS_POSTED
             ? 'تم حفظ فاتورة المبيعات وترحيلها وخصم الدفعات المخزنية بنجاح.'
@@ -339,16 +361,26 @@ class SalesInvoiceController extends Controller
             return back()->with('error', 'لا يمكن ترحيل هذه الفاتورة لأنها ليست في حالة مسودة.');
         }
 
-        DB::transaction(function () use ($sale, $inventoryService) {
-            $this->executePosting($sale, $inventoryService);
+        try {
+            DB::transaction(function () use ($sale, $inventoryService) {
+                $this->executePosting($sale, $inventoryService);
 
-            if ($sale->cashier_shift_id) {
-                $shift = CashierShift::find($sale->cashier_shift_id);
+                $shift = $sale->cashier_shift_id
+                    ? CashierShift::find($sale->cashier_shift_id)
+                    : CashierShift::open()->where('warehouse_id', $sale->warehouse_id)->latest('id')->first();
+
                 if ($shift && $shift->status === CashierShift::STATUS_OPEN) {
+                    if (! $sale->cashier_shift_id) {
+                        $sale->update(['cashier_shift_id' => $shift->id]);
+                    }
                     $shift->recordCashSale($sale->total_amount, $sale->id);
                 }
-            }
-        });
+            });
+        } catch (\Throwable $e) {
+            Log::error('SalesInvoice post error: '.$e->getMessage());
+
+            return back()->with('error', $e->getMessage());
+        }
 
         return redirect()->route('sales.show', $sale)
             ->with('status', 'success')
@@ -396,8 +428,19 @@ class SalesInvoiceController extends Controller
             $format = PrintTemplate::FORMAT_A4;
         }
 
-        $template = $templateService->getEffectiveTemplate(PrintTemplate::DOC_PURCHASE_INVOICE, $format);
+        $template = $templateService->getEffectiveTemplate(PrintTemplate::DOC_SALES_INVOICE, $format);
         $companySetting = CompanySetting::getSettings();
+
+        $colorHex = $template->getSetting('general.primary_color', '#1e293b');
+        $colorClass = match ($colorHex) {
+            '#059669', '#10b981' => 'theme-emerald',
+            '#2563eb', '#3b82f6' => 'theme-blue',
+            '#7c3aed', '#8b5cf6' => 'theme-purple',
+            '#e11d48', '#f43f5e' => 'theme-rose',
+            '#d97706', '#f59e0b' => 'theme-amber',
+            '#000000' => 'theme-black',
+            default => 'theme-navy',
+        };
 
         return view('sales.print', [
             'title' => 'طباعة فاتورة مبيعات: '.$sale->invoice_number,
@@ -405,7 +448,25 @@ class SalesInvoiceController extends Controller
             'template' => $template,
             'format' => $format,
             'company' => $companySetting,
+            'colorClass' => $colorClass,
         ]);
+    }
+
+    /**
+     * Direct print sales invoice receipt or A4/A5 document via the centralized Python printing engine.
+     */
+    public function directPrint(Request $request, SalesInvoice $sale, PythonPrintEngineService $printService): JsonResponse
+    {
+        $validated = $request->validate([
+            'printer' => ['nullable', 'string', 'max:120'],
+            'format' => ['nullable', 'string', 'in:thermal_80mm,a4,a5'],
+        ]);
+
+        $printer = $validated['printer'] ?? null;
+        $format = $validated['format'] ?? $request->query('format', 'thermal_80mm');
+        $result = $printService->printSalesInvoice($sale, $format, $printer);
+
+        return response()->json($result, $result['success'] ? 200 : 422);
     }
 
     /**
@@ -435,7 +496,7 @@ class SalesInvoiceController extends Controller
                 salesInvoiceItemId: $item->id,
                 userId: auth()->id(),
                 customerId: $invoice->customer_id,
-                allowUnpricedBatches: false
+                allowUnpricedBatches: true
             );
 
             $itemCogs = (float) $result['total_cogs'];

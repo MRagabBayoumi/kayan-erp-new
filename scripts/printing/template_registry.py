@@ -10,10 +10,20 @@ try:
     from .templates.base_template import BasePrintTemplate
     from .templates.barcode_label_template import BarcodeLabelTemplate
     from .templates.purchase_invoice_template import PurchaseInvoiceTemplate
+    from .templates.sales_invoice_template import SalesInvoiceTemplate
+    from .templates.shift_closing_template import ShiftClosingTemplate
+    from .templates.document_invoice_template import SalesInvoiceDocumentTemplate, PurchaseInvoiceDocumentTemplate
+    from .templates.product_ledger_template import ProductLedgerDocumentTemplate
+    from .templates.low_stock_template import LowStockDocumentTemplate
 except (ImportError, ValueError):
     from templates.base_template import BasePrintTemplate
     from templates.barcode_label_template import BarcodeLabelTemplate
     from templates.purchase_invoice_template import PurchaseInvoiceTemplate
+    from templates.sales_invoice_template import SalesInvoiceTemplate
+    from templates.shift_closing_template import ShiftClosingTemplate
+    from templates.document_invoice_template import SalesInvoiceDocumentTemplate, PurchaseInvoiceDocumentTemplate
+    from templates.product_ledger_template import ProductLedgerDocumentTemplate
+    from templates.low_stock_template import LowStockDocumentTemplate
 
 
 class UnknownTemplateError(Exception):
@@ -34,6 +44,12 @@ class TemplateRegistry:
         """Register default system templates."""
         self.register(BarcodeLabelTemplate())
         self.register(PurchaseInvoiceTemplate())
+        self.register(SalesInvoiceTemplate())
+        self.register(ShiftClosingTemplate())
+        self.register(SalesInvoiceDocumentTemplate())
+        self.register(PurchaseInvoiceDocumentTemplate())
+        self.register(ProductLedgerDocumentTemplate())
+        self.register(LowStockDocumentTemplate())
 
     def register(self, template: BasePrintTemplate) -> None:
         """Register a new template instance."""

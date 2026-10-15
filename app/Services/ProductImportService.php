@@ -476,10 +476,28 @@ class ProductImportService
         $existingSkus = Product::pluck('id', 'sku')->toArray();
         $existingBarcodes = Product::whereNotNull('barcode')->pluck('id', 'barcode')->toArray();
         $warehouses = Warehouse::all();
+        if ($warehouses->isEmpty()) {
+            $createdWh = Warehouse::create([
+                'code' => 'WH-1',
+                'name' => 'المستودع الرئيسي',
+                'location' => 'المقر الرئيسي',
+                'is_active' => true,
+                'is_default' => true,
+            ]);
+            $warehouses = collect([$createdWh]);
+        }
         $defaultWarehouse = $warehouses->firstWhere('is_default', true) ?? $warehouses->first();
         $warehousesByName = [];
         foreach ($warehouses as $wh) {
             $warehousesByName[mb_strtolower(trim($wh->name))] = $wh;
+            $warehousesByName[mb_strtolower(trim($wh->code))] = $wh;
+            // Also alias common Arabic variations
+            if (str_contains($wh->name, 'مستودع') || str_contains($wh->name, 'مخزن')) {
+                $altName1 = str_replace('مستودع', 'مخزن', $wh->name);
+                $altName2 = str_replace('مخزن', 'مستودع', $wh->name);
+                $warehousesByName[mb_strtolower(trim($altName1))] = $wh;
+                $warehousesByName[mb_strtolower(trim($altName2))] = $wh;
+            }
         }
 
         $stats = [
@@ -739,9 +757,19 @@ class ProductImportService
                             })->first();
 
                         if ($product) {
-                            // Do not overwrite existing opening balances on update to protect inventory history
-                            unset($payload['opening_quantity'], $payload['opening_cost'], $payload['opening_warehouse_id'], $payload['opening_balance_date']);
-                            $product->update($payload);
+                            $hasStockHistory = $product->batches()->exists()
+                                || $product->stockBalances()->where('quantity', '>', 0)->exists()
+                                || ((float) $product->opening_quantity > 0);
+
+                            if (! $hasStockHistory && $openingQty > 0) {
+                                // Existing item never had opening balance or stock; initialize opening balance now
+                                $product->update($payload);
+                                $this->recordOpeningStockIfApplicable($product, $openingQty, $openingCost, $openingWarehouseId, $openingDate);
+                            } else {
+                                // Protect existing opening balance history
+                                unset($payload['opening_quantity'], $payload['opening_cost'], $payload['opening_warehouse_id'], $payload['opening_balance_date']);
+                                $product->update($payload);
+                            }
                             $updatedCount++;
                         } else {
                             $product = Product::create($payload);
@@ -776,9 +804,27 @@ class ProductImportService
         ?int $warehouseId,
         string $receivedDate
     ): void {
-        if ($quantity <= 0 || ! $warehouseId) {
+        if ($quantity <= 0) {
             return;
         }
+
+        if (! $warehouseId) {
+            $wh = Warehouse::where('is_default', true)->first() ?? Warehouse::first();
+            if (! $wh) {
+                $wh = Warehouse::create([
+                    'code' => 'WH-1',
+                    'name' => 'المستودع الرئيسي',
+                    'location' => 'المقر الرئيسي',
+                    'is_active' => true,
+                    'is_default' => true,
+                ]);
+            }
+            $warehouseId = $wh->id;
+        }
+
+        $retailPrice = ! is_null($product->retail_price) ? (float) $product->retail_price : null;
+        $wholesalePrice = ! is_null($product->wholesale_price) ? (float) $product->wholesale_price : null;
+        $distributorPrice = ! is_null($product->distributor_price) ? (float) $product->distributor_price : $wholesalePrice;
 
         $service = $this->inventoryService ?? app(InventoryService::class);
         $service->addStock(
@@ -790,7 +836,10 @@ class ProductImportService
             referenceType: 'opening_balance',
             referenceId: $product->id,
             userId: auth()->id(),
-            receivedAt: Carbon::parse($receivedDate)
+            receivedAt: Carbon::parse($receivedDate),
+            retailPrice: $retailPrice,
+            wholesalePrice: $wholesalePrice,
+            distributorPrice: $distributorPrice
         );
     }
 }
