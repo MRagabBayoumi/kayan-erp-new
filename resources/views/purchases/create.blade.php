@@ -20,7 +20,9 @@
 @endsection
 
 @section('content')
-    <div data-page="purchases-create">
+    <div data-page="purchases-create"
+         data-products="{{ json_encode($productsJson ?? []) }}"
+         data-units="{{ json_encode($unitsJson ?? []) }}">
         <!-- Validation Errors Alert -->
         @if($errors->any())
             <div class="erp-alert erp-alert-danger mb-5" role="alert">
@@ -129,85 +131,342 @@
                 </div>
             </div>
 
-            <!-- Items Table Card -->
+            <!-- Quick Item Entry Panel (Ergonomic Barcode & Keyboard POS Interface) -->
+            <div class="purchases-quick-entry">
+                <div class="purchases-quick-entry-header">
+                    <div class="purchases-quick-entry-title">
+                        <x-icon name="plus-circle" size="18" />
+                        <span>شريط إدخال الأصناف السريع (مسدس الباركود والكيبورد)</span>
+                    </div>
+                    <div class="purchases-quick-entry-shortcuts">
+                        <span class="purchases-shortcut-pill">
+                            <kbd>Tab</kbd> للتنقل
+                        </span>
+                        <span class="purchases-shortcut-pill">
+                            <kbd>Enter</kbd> لتنزيل الصنف
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="purchases-quick-entry-body">
+                    <!-- الصف الأول: طريقة البحث وخيارات البحث + خانات الخصومات (نسبة أو قيمة) -->
+                    <div class="purchases-quick-row-1">
+                        <!-- خيارات طريقة البحث -->
+                        <div class="erp-form-group mb-0">
+                            <label for="searchModeSelect" class="erp-form-label text-xs font-semibold flex items-center gap-1">
+                                <x-icon name="search" size="14" class="text-[var(--primary)]" />
+                                <span>طريقة البحث</span>
+                            </label>
+                            <select id="searchModeSelect" class="erp-input text-xs">
+                                <option value="barcode">البحث بالباركود (مسدس الباركود)</option>
+                                <option value="sku">كود الصنف (SKU)</option>
+                                <option value="name">اسم الصنف (Name)</option>
+                            </select>
+                        </div>
+
+                        <!-- نوع الخصم للفاتورة -->
+                        <div class="erp-form-group mb-0">
+                            <label for="invoiceDiscountType" class="erp-form-label text-xs font-semibold flex items-center gap-1">
+                                <x-icon name="tag" size="14" class="text-amber-500" />
+                                <span>نوع الخصم للفاتورة</span>
+                            </label>
+                            <select id="invoiceDiscountType" name="discount_type" class="erp-input text-xs">
+                                <option value="fixed" {{ old('discount_type') === 'percentage' ? '' : 'selected' }}>قيمة نقدية ثابتة (ج.م)</option>
+                                <option value="percentage" {{ old('discount_type') === 'percentage' ? 'selected' : '' }}>نسبة مئوية (%)</option>
+                            </select>
+                        </div>
+
+                        <!-- قيمة / نسبة الخصم -->
+                        <div class="erp-form-group mb-0">
+                            <label for="invoiceDiscountValue" class="erp-form-label text-xs font-semibold">
+                                قيمة / نسبة الخصم
+                            </label>
+                            <div class="purchases-input-affix">
+                                <input 
+                                    type="number" 
+                                    step="0.01" 
+                                    min="0" 
+                                    id="invoiceDiscountValue" 
+                                    name="discount_value" 
+                                    value="{{ old('discount_value', '0.00') }}" 
+                                    class="erp-input font-numeric text-xs" 
+                                    placeholder="0.00"
+                                >
+                                <span id="discountUnitLabel" class="purchases-input-affix-label">ج.م</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- الصف الثاني: مربع إدخال بيانات الصنف + وحدة القياس + الكمية + سعر الشراء + زر الإنزال -->
+                    <div class="purchases-quick-row-2">
+                        <!-- مربع إدخال الصنف (يدعم مسدس الباركود والكتابة المباشرة) -->
+                        <div class="erp-form-group mb-0 relative">
+                            <label for="quickProductInput" class="erp-form-label text-xs font-semibold flex items-center justify-between">
+                                <span class="flex items-center gap-1">
+                                    <x-icon name="barcode" size="14" class="text-[var(--primary)]" />
+                                    <span id="quickSearchInputLabel">مربع البحث / قراءة الباركود</span>
+                                </span>
+                                <span id="selectedProductBadge" class="hidden text-[10px] text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded font-bold">
+                                    صنف محدد
+                                </span>
+                            </label>
+                            <input 
+                                type="text" 
+                                id="quickProductInput" 
+                                class="erp-input erp-hero-search-input text-xs w-full" 
+                                placeholder="اضرب الباركود بالمسدس أو اكتب الكود..." 
+                                autocomplete="off"
+                                autofocus
+                            >
+
+                            <!-- قائمة الاقتراحات الفورية Autocomplete -->
+                            <div id="quickSearchResults" class="purchases-autocomplete-dropdown hidden"></div>
+                            <input type="hidden" id="quickProductId">
+                        </div>
+
+                        <!-- مربع وحدة القياس -->
+                        <div class="erp-form-group mb-0">
+                            <label for="quickUnitSelect" class="erp-form-label text-xs font-semibold">
+                                وحدة القياس
+                            </label>
+                            <select id="quickUnitSelect" class="erp-input text-xs">
+                                @forelse($units as $u)
+                                    <option value="{{ $u->id }}" data-name="{{ $u->name }}" data-factor="{{ $u->conversion_factor }}" {{ $u->is_default ? 'selected' : '' }}>
+                                        {{ $u->name }} ({{ $u->code }})
+                                    </option>
+                                @empty
+                                    <option value="1" data-name="قطعة" data-factor="1.0000" selected>قطعة (PCS)</option>
+                                @endforelse
+                            </select>
+                        </div>
+
+                        <!-- مربع الكمية -->
+                        <div class="erp-form-group mb-0">
+                            <label for="quickQtyInput" class="erp-form-label text-xs font-semibold">
+                                الكمية
+                            </label>
+                            <input 
+                                type="number" 
+                                step="0.01" 
+                                min="0.01" 
+                                id="quickQtyInput" 
+                                class="erp-input font-numeric text-center text-xs" 
+                                value="1"
+                            >
+                        </div>
+
+                        <!-- مربع سعر الشراء (التكلفة) -->
+                        <div class="erp-form-group mb-0">
+                            <label for="quickCostInput" class="erp-form-label text-xs font-semibold">
+                                سعر الشراء (ج.م)
+                            </label>
+                            <input 
+                                type="number" 
+                                step="0.01" 
+                                min="0" 
+                                id="quickCostInput" 
+                                class="erp-input font-numeric text-center text-xs font-bold text-[var(--primary)]" 
+                                value="0.00"
+                            >
+                        </div>
+
+                        <!-- زر الإنزال للجدول -->
+                        <div class="erp-form-group mb-0">
+                            <button type="button" id="quickAddBtn" class="erp-btn erp-btn-primary purchases-commit-btn text-xs">
+                                <x-icon name="arrow-down-circle" size="16" />
+                                <span>إنزال للجدول (Enter)</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Items Table Card (Below Input Panel) -->
             <div class="erp-card">
                 <div class="erp-card-header flex items-center justify-between">
                     <div class="erp-card-title">
                         <x-icon name="list" size="18" />
-                        <span>بنود وأصناف الفاتورة</span>
+                        <span>جدول أصناف الفاتورة المسجلة</span>
                     </div>
-                    <button type="button" id="addPurchaseItemBtn" class="erp-btn erp-btn-secondary text-xs">
-                        <x-icon name="plus" size="14" />
-                        <span>إضافة صنف للفاتورة</span>
-                    </button>
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs text-[var(--text-muted)] bg-[var(--surface-muted)] px-3 py-1 rounded border border-[var(--border-color)]">
+                            * أحدث صنف مضاف يظهر دائماً في أول صف بالجدول
+                        </span>
+                        <button type="button" id="addPurchaseItemBtn" class="erp-btn erp-btn-secondary text-xs">
+                            <x-icon name="plus" size="14" />
+                            <span>إضافة صنف يدوياً</span>
+                        </button>
+                    </div>
                 </div>
+
                 <div class="erp-card-body p-0">
                     <div class="erp-table-responsive">
                         <table class="erp-table" id="purchaseItemsTable">
                             <thead>
                                 <tr>
-                                    <th class="w-2/5">الصنف</th>
+                                    <th class="w-12 text-center">#</th>
+                                    <th>الصنف المختار</th>
+                                    <th class="w-28 text-center">وحدة القياس</th>
                                     <th class="w-28 text-center">الكمية</th>
-                                    <th class="w-36 text-center">سعر التكلفة (ج.م)</th>
-                                    <th class="w-36 text-center">الإجمالي (ج.م)</th>
-                                    <th>ملاحظات البند</th>
+                                    <th class="w-32 text-center">سعر التكلفة (ج.م)</th>
+                                    <th class="w-32 text-center">الإجمالي (ج.م)</th>
+                                    <th class="w-48">ملاحظات البند</th>
                                     <th class="w-12 text-center">حذف</th>
                                 </tr>
                             </thead>
                             <tbody id="purchaseItemsBody">
-                                <!-- First default row -->
-                                <tr class="purchase-item-row" data-row-index="0">
-                                    <td>
-                                        <select name="items[0][product_id]" class="erp-input purchase-product-select w-full" required>
-                                            <option value="">-- اختر الصنف المطلوب --</option>
-                                            @foreach($products as $p)
-                                                <option value="{{ $p->id }}" data-cost="{{ $p->cost_price }}" data-unit="{{ $p->unit }}">
-                                                    {{ $p->name }} ({{ $p->sku }})
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                    </td>
-                                    <td>
-                                        <input type="number" step="0.01" min="0.01" name="items[0][quantity]" value="1" class="erp-input font-numeric text-center purchase-qty-input w-full" required>
-                                    </td>
-                                    <td>
-                                        <input type="number" step="0.01" min="0" name="items[0][unit_cost]" value="0.00" class="erp-input font-numeric text-center purchase-cost-input w-full" required>
-                                    </td>
-                                    <td class="font-numeric font-bold text-center text-xs text-[var(--text-main)] purchase-line-subtotal">
-                                        0.00
-                                    </td>
-                                    <td>
-                                        <input type="text" name="items[0][notes]" class="erp-input text-xs w-full" placeholder="ملاحظات...">
-                                    </td>
-                                    <td class="text-center">
-                                        <button type="button" class="erp-btn erp-btn-ghost erp-btn-icon text-[var(--danger)] remove-row-btn" title="حذف السطر">
-                                            <x-icon name="trash" size="14" />
-                                        </button>
-                                    </td>
-                                </tr>
+                                @php
+                                    $oldItems = old('items');
+                                @endphp
+
+                                @if(!empty($oldItems) && is_array($oldItems))
+                                    @foreach($oldItems as $idx => $oldRow)
+                                        <tr class="purchase-item-row" data-row-index="{{ $idx }}">
+                                            <td class="text-center font-numeric text-xs font-bold text-[var(--text-muted)] row-num-cell">
+                                                {{ $loop->iteration }}
+                                            </td>
+                                            <td>
+                                                <select name="items[{{ $idx }}][product_id]" class="erp-input purchase-product-select w-full text-xs" required>
+                                                    <option value="">-- اختر الصنف المطلوب --</option>
+                                                    @foreach($products as $p)
+                                                        <option value="{{ $p->id }}" data-cost="{{ $p->cost_price }}" data-unit="{{ $p->unit }}" {{ (string)($oldRow['product_id'] ?? '') === (string)$p->id ? 'selected' : '' }}>
+                                                            {{ $p->name }} ({{ $p->sku }})
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                            </td>
+                                            <td class="text-center text-xs">
+                                                <span class="inline-block bg-[var(--surface-muted)] px-2 py-1 rounded font-semibold text-[var(--text-main)] purchase-unit-badge">
+                                                    {{ $oldRow['unit_name'] ?? 'قطعة' }}
+                                                </span>
+                                                <input type="hidden" name="items[{{ $idx }}][unit_name]" value="{{ $oldRow['unit_name'] ?? 'قطعة' }}" class="purchase-unit-input">
+                                            </td>
+                                            <td>
+                                                <input type="number" step="0.01" min="0.01" name="items[{{ $idx }}][quantity]" value="{{ $oldRow['quantity'] ?? '1' }}" class="erp-input font-numeric text-center purchase-qty-input w-full text-xs" required>
+                                            </td>
+                                            <td>
+                                                <input type="number" step="0.01" min="0" name="items[{{ $idx }}][unit_cost]" value="{{ $oldRow['unit_cost'] ?? '0.00' }}" class="erp-input font-numeric text-center purchase-cost-input w-full text-xs" required>
+                                            </td>
+                                            <td class="font-numeric font-bold text-center text-xs text-[var(--text-main)] purchase-line-subtotal">
+                                                0.00
+                                            </td>
+                                            <td>
+                                                <input type="text" name="items[{{ $idx }}][notes]" value="{{ $oldRow['notes'] ?? '' }}" class="erp-input text-xs w-full" placeholder="ملاحظات...">
+                                            </td>
+                                            <td class="text-center">
+                                                <button type="button" class="erp-btn erp-btn-ghost erp-btn-icon text-[var(--danger)] remove-row-btn" title="حذف السطر">
+                                                    <x-icon name="trash" size="14" />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                @else
+                                    <!-- صف افتراضي أول -->
+                                    <tr class="purchase-item-row" data-row-index="0">
+                                        <td class="text-center font-numeric text-xs font-bold text-[var(--text-muted)] row-num-cell">
+                                            1
+                                        </td>
+                                        <td>
+                                            <select name="items[0][product_id]" class="erp-input purchase-product-select w-full text-xs" required>
+                                                <option value="">-- اختر الصنف المطلوب --</option>
+                                                @foreach($products as $p)
+                                                    <option value="{{ $p->id }}" data-cost="{{ $p->cost_price }}" data-unit="{{ $p->unit }}">
+                                                        {{ $p->name }} ({{ $p->sku }})
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                        </td>
+                                        <td class="text-center text-xs">
+                                            <span class="inline-block bg-[var(--surface-muted)] px-2 py-1 rounded font-semibold text-[var(--text-main)] purchase-unit-badge">
+                                                قطعة
+                                            </span>
+                                            <input type="hidden" name="items[0][unit_name]" value="قطعة" class="purchase-unit-input">
+                                        </td>
+                                        <td>
+                                            <input type="number" step="0.01" min="0.01" name="items[0][quantity]" value="1" class="erp-input font-numeric text-center purchase-qty-input w-full text-xs" required>
+                                        </td>
+                                        <td>
+                                            <input type="number" step="0.01" min="0" name="items[0][unit_cost]" value="0.00" class="erp-input font-numeric text-center purchase-cost-input w-full text-xs" required>
+                                        </td>
+                                        <td class="font-numeric font-bold text-center text-xs text-[var(--text-main)] purchase-line-subtotal">
+                                            0.00
+                                        </td>
+                                        <td>
+                                            <input type="text" name="items[0][notes]" class="erp-input text-xs w-full" placeholder="ملاحظات...">
+                                        </td>
+                                        <td class="text-center">
+                                            <button type="button" class="erp-btn erp-btn-ghost erp-btn-icon text-[var(--danger)] remove-row-btn" title="حذف السطر">
+                                                <x-icon name="trash" size="14" />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                @endif
                             </tbody>
                         </table>
                     </div>
                 </div>
 
-                <!-- Footer Summary -->
-                <div class="erp-card-footer p-4 bg-[var(--surface-muted)] flex flex-wrap items-center justify-between gap-4">
-                    <div class="text-xs text-[var(--text-muted)]">
-                        * سيتم احتساب تكلفة كل دفعة مخزنية بالجنيه المصري وتسجيلها بدفاتر الوارد أولاً يصرف أولاً (FIFO).
+                <!-- Footer Summary Cards (أسفل الجدول: عدد المنتجات وإجمالي الفاتورة والخصومات) -->
+                <div class="erp-card-footer p-4 bg-[var(--surface-muted)] flex flex-col gap-3">
+                    <div class="purchases-summary-grid">
+                        <!-- عدد الأصناف -->
+                        <div class="purchases-summary-card">
+                            <span class="purchases-summary-label">عدد المنتجات</span>
+                            <span class="purchases-summary-value">
+                                <span id="purchaseItemsCountText">1</span>
+                                <span class="purchases-summary-unit">أصناف</span>
+                            </span>
+                        </div>
+
+                        <!-- إجمالي الكميات -->
+                        <div class="purchases-summary-card">
+                            <span class="purchases-summary-label">إجمالي الكميات</span>
+                            <span class="purchases-summary-value">
+                                <span id="purchaseTotalQtyText">1.00</span>
+                                <span class="purchases-summary-unit">وحدة</span>
+                            </span>
+                        </div>
+
+                        <!-- المجموع الفرعي -->
+                        <div class="purchases-summary-card">
+                            <span class="purchases-summary-label">المجموع الفرعي</span>
+                            <span class="purchases-summary-value">
+                                <span id="purchaseSubtotalText">0.00</span>
+                                <span class="purchases-summary-unit">ج.م</span>
+                            </span>
+                        </div>
+
+                        <!-- قيمة الخصم -->
+                        <div class="purchases-summary-card discount">
+                            <span class="purchases-summary-label">الخصم المطبق</span>
+                            <span class="purchases-summary-value">
+                                -<span id="purchaseDiscountText">0.00</span>
+                                <span class="purchases-summary-unit">ج.م</span>
+                            </span>
+                        </div>
+
+                        <!-- الشحن / التخليص -->
+                        <div class="purchases-summary-card">
+                            <span class="purchases-summary-label">الشحن / التخليص</span>
+                            <span class="purchases-summary-value">
+                                +<span id="purchaseShippingText">0.00</span>
+                                <span class="purchases-summary-unit">ج.م</span>
+                            </span>
+                        </div>
+
+                        <!-- صافي إجمالي الفاتورة -->
+                        <div class="purchases-summary-card grand-total">
+                            <span class="purchases-summary-label">صافي إجمالي الفاتورة</span>
+                            <span class="purchases-summary-value">
+                                <span id="purchaseGrandTotalText">0.00</span>
+                                <span class="purchases-summary-unit">ج.م</span>
+                            </span>
+                        </div>
                     </div>
-                    <div class="flex items-center gap-6 font-numeric">
-                        <div class="text-xs">
-                            <span class="text-[var(--text-muted)]">المجموع الفرعي:</span>
-                            <span id="purchaseSubtotalText" class="font-bold text-sm text-[var(--text-main)] mr-1">0.00</span> ج.م
-                        </div>
-                        <div class="text-xs">
-                            <span class="text-[var(--text-muted)]">الشحن:</span>
-                            <span id="purchaseShippingText" class="font-bold text-sm text-[var(--text-main)] mr-1">0.00</span> ج.م
-                        </div>
-                        <div class="text-sm font-bold text-[var(--primary)] border-r border-[var(--border-color)] pr-4">
-                            <span>إجمالي الفاتورة:</span>
-                            <span id="purchaseGrandTotalText" class="text-base mr-1">0.00</span> ج.م
-                        </div>
+
+                    <div class="flex items-center justify-between text-xs text-[var(--text-muted)] pt-1 border-t border-[var(--border-color)]">
+                        <span>* سيتم احتساب تكلفة كل دفعة مخزنية بالجنيه المصري وتسجيلها بدفاتر الوارد أولاً يصرف أولاً (FIFO).</span>
+                        <span class="font-mono text-[11px]">Kayan ERP • Inventory & Purchases Engine</span>
                     </div>
                 </div>
             </div>
@@ -217,8 +476,11 @@
     <!-- Hidden Template for Dynamic Row Addition -->
     <template id="purchaseItemRowTemplate">
         <tr class="purchase-item-row" data-row-index="__INDEX__">
+            <td class="text-center font-numeric text-xs font-bold text-[var(--text-muted)] row-num-cell">
+                __NUM__
+            </td>
             <td>
-                <select name="items[__INDEX__][product_id]" class="erp-input purchase-product-select w-full" required>
+                <select name="items[__INDEX__][product_id]" class="erp-input purchase-product-select w-full text-xs" required>
                     <option value="">-- اختر الصنف المطلوب --</option>
                     @foreach($products as $p)
                         <option value="{{ $p->id }}" data-cost="{{ $p->cost_price }}" data-unit="{{ $p->unit }}">
@@ -227,14 +489,20 @@
                     @endforeach
                 </select>
             </td>
-            <td>
-                <input type="number" step="0.01" min="0.01" name="items[__INDEX__][quantity]" value="1" class="erp-input font-numeric text-center purchase-qty-input w-full" required>
+            <td class="text-center text-xs">
+                <span class="inline-block bg-[var(--surface-muted)] px-2 py-1 rounded font-semibold text-[var(--text-main)] purchase-unit-badge">
+                    __UNIT__
+                </span>
+                <input type="hidden" name="items[__INDEX__][unit_name]" value="__UNIT__" class="purchase-unit-input">
             </td>
             <td>
-                <input type="number" step="0.01" min="0" name="items[__INDEX__][unit_cost]" value="0.00" class="erp-input font-numeric text-center purchase-cost-input w-full" required>
+                <input type="number" step="0.01" min="0.01" name="items[__INDEX__][quantity]" value="__QTY__" class="erp-input font-numeric text-center purchase-qty-input w-full text-xs" required>
+            </td>
+            <td>
+                <input type="number" step="0.01" min="0" name="items[__INDEX__][unit_cost]" value="__COST__" class="erp-input font-numeric text-center purchase-cost-input w-full text-xs" required>
             </td>
             <td class="font-numeric font-bold text-center text-xs text-[var(--text-main)] purchase-line-subtotal">
-                0.00
+                __SUBTOTAL__
             </td>
             <td>
                 <input type="text" name="items[__INDEX__][notes]" class="erp-input text-xs w-full" placeholder="ملاحظات...">

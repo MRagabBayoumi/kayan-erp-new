@@ -106,11 +106,17 @@
                                 وحدة القياس <span class="text-[var(--danger)]">*</span>
                             </label>
                             <select id="productUnit" name="unit" class="erp-input">
-                                <option value="قطعة" {{ old('unit', $product->unit) === 'قطعة' ? 'selected' : '' }}>قطعة (Piece)</option>
-                                <option value="دستة" {{ old('unit', $product->unit) === 'دستة' ? 'selected' : '' }}>دستة (Dozen - 12 قطعة)</option>
-                                <option value="كرتونة" {{ old('unit', $product->unit) === 'كرتونة' ? 'selected' : '' }}>كرتونة (Carton)</option>
-                                <option value="طقم" {{ old('unit', $product->unit) === 'طقم' ? 'selected' : '' }}>طقم (Set)</option>
-                                <option value="باكت" {{ old('unit', $product->unit) === 'باكت' ? 'selected' : '' }}>باكت (Pack)</option>
+                                @if(isset($units) && $units->isNotEmpty())
+                                    @foreach($units as $u)
+                                        <option value="{{ $u->name }}" data-factor="{{ (int) round((float) $u->conversion_factor) }}" {{ old('unit', $product->unit) === $u->name ? 'selected' : '' }}>
+                                            {{ $u->name }} @if((float)$u->conversion_factor > 1)({{ (int)round((float)$u->conversion_factor) }} قطعة)@endif
+                                        </option>
+                                    @endforeach
+                                @else
+                                    <option value="قطعة" {{ old('unit', $product->unit) === 'قطعة' ? 'selected' : '' }}>قطعة (Piece)</option>
+                                    <option value="دستة" {{ old('unit', $product->unit) === 'دستة' ? 'selected' : '' }}>دستة (Dozen - 12 قطعة)</option>
+                                    <option value="كرتونة" {{ old('unit', $product->unit) === 'كرتونة' ? 'selected' : '' }}>كرتونة (Carton)</option>
+                                @endif
                             </select>
                         </div>
 

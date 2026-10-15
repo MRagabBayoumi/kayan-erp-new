@@ -9,8 +9,8 @@
             </svg>
         </button>
 
-        <!-- Odoo 3x3 App Launcher Trigger -->
-        <button class="erp-app-launcher-btn" type="button" data-action="open-app-launcher" title="قائمة التطبيقات">
+        <!-- BayoSoft ERP Apps Launcher Trigger -->
+        <a href="{{ route('home') }}" class="erp-app-launcher-btn" title="تطبيقات النظام (الرئيسية)">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                 <rect x="3" y="3" width="4" height="4" rx="1"/>
                 <rect x="10" y="3" width="4" height="4" rx="1"/>
@@ -22,7 +22,7 @@
                 <rect x="10" y="17" width="4" height="4" rx="1"/>
                 <rect x="17" y="17" width="4" height="4" rx="1"/>
             </svg>
-        </button>
+        </a>
 
         <!-- Brand Name -->
         <a href="{{ url('/') }}" class="erp-brand">
@@ -51,8 +51,8 @@
 
         <!-- Theme Switcher (Light / Dark) -->
         <button class="erp-top-btn" id="kayanThemeToggle" type="button" title="تبديل الوضع الليلي / النهاري">
-            <span id="themeSunIcon" class="hidden"><x-icon name="sun" size="16" /></span>
-            <span id="themeMoonIcon" class="inline-flex"><x-icon name="moon" size="16" /></span>
+            <span id="themeSunIcon"><x-icon name="sun" size="16" /></span>
+            <span id="themeMoonIcon"><x-icon name="moon" size="16" /></span>
         </button>
 
         <!-- Notifications -->
@@ -92,28 +92,40 @@
         <!-- User Profile Dropdown -->
         <div class="erp-dropdown">
             <button class="erp-user-dropdown-btn" type="button" data-dropdown-toggle="userProfileMenu">
-                <span class="erp-avatar">ك</span>
-                <span>مدير النظام</span>
+                <span class="erp-avatar">{{ mb_substr(auth()->user()->name ?? 'ك', 0, 1) }}</span>
+                <span>{{ auth()->user()->name ?? 'مدير النظام' }}</span>
                 <x-icon name="chevron-down" size="12" class="opacity-80" />
             </button>
             <div id="userProfileMenu" class="erp-dropdown-menu">
                 <div class="erp-dropdown-header">
-                    <div class="font-bold text-[var(--text-main)]">مدير النظام</div>
-                    <small class="text-[var(--text-muted)]">مسؤول إدارة كيان ERP</small>
+                    <div class="font-bold text-[var(--text-main)]">{{ auth()->user()->name ?? 'مدير النظام' }}</div>
+                    <small class="text-[var(--text-muted)]">{{ auth()->user()->role_label ?? 'مسؤول إدارة كيان ERP' }}</small>
                 </div>
+                @can('manage-users')
+                <a href="{{ route('users.edit', auth()->user() ?? 1) }}" class="erp-dropdown-item">
+                    <x-icon name="user" size="14" />
+                    <span>الملف الشخصي</span>
+                </a>
+                @else
                 <a href="#" class="erp-dropdown-item">
                     <x-icon name="user" size="14" />
                     <span>الملف الشخصي</span>
                 </a>
-                <a href="#" class="erp-dropdown-item">
+                @endcan
+                @can('manage-company-settings')
+                <a href="{{ route('settings.index') }}" class="erp-dropdown-item">
                     <x-icon name="settings" size="14" />
-                    <span>إعدادات الحساب</span>
+                    <span>إعدادات النظام</span>
                 </a>
+                @endcan
                 <div class="erp-dropdown-divider"></div>
-                <a href="#" class="erp-dropdown-item text-[var(--danger)]">
-                    <x-icon name="log-out" size="14" />
-                    <span>تسجيل الخروج</span>
-                </a>
+                <form method="POST" action="{{ route('logout') }}" class="m-0">
+                    @csrf
+                    <button type="submit" class="erp-dropdown-item w-full text-right text-[var(--danger)]">
+                        <x-icon name="log-out" size="14" />
+                        <span>تسجيل الخروج</span>
+                    </button>
+                </form>
             </div>
         </div>
     </div>

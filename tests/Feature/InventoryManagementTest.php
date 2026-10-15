@@ -143,9 +143,9 @@ test('adding stock creates inventory batch, updates balance, and records movemen
     );
 
     expect($result['batch'])->toBeInstanceOf(InventoryBatch::class)
-        ->and($result['batch']->remaining_quantity)->toEqual('100.00')
-        ->and($result['batch']->cost_price)->toEqual('12.50')
-        ->and($result['balance']->quantity)->toEqual('100.00')
+        ->and((float) $result['batch']->remaining_quantity)->toEqual(100.00)
+        ->and((float) $result['batch']->cost_price)->toEqual(12.50)
+        ->and((float) $result['balance']->quantity)->toEqual(100.00)
         ->and($result['movement']->type)->toBe(StockMovement::TYPE_IN);
 
     $this->assertDatabaseHas('stock_balances', [

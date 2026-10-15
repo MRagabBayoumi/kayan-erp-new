@@ -35,4 +35,5 @@ __pycache__/
 *.pyc
 storage/orga_export/
 storage/*.png
+*.sql
 

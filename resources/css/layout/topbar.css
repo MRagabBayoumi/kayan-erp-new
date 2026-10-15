@@ -114,9 +114,9 @@
 
 .erp-global-search-input:focus {
     width: 320px;
-    background: #FFFFFF;
+    background: var(--bg-surface);
     color: var(--text-main);
-    border-color: #FFFFFF;
+    border-color: var(--primary-border);
     box-shadow: var(--shadow-md);
 }
 
@@ -168,6 +168,33 @@
 .erp-top-btn:hover {
     background-color: rgba(255, 255, 255, 0.16);
     color: #FFFFFF;
+}
+
+/* Dynamic Theme Toggle Icons (Pure CSS zero-lag switching) */
+#themeSunIcon,
+#themeMoonIcon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+[data-theme="dark"] #themeMoonIcon {
+    display: none !important;
+}
+
+[data-theme="dark"] #themeSunIcon {
+    display: inline-flex !important;
+}
+
+:root:not([data-theme="dark"]) #themeSunIcon,
+[data-theme="light"] #themeSunIcon {
+    display: none !important;
+}
+
+:root:not([data-theme="dark"]) #themeMoonIcon,
+[data-theme="light"] #themeMoonIcon {
+    display: inline-flex !important;
 }
 
 /* Sidebar toggle inside topbar: hidden on desktop, shown on mobile */

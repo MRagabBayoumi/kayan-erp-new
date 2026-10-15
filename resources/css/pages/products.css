@@ -241,3 +241,217 @@
     }
 }
 
+/* ==========================================================================
+   Product Ledger (Kashf Haraka) — Modern Ergonomic Styles
+   ========================================================================== */
+
+.erp-ledger-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+}
+
+@media (max-width: 1024px) {
+    .erp-ledger-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}
+
+.erp-ledger-identity {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    min-width: 0;
+    flex: 1;
+}
+
+.erp-ledger-avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: var(--border-radius, 8px);
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-surface-alt);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.erp-ledger-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.erp-ledger-details {
+    min-width: 0;
+    flex: 1;
+}
+
+.erp-ledger-title {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--text-main);
+    margin: 0 0 6px 0;
+    line-height: 1.3;
+}
+
+.erp-ledger-badges-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+
+.erp-ledger-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: var(--border-radius-sm, 4px);
+    background-color: var(--bg-surface-alt);
+    border: 1px solid var(--border-color);
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.erp-ledger-badge strong {
+    color: var(--text-main);
+}
+
+/* 5-Column Metrics Grid in Ledger Header */
+.erp-ledger-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+@media (max-width: 1280px) {
+    .erp-ledger-metrics-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .erp-ledger-metrics-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 480px) {
+    .erp-ledger-metrics-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.erp-ledger-metric-card {
+    padding: 8px 12px;
+    border-radius: var(--border-radius-sm, 6px);
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-surface-alt);
+    text-align: center;
+    min-width: 110px;
+}
+
+.erp-ledger-metric-card.highlight {
+    background-color: var(--primary-soft);
+    border-color: var(--primary);
+}
+
+.erp-ledger-metric-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 600;
+    display: block;
+    margin-bottom: 2px;
+}
+
+.erp-ledger-metric-card.highlight .erp-ledger-metric-label {
+    color: var(--primary);
+}
+
+.erp-ledger-metric-val {
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--text-main);
+    line-height: 1.2;
+}
+
+.erp-ledger-metric-card.highlight .erp-ledger-metric-val {
+    color: var(--primary);
+}
+
+.erp-ledger-metric-unit {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-right: 2px;
+}
+
+/* Warehouse Breakdown Strip */
+.erp-ledger-warehouses-strip {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.erp-ledger-warehouses-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.erp-ledger-wh-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 9999px;
+    font-size: 11px;
+}
+
+.erp-ledger-wh-pill strong {
+    color: var(--primary);
+}
+
+/* Modern Balanced Ledger Filter Form */
+.erp-ledger-filter-form {
+    display: grid;
+    grid-template-columns: minmax(180px, 1.2fr) minmax(160px, 1fr) minmax(140px, 1fr) minmax(140px, 1fr) auto;
+    align-items: flex-end;
+    gap: 12px;
+    width: 100%;
+}
+
+@media (max-width: 1024px) {
+    .erp-ledger-filter-form {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+    .erp-ledger-filter-form {
+        grid-template-columns: 1fr;
+    }
+}
+
+.erp-ledger-filter-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+

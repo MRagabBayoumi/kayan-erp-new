@@ -28,6 +28,9 @@
     --bg-elevated: #FFFFFF;
     --bg-hover: #F3F4F6;
     --bg-active: #E5E7EB;
+    --bg-card: #FFFFFF;
+    --surface-card: #FFFFFF;
+    --surface-muted: #F8F9FA;
 
     /* Borders & Dividers */
     --border-color: #E2E8F0;

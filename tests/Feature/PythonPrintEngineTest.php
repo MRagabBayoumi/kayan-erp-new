@@ -400,6 +400,12 @@ test('python print engine supports multi-product batch printing without blank la
 });
 
 test('POST /products/direct-print/batch sends batch of multiple products in single atomic job', function () {
+    $service = app(PythonPrintEngineService::class);
+
+    if (! $service->isAvailable()) {
+        $this->markTestSkipped('Python print engine is not available in this environment.');
+    }
+
     $category = Category::firstOrCreate(['name' => 'عام'], ['code' => 'GEN', 'is_active' => true]);
 
     $p1 = Product::create([

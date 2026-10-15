@@ -1,7 +1,21 @@
 <?php
 
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+
+uses(RefreshDatabase::class);
+
 test('the application returns a successful response with BayoSoft ERP layout', function () {
-    $response = $this->get('/');
+    $admin = User::firstOrCreate(
+        ['email' => 'admin-test@kayan-erp.com'],
+        [
+            'name' => 'مدير النظام التجريبي',
+            'password' => bcrypt('password'),
+            'role' => User::ROLE_ADMIN,
+        ]
+    );
+
+    $response = $this->actingAs($admin)->get('/');
 
     $response->assertStatus(200);
     $response->assertSee('BayoSoft ERP');

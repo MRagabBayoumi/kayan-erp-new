@@ -2,8 +2,11 @@
 
 namespace App\Services;
 
+use App\Models\BatchCostMovement;
 use App\Models\InventoryBatch;
 use App\Models\Product;
+use App\Models\SalesInvoice;
+use App\Models\SalesInvoiceItemBatch;
 use App\Models\StockBalance;
 use App\Models\StockMovement;
 use App\Models\Warehouse;
@@ -29,11 +32,21 @@ class InventoryService
         ?int $referenceId = null,
         ?int $userId = null,
         ?Carbon $receivedAt = null,
-        ?int $supplierId = null
+        ?int $supplierId = null,
+        ?float $retailPrice = null,
+        ?float $wholesalePrice = null,
+        ?float $distributorPrice = null,
+        ?float $totalInitialCost = null,
+        ?int $unitId = null,
+        float $conversionFactor = 1.0000,
+        string $sourceType = 'purchase_invoice',
+        ?int $sourceId = null
     ): array {
         if ($quantity <= 0) {
             throw new InvalidArgumentException('الكمية المضافة يجب أن تكون أكبر من الصفر.');
         }
+
+        $userId = $userId ?? auth()->id();
 
         return DB::transaction(function () use (
             $productId,
@@ -45,14 +58,23 @@ class InventoryService
             $referenceId,
             $userId,
             $receivedAt,
-            $supplierId
+            $supplierId,
+            $retailPrice,
+            $wholesalePrice,
+            $distributorPrice,
+            $totalInitialCost,
+            $unitId,
+            $conversionFactor,
+            $sourceType,
+            $sourceId
         ) {
             $product = Product::findOrFail($productId);
             $warehouse = Warehouse::findOrFail($warehouseId);
 
             $effectiveCost = $costPrice !== null ? $costPrice : (float) $product->cost_price;
+            $effectiveInitialCost = $totalInitialCost !== null ? $totalInitialCost : round($quantity * $effectiveCost, 2);
 
-            // 1. Create FIFO Inventory Batch
+            // 1. Create FIFO Inventory Batch with pricing tiers and cost conservation
             $batch = InventoryBatch::create([
                 'batch_number' => InventoryBatch::generateBatchNumber(),
                 'product_id' => $product->id,
@@ -61,6 +83,15 @@ class InventoryService
                 'initial_quantity' => $quantity,
                 'remaining_quantity' => $quantity,
                 'cost_price' => $effectiveCost,
+                'retail_price' => $retailPrice,
+                'wholesale_price' => $wholesalePrice,
+                'distributor_price' => $distributorPrice,
+                'total_initial_cost' => $effectiveInitialCost,
+                'accumulated_cogs_deducted' => 0.00,
+                'unit_id' => $unitId,
+                'conversion_factor' => $conversionFactor,
+                'source_type' => $sourceType,
+                'source_id' => $sourceId ?? $referenceId,
                 'received_at' => $receivedAt ?? now(),
                 'is_exhausted' => false,
                 'notes' => $notes,
@@ -94,6 +125,29 @@ class InventoryService
                 'notes' => $notes,
             ]);
 
+            // 4. Record in Physical Batch Cost Movements Ledger
+            $batchCostMovementType = match ($referenceType) {
+                'opening_balance' => 'opening_in',
+                'sales_return' => 'sale_return_in',
+                default => 'purchase_in',
+            };
+
+            BatchCostMovement::create([
+                'batch_id' => $batch->id,
+                'product_id' => $product->id,
+                'warehouse_id' => $warehouse->id,
+                'movement_type' => $batchCostMovementType,
+                'reference_type' => $referenceType,
+                'reference_id' => $referenceId,
+                'quantity_base' => $quantity,
+                'unit_cost_base' => $effectiveCost,
+                'total_cost' => $effectiveInitialCost,
+                'running_batch_quantity' => $quantity,
+                'running_batch_cost_balance' => $effectiveInitialCost,
+                'user_id' => $userId,
+                'notes' => $notes,
+            ]);
+
             return [
                 'batch' => $batch,
                 'movement' => $movement,
@@ -121,6 +175,8 @@ class InventoryService
         if ($quantity <= 0) {
             throw new InvalidArgumentException('الكمية المطلوب صرفها يجب أن تكون أكبر من الصفر.');
         }
+
+        $userId = $userId ?? auth()->id();
 
         return DB::transaction(function () use (
             $productId,
@@ -253,6 +309,8 @@ class InventoryService
             throw new InvalidArgumentException('كمية التحويل يجب أن تكون أكبر من الصفر.');
         }
 
+        $userId = $userId ?? auth()->id();
+
         return DB::transaction(function () use (
             $productId,
             $fromWarehouseId,
@@ -321,6 +379,8 @@ class InventoryService
         if ($actualQuantity < 0) {
             throw new InvalidArgumentException('الرصيد الفعلي لا يمكن أن يكون سالباً.');
         }
+
+        $userId = $userId ?? auth()->id();
 
         return DB::transaction(function () use ($productId, $warehouseId, $actualQuantity, $reason, $userId) {
             $balance = StockBalance::firstOrCreate(
@@ -404,6 +464,359 @@ class InventoryService
             'total_inventory_value' => $batchValuation,
             'low_stock_count' => $lowStockCount,
             'out_of_stock_count' => $outOfStockCount,
+        ];
+    }
+
+    /**
+     * Deduct stock using FIFO logic with batch-specific price tiers and granular allocation recording.
+     *
+     * @return array{
+     *   allocations: list<SalesInvoiceItemBatch>,
+     *   total_base_deducted: float,
+     *   total_cogs: float,
+     *   total_revenue: float,
+     *   total_profit: float
+     * }
+     */
+    public function deductStockFIFOWithPricing(
+        int $productId,
+        int $warehouseId,
+        float $baseQuantity,
+        string $priceTier = 'retail',
+        ?float $overrideUnitPriceBase = null,
+        float $proratedLineDiscount = 0.00,
+        ?string $notes = null,
+        string $referenceType = 'sales_invoice',
+        ?int $referenceId = null,
+        ?int $salesInvoiceItemId = null,
+        ?int $userId = null,
+        ?int $customerId = null,
+        bool $allowUnpricedBatches = false
+    ): array {
+        if ($baseQuantity <= 0) {
+            throw new InvalidArgumentException('الكمية المطلوب صرفها يجب أن تكون أكبر من الصفر.');
+        }
+
+        $userId = $userId ?? auth()->id();
+
+        return DB::transaction(function () use (
+            $productId,
+            $warehouseId,
+            $baseQuantity,
+            $priceTier,
+            $overrideUnitPriceBase,
+            $notes,
+            $referenceType,
+            $referenceId,
+            $salesInvoiceItemId,
+            $userId,
+            $customerId,
+            $allowUnpricedBatches
+        ) {
+            $product = Product::findOrFail($productId);
+            $warehouse = Warehouse::findOrFail($warehouseId);
+
+            $balance = StockBalance::where('product_id', $product->id)
+                ->where('warehouse_id', $warehouse->id)
+                ->lockForUpdate()
+                ->first();
+
+            $currentStock = $balance ? (float) $balance->quantity : 0.00;
+
+            if ($currentStock < $baseQuantity) {
+                throw new InvalidArgumentException(
+                    "الرصيد المتاح للصنف ({$product->name}) في مستودع ({$warehouse->name}) هو {$currentStock} ولا يكفي لصرف {$baseQuantity}."
+                );
+            }
+
+            // Retrieve available batches in strict FIFO order
+            $batches = InventoryBatch::where('product_id', $product->id)
+                ->where('warehouse_id', $warehouse->id)
+                ->availableFIFO()
+                ->lockForUpdate()
+                ->get();
+
+            // Total available across active batches
+            $totalBatchAvailable = (float) $batches->sum('remaining_quantity');
+            if ($totalBatchAvailable < $baseQuantity) {
+                throw new InvalidArgumentException(
+                    "إجمالي رصيد الدفعات المتاحة للصنف ({$product->name}) هو {$totalBatchAvailable} ولا يكفي لصرف {$baseQuantity}."
+                );
+            }
+
+            // Enforce Rule 1 & Option A: Prevent sales from unpriced batches
+            if (! $allowUnpricedBatches) {
+                $accumulated = 0.0;
+                foreach ($batches as $checkBatch) {
+                    $accumulated += (float) $checkBatch->remaining_quantity;
+                    if (! $checkBatch->hasPricing()) {
+                        throw new InvalidArgumentException(
+                            "الدفعة رقم ({$checkBatch->batch_number}) للصنف ({$product->name}) ليس لها أسعار بيع معتمدة؛ يرجى اعتماد تسعيرة الدفعة أولاً قبل الصرف."
+                        );
+                    }
+                    if ($accumulated >= $baseQuantity) {
+                        break;
+                    }
+                }
+            }
+
+            $remainingToDeduct = $baseQuantity;
+            $allocations = [];
+            $totalCogs = 0.00;
+            $totalRevenue = 0.00;
+
+            foreach ($batches as $batch) {
+                if ($remainingToDeduct <= 0) {
+                    break;
+                }
+
+                $batchAvailable = (float) $batch->remaining_quantity;
+                $deductFromThisBatch = min($remainingToDeduct, $batchAvailable);
+
+                // Determine base price tier
+                $standardTierPrice = $batch->getPriceForTier($priceTier);
+                if ($standardTierPrice === null) {
+                    $standardTierPrice = match ($priceTier) {
+                        'wholesale' => (float) $product->wholesale_price,
+                        'distributor' => (float) ($product->distributor_price ?? $product->wholesale_price),
+                        default => (float) $product->retail_price,
+                    };
+                }
+
+                // Determine actual selling price
+                $actualPriceBase = $overrideUnitPriceBase !== null ? $overrideUnitPriceBase : $standardTierPrice;
+                $subtotalPortion = round($deductFromThisBatch * $actualPriceBase, 2);
+
+                // Exact COGS calculation with penny reconciliation on final unit depletion
+                $isFinal = ($batchAvailable - $deductFromThisBatch) <= 0.0001;
+                $batchCogs = $batch->calculateExactCogs($deductFromThisBatch, $isFinal);
+
+                // Update batch remaining quantity and accumulated COGS
+                $batch->remaining_quantity = round($batchAvailable - $deductFromThisBatch, 4);
+                $batch->accumulated_cogs_deducted = round((float) $batch->accumulated_cogs_deducted + $batchCogs, 2);
+                if ($batch->remaining_quantity <= 0.0001) {
+                    $batch->is_exhausted = true;
+                }
+                $batch->save();
+
+                // Update Warehouse Balance
+                $balance->decrement('quantity', $deductFromThisBatch);
+                $runningBalance = (float) StockBalance::where('product_id', $product->id)->sum('quantity');
+
+                // Audit Stock Movement
+                StockMovement::create([
+                    'movement_number' => StockMovement::generateMovementNumber(),
+                    'type' => StockMovement::TYPE_OUT,
+                    'product_id' => $product->id,
+                    'from_warehouse_id' => $warehouse->id,
+                    'to_warehouse_id' => null,
+                    'batch_id' => $batch->id,
+                    'quantity' => $deductFromThisBatch,
+                    'running_balance' => $runningBalance,
+                    'unit_cost' => (float) $batch->cost_price,
+                    'reference_type' => $referenceType,
+                    'reference_id' => $referenceId,
+                    'user_id' => $userId,
+                    'customer_id' => $customerId,
+                    'notes' => $notes,
+                ]);
+
+                // Physical Batch Cost Movements Ledger
+                $runningCostBalance = max(0.00, round((float) $batch->total_initial_cost - (float) $batch->accumulated_cogs_deducted, 2));
+
+                BatchCostMovement::create([
+                    'batch_id' => $batch->id,
+                    'product_id' => $product->id,
+                    'warehouse_id' => $warehouse->id,
+                    'movement_type' => 'sale_out',
+                    'reference_type' => $referenceType,
+                    'reference_id' => $referenceId,
+                    'quantity_base' => -$deductFromThisBatch,
+                    'unit_cost_base' => (float) $batch->cost_price,
+                    'total_cost' => -$batchCogs,
+                    'running_batch_quantity' => $batch->remaining_quantity,
+                    'running_batch_cost_balance' => $runningCostBalance,
+                    'user_id' => $userId,
+                    'notes' => $notes,
+                ]);
+
+                // Create Sales Allocation Record if sales invoice item exists
+                if ($salesInvoiceItemId) {
+                    $profitMargin = round($subtotalPortion - $batchCogs, 2);
+                    $allocation = SalesInvoiceItemBatch::create([
+                        'sales_invoice_item_id' => $salesInvoiceItemId,
+                        'inventory_batch_id' => $batch->id,
+                        'quantity_base' => $deductFromThisBatch,
+                        'unit_cost_base' => (float) $batch->cost_price,
+                        'total_cogs' => $batchCogs,
+                        'batch_tier_price_base' => $standardTierPrice,
+                        'actual_selling_price_base' => $actualPriceBase,
+                        'subtotal_sold' => $subtotalPortion,
+                        'profit_margin' => $profitMargin,
+                        'is_reversed' => false,
+                    ]);
+
+                    $allocations[] = $allocation;
+                }
+                $totalCogs += $batchCogs;
+                $totalRevenue += $subtotalPortion;
+                $remainingToDeduct = round($remainingToDeduct - $deductFromThisBatch, 4);
+            }
+
+            return [
+                'allocations' => $allocations,
+                'total_base_deducted' => $baseQuantity,
+                'total_cogs' => round($totalCogs, 2),
+                'total_revenue' => round($totalRevenue, 2),
+                'total_profit' => round($totalRevenue - $totalCogs, 2),
+            ];
+        });
+    }
+
+    /**
+     * Void / Reverse a posted sales invoice atomically with double-reversal safeguards.
+     */
+    public function voidSalesInvoice(SalesInvoice $invoice, ?int $userId = null, ?string $reason = null): void
+    {
+        if ($invoice->status !== SalesInvoice::STATUS_POSTED) {
+            throw new InvalidArgumentException('يمكن فقط إلغاء الفواتير التي في حالة مرحلة (posted).');
+        }
+
+        $userId = $userId ?? auth()->id();
+
+        DB::transaction(function () use ($invoice, $userId, $reason) {
+            $invoice->loadMissing(['items.batchAllocations.batch', 'warehouse']);
+
+            foreach ($invoice->items as $item) {
+                foreach ($item->batchAllocations as $allocation) {
+                    if ($allocation->is_reversed) {
+                        throw new InvalidArgumentException(
+                            "هذا التوزيع للدفعة #{$allocation->inventory_batch_id} تم إلغاؤه مسبقاً لمنع الإلغاء المزدوج."
+                        );
+                    }
+
+                    $batch = $allocation->batch;
+                    $restoredQty = (float) $allocation->quantity_base;
+                    $restoredCogs = (float) $allocation->total_cogs;
+
+                    // 1. Restore batch remaining quantity and accumulated COGS
+                    $batch->remaining_quantity = round((float) $batch->remaining_quantity + $restoredQty, 4);
+                    $batch->accumulated_cogs_deducted = max(0.00, round((float) $batch->accumulated_cogs_deducted - $restoredCogs, 2));
+                    $batch->is_exhausted = false;
+                    $batch->save();
+
+                    // 2. Restore Warehouse Stock Balance
+                    $balance = StockBalance::where('product_id', $item->product_id)
+                        ->where('warehouse_id', $invoice->warehouse_id)
+                        ->lockForUpdate()
+                        ->first();
+
+                    if ($balance) {
+                        $balance->increment('quantity', $restoredQty);
+                    }
+
+                    $runningBalance = (float) StockBalance::where('product_id', $item->product_id)->sum('quantity');
+
+                    // 3. Compensating Stock Movement (Inward)
+                    StockMovement::create([
+                        'movement_number' => StockMovement::generateMovementNumber(),
+                        'type' => StockMovement::TYPE_IN,
+                        'product_id' => $item->product_id,
+                        'from_warehouse_id' => null,
+                        'to_warehouse_id' => $invoice->warehouse_id,
+                        'batch_id' => $batch->id,
+                        'quantity' => $restoredQty,
+                        'running_balance' => $runningBalance,
+                        'unit_cost' => (float) $allocation->unit_cost_base,
+                        'reference_type' => 'sales_invoice_void',
+                        'reference_id' => $invoice->id,
+                        'user_id' => $userId,
+                        'customer_id' => $invoice->customer_id,
+                        'notes' => 'تسوية عكسية لإلغاء فاتورة البيع رقم: '.$invoice->invoice_number,
+                    ]);
+
+                    // 4. Compensating Batch Cost Movement Ledger Entry
+                    $runningCostBalance = max(0.00, round((float) $batch->total_initial_cost - (float) $batch->accumulated_cogs_deducted, 2));
+
+                    BatchCostMovement::create([
+                        'batch_id' => $batch->id,
+                        'product_id' => $item->product_id,
+                        'warehouse_id' => $invoice->warehouse_id,
+                        'movement_type' => 'sale_cancellation_reversal',
+                        'reference_type' => 'sales_invoice',
+                        'reference_id' => $invoice->id,
+                        'quantity_base' => $restoredQty,
+                        'unit_cost_base' => (float) $allocation->unit_cost_base,
+                        'total_cost' => $restoredCogs,
+                        'running_batch_quantity' => $batch->remaining_quantity,
+                        'running_batch_cost_balance' => $runningCostBalance,
+                        'user_id' => $userId,
+                        'notes' => 'إلغاء فاتورة بيع: '.$invoice->invoice_number.' | '.$reason,
+                    ]);
+
+                    // 5. Mark allocation as reversed with guard
+                    $allocation->update([
+                        'is_reversed' => true,
+                        'reversed_at' => now(),
+                    ]);
+                }
+            }
+
+            // Mark invoice as VOIDED
+            $invoice->update([
+                'status' => SalesInvoice::STATUS_VOIDED,
+                'voided_at' => now(),
+                'voided_by' => $userId,
+                'void_reason' => $reason,
+            ]);
+        });
+    }
+
+    /**
+     * Reconcile warehouse stock balance with batch remaining quantities.
+     * Generates a detailed audit of matching vs discrepant products.
+     *
+     * @return array{
+     *   warehouse_id: int,
+     *   total_products_checked: int,
+     *   discrepancies_count: int,
+     *   discrepancies: list<array<string, mixed>>
+     * }
+     */
+    public function reconcileWarehouseInventory(int $warehouseId, ?int $productId = null): array
+    {
+        $query = StockBalance::where('warehouse_id', $warehouseId);
+        if ($productId) {
+            $query->where('product_id', $productId);
+        }
+
+        $balances = $query->with('product')->get();
+        $discrepancies = [];
+
+        foreach ($balances as $balance) {
+            $stockQty = (float) $balance->quantity;
+            $batchQty = (float) InventoryBatch::where('product_id', $balance->product_id)
+                ->where('warehouse_id', $warehouseId)
+                ->sum('remaining_quantity');
+
+            $diff = round($stockQty - $batchQty, 4);
+
+            if (abs($diff) > 0.0001) {
+                $discrepancies[] = [
+                    'product_id' => $balance->product_id,
+                    'product_name' => $balance->product?->name ?? 'غير معروف',
+                    'stock_balance_qty' => $stockQty,
+                    'batch_remaining_sum' => $batchQty,
+                    'difference' => $diff,
+                ];
+            }
+        }
+
+        return [
+            'warehouse_id' => $warehouseId,
+            'total_products_checked' => $balances->count(),
+            'discrepancies_count' => count($discrepancies),
+            'discrepancies' => $discrepancies,
         ];
     }
 }

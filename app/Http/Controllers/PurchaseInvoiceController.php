@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\PurchaseInvoice;
 use App\Models\PurchaseInvoiceItem;
 use App\Models\Supplier;
+use App\Models\Unit;
 use App\Models\Warehouse;
 use App\Services\InventoryService;
 use App\Services\Printing\PythonPrintEngineService;
@@ -84,7 +85,25 @@ class PurchaseInvoiceController extends Controller
         $warehouses = Warehouse::active()->orderBy('name')->get();
         $defaultWarehouse = Warehouse::where('is_default', true)->first() ?? $warehouses->first();
         $products = Product::active()->orderBy('name')->get();
+        $units = class_exists(Unit::class) ? Unit::active()->orderBy('is_default', 'desc')->orderBy('name')->get() : collect();
         $suggestedNumber = PurchaseInvoice::generateInvoiceNumber();
+
+        $productsJson = $products->map(fn ($p) => [
+            'id' => $p->id,
+            'name' => $p->name,
+            'sku' => $p->sku,
+            'barcode' => (string) ($p->barcode ?? ''),
+            'cost_price' => (float) $p->cost_price,
+            'unit' => $p->unit ?? 'قطعة',
+        ])->values();
+
+        $unitsJson = $units->map(fn ($u) => [
+            'id' => $u->id,
+            'name' => $u->name,
+            'code' => $u->code,
+            'factor' => (float) ($u->conversion_factor ?? 1.0),
+            'is_default' => (bool) ($u->is_default ?? false),
+        ])->values();
 
         return view('purchases.create', [
             'title' => 'فاتورة شراء جديدة',
@@ -93,6 +112,9 @@ class PurchaseInvoiceController extends Controller
             'warehouses' => $warehouses,
             'defaultWarehouse' => $defaultWarehouse,
             'products' => $products,
+            'units' => $units,
+            'productsJson' => $productsJson,
+            'unitsJson' => $unitsJson,
             'suggestedNumber' => $suggestedNumber,
         ]);
     }
@@ -107,6 +129,8 @@ class PurchaseInvoiceController extends Controller
             'warehouse_id' => ['required', 'exists:warehouses,id'],
             'invoice_date' => ['required', 'date'],
             'shipping_cost' => ['nullable', 'numeric', 'min:0'],
+            'discount_type' => ['nullable', 'string', 'in:fixed,percentage'],
+            'discount_value' => ['nullable', 'numeric', 'min:0'],
             'notes' => ['nullable', 'string', 'max:1000'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['required', 'exists:products,id'],
@@ -129,8 +153,10 @@ class PurchaseInvoiceController extends Controller
         ]);
 
         $shippingCost = (float) ($validated['shipping_cost'] ?? 0.00);
+        $discountType = $validated['discount_type'] ?? 'fixed';
+        $discountValue = (float) ($validated['discount_value'] ?? 0.00);
 
-        $invoice = DB::transaction(function () use ($validated, $shippingCost, $request, $inventoryService) {
+        $invoice = DB::transaction(function () use ($validated, $shippingCost, $discountType, $discountValue, $request, $inventoryService) {
             $subtotal = 0.00;
             $itemsData = [];
 
@@ -149,7 +175,24 @@ class PurchaseInvoiceController extends Controller
                 ];
             }
 
-            $totalAmount = $subtotal + $shippingCost;
+            $discountAmount = 0.00;
+            if ($discountValue > 0) {
+                if ($discountType === 'percentage') {
+                    $discountAmount = round(($subtotal * min(100, $discountValue)) / 100, 2);
+                } else {
+                    $discountAmount = min($subtotal, $discountValue);
+                }
+            }
+
+            $totalAmount = max(0, round($subtotal - $discountAmount + $shippingCost, 2));
+
+            $notes = $validated['notes'] ?? null;
+            if ($discountAmount > 0) {
+                $discountNote = $discountType === 'percentage'
+                    ? " [خصم: {$discountValue}% بقيمة {$discountAmount} ج.م]"
+                    : " [خصم نقدي: {$discountAmount} ج.م]";
+                $notes = trim(($notes ? $notes.' | ' : '').$discountNote);
+            }
 
             $invoice = PurchaseInvoice::create([
                 'invoice_number' => PurchaseInvoice::generateInvoiceNumber(),
@@ -160,7 +203,7 @@ class PurchaseInvoiceController extends Controller
                 'subtotal' => $subtotal,
                 'shipping_cost' => $shippingCost,
                 'total_amount' => $totalAmount,
-                'notes' => $validated['notes'] ?? null,
+                'notes' => $notes,
                 'created_by' => auth()->id(),
             ]);
 
@@ -297,6 +340,7 @@ class PurchaseInvoiceController extends Controller
         $invoice->loadMissing('items.product');
 
         foreach ($invoice->items as $item) {
+            $product = $item->product;
             $inventoryService->addStock(
                 productId: $item->product_id,
                 warehouseId: $invoice->warehouse_id,
@@ -307,7 +351,13 @@ class PurchaseInvoiceController extends Controller
                 referenceId: $invoice->id,
                 userId: auth()->id(),
                 receivedAt: Carbon::parse($invoice->invoice_date),
-                supplierId: $invoice->supplier_id
+                supplierId: $invoice->supplier_id,
+                retailPrice: ! is_null($product?->retail_price) ? (float) $product->retail_price : null,
+                wholesalePrice: ! is_null($product?->wholesale_price) ? (float) $product->wholesale_price : null,
+                distributorPrice: ! is_null($product?->distributor_price) ? (float) $product->distributor_price : (! is_null($product?->wholesale_price) ? (float) $product->wholesale_price : null),
+                totalInitialCost: (float) $item->subtotal,
+                sourceType: 'purchase_invoice',
+                sourceId: $invoice->id
             );
         }
 

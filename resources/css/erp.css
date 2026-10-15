@@ -41,3 +41,20 @@
 @import './pages/shipping-offices.css';
 @import './pages/print-templates.css';
 @import './pages/purchases.css';
+@import './pages/auth.css';
+@import './pages/users.css';
+@import './pages/roles.css';
+@import './pages/units.css';
+@import './pages/sales.css';
+@import './pages/home.css';
+@import './pages/shifts.css';
+
+/* Core Utility Classes */
+.hidden, .is-hidden {
+    display: none !important;
+}
+
+.visible {
+    display: block !important;
+}
+

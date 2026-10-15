@@ -33,4 +33,43 @@ export function initCommonUI() {
             }
         }
     });
+
+    // 3. Password visibility toggle
+    document.addEventListener('click', (e) => {
+        const toggleBtn = e.target.closest('[data-action="toggle-password"]');
+        if (!toggleBtn) return;
+
+        const targetId = toggleBtn.getAttribute('data-target');
+        const input = targetId ? document.getElementById(targetId) : null;
+        if (input) {
+            const isPassword = input.type === 'password';
+            input.type = isPassword ? 'text' : 'password';
+            toggleBtn.setAttribute('aria-pressed', isPassword ? 'true' : 'false');
+            toggleBtn.classList.toggle('is-visible', isPassword);
+        }
+    });
+
+    // 4. Toggle Module Permissions in Roles Matrix
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-action="toggle-module-permissions"]');
+        if (!btn) return;
+
+        const moduleCard = btn.closest('.role-matrix-module');
+        if (!moduleCard) return;
+
+        const checkboxes = moduleCard.querySelectorAll('input[type="checkbox"][name="permissions[]"]');
+        if (!checkboxes.length) return;
+
+        const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+        checkboxes.forEach(cb => {
+            cb.checked = !allChecked;
+            cb.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+
+        const span = btn.querySelector('span');
+        if (span) {
+            span.textContent = allChecked ? 'تحديد الكل' : 'إلغاء التحديد';
+        }
+    });
 }
+

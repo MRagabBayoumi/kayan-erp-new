@@ -24,6 +24,9 @@
     --bg-elevated: #282C34;
     --bg-hover: #262930;
     --bg-active: #323640;
+    --bg-card: #1B1D22;
+    --surface-card: #1B1D22;
+    --surface-muted: #22252B;
 
     --border-color: #2E323B;
     --border-light: #252830;

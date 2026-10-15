@@ -8,6 +8,7 @@ use App\Models\CompanySetting;
 use App\Models\PrintTemplate;
 use App\Models\Product;
 use App\Models\StockMovement;
+use App\Models\Unit;
 use App\Models\Warehouse;
 use App\Services\BarcodeGeneratorService;
 use App\Services\InventoryService;
@@ -89,6 +90,7 @@ class ProductController extends Controller
             'moduleName' => 'المخزون والمنتجات',
             'categories' => $categories,
             'warehouses' => $warehouses,
+            'units' => Unit::active()->orderBy('id')->get(),
             'defaultWarehouse' => $defaultWarehouse,
             'suggestedSku' => $suggestedSku,
         ]);
@@ -146,6 +148,14 @@ class ProductController extends Controller
 
         $validated['is_active'] = $request->boolean('is_active', true);
 
+        // Auto-fill pieces_per_package from unit conversion factor if omitted
+        if (empty($validated['pieces_per_package']) && ! empty($validated['unit'])) {
+            $matchedUnit = Unit::where('name', $validated['unit'])->first();
+            if ($matchedUnit && (float) $matchedUnit->conversion_factor > 1) {
+                $validated['pieces_per_package'] = (int) round((float) $matchedUnit->conversion_factor);
+            }
+        }
+
         // Normalize empty barcode string to null so MySQL unique constraint permits it
         if (empty($validated['barcode'])) {
             $validated['barcode'] = null;
@@ -157,6 +167,19 @@ class ProductController extends Controller
             $extension = $file->getClientOriginalExtension();
             $filename = 'prod_'.Str::random(24).'.'.$extension;
             $validated['image_path'] = $file->storeAs('products', $filename, 'public');
+        }
+
+        // Enforce role-based price definition protection
+        if (! $request->user()?->can('edit-product-prices')) {
+            $priceFields = ['cost_price', 'wholesale_price', 'retail_price', 'distributor_price'];
+            foreach ($priceFields as $field) {
+                if (isset($validated[$field]) && (float) $validated[$field] > 0) {
+                    abort(403, 'غير مصرح لك بتحديد أو تعديل أسعار المنتجات. هذه الصلاحية مخصصة لمدير النظام فقط.');
+                }
+            }
+            if (isset($validated['opening_cost']) && (float) $validated['opening_cost'] > 0) {
+                abort(403, 'غير مصرح لك بتحديد تكلفة الرصيد الافتتاحي. هذه الصلاحية مخصصة لمدير النظام فقط.');
+            }
         }
 
         // Validate opening stock logic
@@ -195,7 +218,13 @@ class ProductController extends Controller
                     referenceType: 'opening_balance',
                     referenceId: $product->id,
                     userId: auth()->id(),
-                    receivedAt: $receivedDate
+                    receivedAt: $receivedDate,
+                    retailPrice: ! is_null($product->retail_price) ? (float) $product->retail_price : null,
+                    wholesalePrice: ! is_null($product->wholesale_price) ? (float) $product->wholesale_price : null,
+                    distributorPrice: ! is_null($product->distributor_price) ? (float) $product->distributor_price : (! is_null($product->wholesale_price) ? (float) $product->wholesale_price : null),
+                    totalInitialCost: round($openingQty * $openingCost, 2),
+                    sourceType: 'opening_balance',
+                    sourceId: $product->id
                 );
             }
         });
@@ -256,6 +285,7 @@ class ProductController extends Controller
             'moduleName' => 'المخزون والمنتجات',
             'product' => $product,
             'categories' => $categories,
+            'units' => Unit::active()->orderBy('id')->get(),
             'barcodeSettings' => BarcodeSetting::getSettings(),
         ]);
     }
@@ -304,6 +334,26 @@ class ProductController extends Controller
         ]);
 
         $validated['is_active'] = $request->boolean('is_active', true);
+
+        // Auto-fill pieces_per_package from unit conversion factor if omitted
+        if (empty($validated['pieces_per_package']) && ! empty($validated['unit'])) {
+            $matchedUnit = Unit::where('name', $validated['unit'])->first();
+            if ($matchedUnit && (float) $matchedUnit->conversion_factor > 1) {
+                $validated['pieces_per_package'] = (int) round((float) $matchedUnit->conversion_factor);
+            }
+        }
+
+        // Enforce role-based price modification protection
+        if (! $request->user()?->can('edit-product-prices')) {
+            $priceFields = ['cost_price', 'wholesale_price', 'retail_price', 'distributor_price'];
+            foreach ($priceFields as $field) {
+                $oldVal = (float) ($product->{$field} ?? 0);
+                $newVal = (float) ($validated[$field] ?? 0);
+                if (abs($oldVal - $newVal) > 0.0001) {
+                    abort(403, 'غير مصرح لك بتعديل أسعار المنتجات. هذه الصلاحية مخصصة لمدير النظام فقط.');
+                }
+            }
+        }
 
         // Disallow modifying opening balance values via product update
         unset(

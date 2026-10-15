@@ -29,48 +29,62 @@
 
     <!-- Navigation List -->
     <nav class="erp-sidebar-nav">
-        <!-- Overview -->
+        <!-- Overview & Applications -->
         <div class="erp-nav-section">
-            <div class="erp-nav-section-title">نظرة عامة</div>
-            <a href="{{ url('/') }}" class="erp-nav-item {{ request()->is('/') ? 'active' : '' }}" title="لوحة التحكم">
+            <div class="erp-nav-section-title">التطبيقات العامة</div>
+            <a href="{{ route('home') }}" class="erp-nav-item {{ request()->routeIs('home') ? 'active' : '' }}" title="تطبيقات BayoSoft ERP">
+                <div class="erp-nav-content">
+                    <span class="erp-nav-icon"><x-icon name="grid" size="18" /></span>
+                    <span class="erp-nav-label">تطبيقات النظام</span>
+                </div>
+            </a>
+            @can('access-dashboard')
+            <a href="{{ route('dashboard') }}" class="erp-nav-item {{ request()->routeIs('dashboard') ? 'active' : '' }}" title="لوحة التحكم والمؤشرات">
                 <div class="erp-nav-content">
                     <span class="erp-nav-icon"><x-icon name="layout-dashboard" size="18" /></span>
-                    <span class="erp-nav-label">لوحة التحكم</span>
+                    <span class="erp-nav-label">لوحة التحكم العامة</span>
                 </div>
             </a>
-            <a href="#" class="erp-nav-item" title="الأنشطة والمهام">
-                <div class="erp-nav-content">
-                    <span class="erp-nav-icon"><x-icon name="zap" size="18" /></span>
-                    <span class="erp-nav-label">الأنشطة والمهام</span>
-                </div>
-                <span class="erp-nav-badge">3</span>
-            </a>
+            @endcan
         </div>
 
-        <!-- Sales -->
+        <!-- Sales & POS -->
+        @can('access-sales')
         <div class="erp-nav-section">
-            <div class="erp-nav-section-title">المبيعات</div>
-            <a href="#" class="erp-nav-item" title="عروض الأسعار">
+            <div class="erp-nav-section-title">المبيعات ونقاط البيع</div>
+            <a href="{{ route('sales.create') }}" class="erp-nav-item {{ request()->routeIs('sales.create') ? 'active' : '' }}" title="نقطة البيع (الكاشير)">
                 <div class="erp-nav-content">
-                    <span class="erp-nav-icon"><x-icon name="file-text" size="18" /></span>
-                    <span class="erp-nav-label">عروض الأسعار</span>
+                    <span class="erp-nav-icon"><x-icon name="zap" size="18" class="text-amber-500" /></span>
+                    <span class="erp-nav-label font-bold">نقطة البيع (الكاشير)</span>
                 </div>
             </a>
-            <a href="#" class="erp-nav-item" title="أوامر البيع">
+            <a href="{{ route('sales.index') }}" class="erp-nav-item {{ request()->is('sales') || (request()->is('sales/*') && !request()->routeIs('sales.create')) ? 'active' : '' }}" title="فواتير المبيعات">
                 <div class="erp-nav-content">
                     <span class="erp-nav-icon"><x-icon name="shopping-cart" size="18" /></span>
-                    <span class="erp-nav-label">أوامر البيع</span>
+                    <span class="erp-nav-label">فواتير المبيعات</span>
                 </div>
             </a>
+            @can('manage-shifts')
+            <a href="{{ route('shifts.index') }}" class="erp-nav-item {{ request()->is('shifts*') ? 'active' : '' }}" title="ورديات وخزينة الكاشير">
+                <div class="erp-nav-content">
+                    <span class="erp-nav-icon"><x-icon name="clock" size="18" /></span>
+                    <span class="erp-nav-label">ورديات وخزينة الكاشير</span>
+                </div>
+            </a>
+            @endcan
+            @can('manage-purchases')
             <a href="{{ route('customers.index') }}" class="erp-nav-item {{ request()->is('customers*') ? 'active' : '' }}" title="العملاء وتجار الجملة">
                 <div class="erp-nav-content">
                     <span class="erp-nav-icon"><x-icon name="users" size="18" /></span>
                     <span class="erp-nav-label">العملاء</span>
                 </div>
             </a>
+            @endcan
         </div>
+        @endcan
 
         <!-- Purchases -->
+        @can('access-purchases')
         <div class="erp-nav-section">
             <div class="erp-nav-section-title">المشتريات والواردات</div>
             <a href="{{ route('purchases.index') }}" class="erp-nav-item {{ request()->is('purchases*') ? 'active' : '' }}" title="فواتير الشراء والتوريد">
@@ -86,22 +100,28 @@
                 </div>
             </a>
         </div>
+        @endcan
 
         <!-- Inventory -->
         <div class="erp-nav-section">
             <div class="erp-nav-section-title">المخزون والمنتجات</div>
+            @can('view-products')
             <a href="{{ url('/products') }}" class="erp-nav-item {{ request()->is('products*') ? 'active' : '' }}" title="المنتجات والأصناف">
                 <div class="erp-nav-content">
                     <span class="erp-nav-icon"><x-icon name="package" size="18" /></span>
                     <span class="erp-nav-label">المنتجات والأصناف</span>
                 </div>
             </a>
+            @endcan
+            @can('manage-products')
             <a href="{{ route('categories.index') }}" class="erp-nav-item {{ request()->is('categories*') ? 'active' : '' }}" title="تصنيفات المنتجات">
                 <div class="erp-nav-content">
                     <span class="erp-nav-icon"><x-icon name="tag" size="18" /></span>
                     <span class="erp-nav-label">تصنيفات المنتجات</span>
                 </div>
             </a>
+            @endcan
+            @can('access-inventory')
             <a href="{{ route('inventory.index') }}" class="erp-nav-item {{ request()->routeIs('inventory.index') ? 'active' : '' }}" title="نظرة عامة على المخزون">
                 <div class="erp-nav-content">
                     <span class="erp-nav-icon"><x-icon name="warehouse" size="18" /></span>
@@ -127,9 +147,11 @@
                 </div>
                 <span class="erp-nav-badge warning">تنبيه</span>
             </a>
+            @endcan
         </div>
 
         <!-- Finance -->
+        @can('manage-company-settings')
         <div class="erp-nav-section">
             <div class="erp-nav-section-title">المالية والحسابات</div>
             <a href="#" class="erp-nav-item">
@@ -157,16 +179,36 @@
                 </div>
             </a>
         </div>
+        @endcan
 
         <!-- Administration -->
+        @can('manage-company-settings')
         <div class="erp-nav-section">
             <div class="erp-nav-section-title">الإدارة والنظام</div>
-            <a href="#" class="erp-nav-item">
+            @can('manage-users')
+            <a href="{{ route('users.index') }}" class="erp-nav-item {{ request()->is('users*') ? 'active' : '' }}" title="إدارة المستخدمين">
                 <div class="erp-nav-content">
-                    <span class="erp-nav-icon"><x-icon name="shield" size="18" /></span>
-                    <span class="erp-nav-label">المستخدمون والصلاحيات</span>
+                    <span class="erp-nav-icon"><x-icon name="users" size="18" /></span>
+                    <span class="erp-nav-label">المستخدمون وحسابات الدخول</span>
                 </div>
             </a>
+            @endcan
+            @can('manage-roles')
+            <a href="{{ route('roles.index') }}" class="erp-nav-item {{ request()->is('roles*') ? 'active' : '' }}" title="إدارة الأدوار ومصفوفة الصلاحيات">
+                <div class="erp-nav-content">
+                    <span class="erp-nav-icon"><x-icon name="shield" size="18" /></span>
+                    <span class="erp-nav-label">الأدوار ومصفوفة الصلاحيات</span>
+                </div>
+            </a>
+            @endcan
+            @can('manage-units')
+            <a href="{{ route('units.index') }}" class="erp-nav-item {{ request()->is('units*') ? 'active' : '' }}" title="إدارة وحدات القياس">
+                <div class="erp-nav-content">
+                    <span class="erp-nav-icon"><x-icon name="layers" size="18" /></span>
+                    <span class="erp-nav-label">وحدات القياس والتحويل</span>
+                </div>
+            </a>
+            @endcan
             <a href="{{ route('settings.index') }}" class="erp-nav-item {{ request()->is('settings*') ? 'active' : '' }}">
                 <div class="erp-nav-content">
                     <span class="erp-nav-icon"><x-icon name="settings" size="18" /></span>
@@ -174,5 +216,6 @@
                 </div>
             </a>
         </div>
+        @endcan
     </nav>
 </aside>

@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\Warehouse;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
@@ -16,14 +17,25 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Default Admin / Test User
-        User::firstOrCreate(
-            ['email' => 'admin@kayan-erp.com'],
-            [
-                'name' => 'مدير النظام',
-                'password' => bcrypt('password'),
-            ]
-        );
+        // Default Admin User (Credentials read from .env)
+        $adminEmail = env('ADMIN_DEFAULT_EMAIL', 'admin@kayan-erp.com');
+        $existingAdmin = User::where('email', $adminEmail)->first();
+
+        if (! $existingAdmin) {
+            $adminPassword = env('ADMIN_DEFAULT_PASSWORD');
+            if (empty($adminPassword)) {
+                throw new \RuntimeException('ADMIN_DEFAULT_PASSWORD must be explicitly configured in the environment before seeding the initial admin account.');
+            }
+
+            $adminName = env('ADMIN_DEFAULT_NAME', 'مدير النظام');
+
+            User::create([
+                'name' => $adminName,
+                'email' => $adminEmail,
+                'password' => Hash::make($adminPassword),
+                'role' => User::ROLE_ADMIN,
+            ]);
+        }
 
         // Default Main Warehouse
         Warehouse::firstOrCreate(
@@ -39,5 +51,9 @@ class DatabaseSeeder extends Seeder
 
         // Default Print Templates (4 document types x 2 paper formats = 8 defaults)
         $this->call(PrintTemplateSeeder::class);
+
+        // Dynamic Roles, Permissions & Default Units
+        $this->call(RolePermissionSeeder::class);
+        $this->call(UnitSeeder::class);
     }
 }

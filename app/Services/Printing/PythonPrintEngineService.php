@@ -50,7 +50,7 @@ class PythonPrintEngineService
             return true;
         }
 
-        if (in_array(strtolower(basename($this->pythonPath)), ['python', 'python.exe', 'py', 'py.exe'], true)) {
+        if (in_array(strtolower($this->pythonPath), ['python', 'python.exe', 'py', 'py.exe'], true)) {
             return true;
         }
 

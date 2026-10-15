@@ -277,3 +277,80 @@ test('product movement ledger displays running balance and movement history', fu
     $response->assertSee('70.00');
     $response->assertSee('رصيد افتتاحي');
 });
+
+test('purchases create page renders upper quick input panel, barcode search options, discount inputs, and footer summary cards', function () {
+    $response = $this->get(route('purchases.create'));
+
+    $response->assertStatus(200);
+    $response->assertSee('شريط إدخال الأصناف السريع');
+    $response->assertSee('searchModeSelect');
+    $response->assertSee('البحث بالباركود (مسدس الباركود)');
+    $response->assertSee('كود الصنف (SKU)');
+    $response->assertSee('اسم الصنف (Name)');
+    $response->assertSee('invoiceDiscountType');
+    $response->assertSee('invoiceDiscountValue');
+    $response->assertSee('quickProductInput');
+    $response->assertSee('quickUnitSelect');
+    $response->assertSee('quickQtyInput');
+    $response->assertSee('quickCostInput');
+    $response->assertSee('quickAddBtn');
+    $response->assertSee('purchaseItemsCountText');
+    $response->assertSee('purchaseTotalQtyText');
+    $response->assertSee('purchaseDiscountText');
+    $response->assertSee('purchaseGrandTotalText');
+});
+
+test('purchase invoice correctly calculates percentage discount on subtotal', function () {
+    $response = $this->post(route('purchases.store'), [
+        'supplier_id' => $this->supplier->id,
+        'warehouse_id' => $this->warehouse->id,
+        'invoice_date' => '2026-10-15',
+        'shipping_cost' => 50.00,
+        'discount_type' => 'percentage',
+        'discount_value' => 10.00, // 10% discount
+        'notes' => 'فاتورة تجريبية مع خصم 10%',
+        'items' => [
+            [
+                'product_id' => $this->product1->id,
+                'quantity' => 10,
+                'unit_cost' => 100.00, // 10 * 100 = 1000 subtotal
+                'notes' => 'بند 1',
+            ],
+        ],
+    ]);
+
+    $invoice = PurchaseInvoice::where('notes', 'like', '%خصم 10%%')->first();
+    expect($invoice)->not->toBeNull()
+        ->and((float) $invoice->subtotal)->toEqual(1000.00)
+        ->and((float) $invoice->shipping_cost)->toEqual(50.00)
+        // Subtotal = 1000, 10% Discount = 100, Shipping = 50 => Total = 950
+        ->and((float) $invoice->total_amount)->toEqual(950.00)
+        ->and($invoice->notes)->toContain('خصم: 10% بقيمة 100 ج.م');
+});
+
+test('purchase invoice correctly calculates fixed amount discount on subtotal', function () {
+    $response = $this->post(route('purchases.store'), [
+        'supplier_id' => $this->supplier->id,
+        'warehouse_id' => $this->warehouse->id,
+        'invoice_date' => '2026-10-15',
+        'shipping_cost' => 0.00,
+        'discount_type' => 'fixed',
+        'discount_value' => 150.00, // 150 EGP discount
+        'notes' => 'فاتورة تجريبية مع خصم نقدي',
+        'items' => [
+            [
+                'product_id' => $this->product1->id,
+                'quantity' => 5,
+                'unit_cost' => 100.00, // 5 * 100 = 500 subtotal
+                'notes' => 'بند نقدي',
+            ],
+        ],
+    ]);
+
+    $invoice = PurchaseInvoice::where('notes', 'like', '%خصم نقدي%')->first();
+    expect($invoice)->not->toBeNull()
+        ->and((float) $invoice->subtotal)->toEqual(500.00)
+        // Subtotal = 500, Fixed Discount = 150 => Total = 350
+        ->and((float) $invoice->total_amount)->toEqual(350.00)
+        ->and($invoice->notes)->toContain('خصم نقدي: 150 ج.م');
+});

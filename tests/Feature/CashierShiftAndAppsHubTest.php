@@ -1,0 +1,133 @@
+<?php
+
+use App\Models\CashierShift;
+use App\Models\Role;
+use App\Models\User;
+use App\Models\Warehouse;
+use Database\Seeders\RolePermissionSeeder;
+use Database\Seeders\UnitSeeder;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+
+uses(RefreshDatabase::class);
+
+beforeEach(function () {
+    $this->seed(RolePermissionSeeder::class);
+    $this->seed(UnitSeeder::class);
+});
+
+test('cashier cannot access dashboard and is redirected to home', function () {
+    $warehouse = Warehouse::create(['name' => 'المستودع الرئيسي', 'code' => 'WH-MAIN', 'is_default' => true]);
+    $cashierRole = Role::where('slug', 'cashier')->first();
+
+    $cashier = User::factory()->create([
+        'role' => User::ROLE_CASHIER,
+        'role_id' => $cashierRole->id,
+        'warehouse_id' => $warehouse->id,
+    ]);
+
+    $response = $this->actingAs($cashier)->get('/dashboard');
+    $response->assertRedirect(route('home'));
+    $response->assertSessionHas('error');
+});
+
+test('company manager or admin can access cashier pos screen', function () {
+    $warehouse = Warehouse::create(['name' => 'المستودع الرئيسي', 'code' => 'WH-MAIN', 'is_default' => true]);
+    $companyManagerRole = Role::where('slug', 'مدير_للشركه')->first();
+
+    $manager = User::factory()->create([
+        'role' => User::ROLE_ADMIN,
+        'role_id' => $companyManagerRole ? $companyManagerRole->id : null,
+        'can_access_all_warehouses' => true,
+    ]);
+
+    $response = $this->actingAs($manager)->get(route('sales.create'));
+    $response->assertOk();
+    $response->assertSee('شاشة نقاط البيع وفاتورة المبيعات (POS)');
+});
+
+test('home page displays applications hub filtered by user permissions', function () {
+    $warehouse = Warehouse::create(['name' => 'المستودع الرئيسي', 'code' => 'WH-MAIN', 'is_default' => true]);
+    $cashierRole = Role::where('slug', 'cashier')->first();
+
+    $cashier = User::factory()->create([
+        'role' => User::ROLE_CASHIER,
+        'role_id' => $cashierRole->id,
+        'warehouse_id' => $warehouse->id,
+    ]);
+
+    $response = $this->actingAs($cashier)->get(route('home'));
+    $response->assertOk();
+    $response->assertSee('تطبيقات BayoSoft ERP');
+    $response->assertSee('نقطة البيع (الكاشير - POS)');
+    $response->assertDontSee('لوحة المؤشرات والتحليلات (Dashboard)');
+});
+
+test('cashier can open shift, record movements and close shift with variance tracking', function () {
+    $warehouse = Warehouse::create(['name' => 'المستودع الرئيسي', 'code' => 'WH-MAIN', 'is_default' => true]);
+    $cashierRole = Role::where('slug', 'cashier')->first();
+
+    $cashier = User::factory()->create([
+        'role' => User::ROLE_CASHIER,
+        'role_id' => $cashierRole->id,
+        'warehouse_id' => $warehouse->id,
+    ]);
+
+    // 1. Open Shift
+    $openResponse = $this->actingAs($cashier)->post(route('shifts.store'), [
+        'warehouse_id' => $warehouse->id,
+        'opening_balance' => 350.00,
+        'opening_notes' => 'استلام العهدة الصباحية',
+    ]);
+
+    $openResponse->assertRedirect(route('sales.create'));
+    $this->assertDatabaseHas('cashier_shifts', [
+        'user_id' => $cashier->id,
+        'warehouse_id' => $warehouse->id,
+        'opening_balance' => 350.00,
+        'status' => 'open',
+    ]);
+
+    $shift = CashierShift::getActiveShift($cashier->id);
+    expect($shift)->not->toBeNull();
+    expect($shift->expected_closing_balance)->toEqual(350.00);
+
+    // 2. Record Cash In
+    $this->actingAs($cashier)->post(route('shifts.movement', $shift), [
+        'movement_type' => 'cash_in',
+        'amount' => 100.00,
+        'notes' => 'إيداع فكة إضافية',
+    ]);
+
+    $shift->refresh();
+    expect($shift->cash_additions)->toEqual(100.00);
+    expect($shift->expected_closing_balance)->toEqual(450.00);
+
+    // 3. Manager to supervise closing
+    $manager = User::factory()->create([
+        'role' => User::ROLE_ADMIN,
+        'password' => bcrypt('password123'),
+    ]);
+
+    // Cashier without manager approval is blocked
+    $blockedResponse = $this->actingAs($cashier)->post(route('shifts.close', $shift), [
+        'actual_closing_balance' => 455.00,
+        'closing_notes' => 'محاولة إغلاق بدون اعتماد المشرف',
+    ]);
+    $blockedResponse->assertSessionHas('error');
+    expect($shift->fresh()->status)->toBe('open');
+
+    // 4. Close Shift with supervisor approval
+    $closeResponse = $this->actingAs($cashier)->post(route('shifts.close', $shift), [
+        'actual_closing_balance' => 455.00,
+        'closing_notes' => 'جرد نهاية الوردية',
+        'supervisor_email' => $manager->email,
+        'supervisor_password' => 'password123',
+    ]);
+
+    $closeResponse->assertRedirect(route('shifts.show', $shift));
+    $shift->refresh();
+    expect($shift->status)->toBe('closed');
+    expect($shift->actual_closing_balance)->toEqual(455.00);
+    expect($shift->difference)->toEqual(5.00);
+    expect($shift->closed_by)->toBe($manager->id);
+});

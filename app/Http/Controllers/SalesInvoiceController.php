@@ -1,0 +1,461 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\CashierShift;
+use App\Models\CompanySetting;
+use App\Models\Customer;
+use App\Models\PrintTemplate;
+use App\Models\Product;
+use App\Models\SalesInvoice;
+use App\Models\SalesInvoiceItem;
+use App\Models\Unit;
+use App\Models\Warehouse;
+use App\Services\InventoryService;
+use App\Services\PrintTemplateService;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\View\View;
+
+class SalesInvoiceController extends Controller
+{
+    /**
+     * Display a paginated listing of sales invoices.
+     */
+    public function index(Request $request): View
+    {
+        $query = SalesInvoice::with(['customer', 'warehouse', 'creator', 'items.product']);
+
+        if ($request->filled('search')) {
+            $term = trim($request->input('search'));
+            $query->where(function ($q) use ($term) {
+                $q->where('invoice_number', 'like', "%{$term}%")
+                    ->orWhereHas('customer', fn ($sq) => $sq->where('name', 'like', "%{$term}%"));
+            });
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->input('status'));
+        }
+
+        if ($request->filled('warehouse_id')) {
+            $query->where('warehouse_id', (int) $request->input('warehouse_id'));
+        }
+
+        if ($request->filled('customer_id')) {
+            $query->where('customer_id', (int) $request->input('customer_id'));
+        }
+
+        if ($request->filled('price_tier')) {
+            $query->where('price_tier', $request->input('price_tier'));
+        }
+
+        $invoices = $query->orderByDesc('id')
+            ->paginate(15)
+            ->withQueryString();
+
+        $customers = Customer::active()->orderBy('name')->get();
+        $warehouses = Warehouse::active()->orderBy('name')->get();
+
+        $metrics = [
+            'total_count' => SalesInvoice::count(),
+            'posted_total' => (float) SalesInvoice::where('status', SalesInvoice::STATUS_POSTED)->sum('total_amount'),
+            'draft_count' => SalesInvoice::where('status', SalesInvoice::STATUS_DRAFT)->count(),
+            'total_profit' => (float) SalesInvoice::where('status', SalesInvoice::STATUS_POSTED)->sum('total_profit'),
+        ];
+
+        return view('sales.index', [
+            'title' => 'فواتير المبيعات والعملاء',
+            'moduleName' => 'المبيعات والعملاء',
+            'invoices' => $invoices,
+            'customers' => $customers,
+            'warehouses' => $warehouses,
+            'metrics' => $metrics,
+            'currentSearch' => $request->input('search'),
+            'currentStatus' => $request->input('status'),
+            'currentWarehouseId' => $request->input('warehouse_id'),
+            'currentCustomerId' => $request->input('customer_id'),
+            'currentPriceTier' => $request->input('price_tier'),
+        ]);
+    }
+
+    /**
+     * Show the form for creating a new sales invoice.
+     */
+    public function create(): View
+    {
+        $cashCustomer = Customer::firstOrCreate(
+            ['name' => 'عميل نقدي'],
+            [
+                'phone' => '0000000000',
+                'customer_type' => 'retail',
+                'pricing_tier' => 'retail',
+                'is_active' => true,
+            ]
+        );
+
+        $customers = Customer::active()->orderBy('name')->get();
+        $defaultCustomer = $customers->firstWhere('name', 'عميل نقدي') ?? $cashCustomer;
+
+        $user = auth()->user();
+        $warehouses = $user?->getAllowedWarehouses() ?? Warehouse::active()->orderBy('name')->get();
+        if ($warehouses->isEmpty()) {
+            $warehouses = Warehouse::active()->orderBy('name')->get();
+        }
+        $defaultWarehouse = ($user?->warehouse_id ? $warehouses->firstWhere('id', $user->warehouse_id) : null)
+            ?? Warehouse::where('is_default', true)->first()
+            ?? $warehouses->first();
+        $products = Product::with('stockBalances')->active()->orderBy('name')->get();
+        $units = class_exists(Unit::class) ? Unit::active()->orderBy('is_default', 'desc')->orderBy('name')->get() : collect();
+        $suggestedNumber = SalesInvoice::generateInvoiceNumber();
+        $canEditPrice = auth()->user()?->isAdmin() || Gate::allows('edit-product-prices');
+
+        $productsJson = $products->map(fn ($p) => [
+            'id' => $p->id,
+            'name' => $p->name,
+            'sku' => $p->sku,
+            'barcode' => (string) ($p->barcode ?? ''),
+            'retail_price' => (float) $p->retail_price,
+            'wholesale_price' => (float) $p->wholesale_price,
+            'distributor_price' => (float) ($p->distributor_price ?? $p->wholesale_price),
+            'cost_price' => (float) $p->cost_price,
+            'unit' => $p->unit ?? 'قطعة',
+            'stocks' => $p->stockBalances->pluck('quantity', 'warehouse_id')->map(fn ($q) => (float) $q)->toArray(),
+            'total_stock' => (float) $p->total_stock,
+        ])->values();
+
+        $unitsJson = $units->map(fn ($u) => [
+            'id' => $u->id,
+            'name' => $u->name,
+            'code' => $u->code,
+            'factor' => (float) ($u->conversion_factor ?? 1.0),
+            'is_default' => (bool) ($u->is_default ?? false),
+        ])->values();
+
+        $customersJson = $customers->map(fn ($c) => [
+            'id' => $c->id,
+            'name' => $c->name,
+            'pricing_tier' => $c->pricing_tier ?: 'retail',
+            'phone' => $c->phone ?? '',
+        ])->values();
+
+        $activeShift = $user ? CashierShift::getActiveShift($user->id) : null;
+
+        return view('sales.create', [
+            'title' => 'شاشة نقاط البيع وفاتورة المبيعات (POS)',
+            'moduleName' => 'المبيعات والعملاء',
+            'customers' => $customers,
+            'defaultCustomer' => $defaultCustomer,
+            'customersJson' => $customersJson,
+            'warehouses' => $warehouses,
+            'defaultWarehouse' => $defaultWarehouse,
+            'products' => $products,
+            'units' => $units,
+            'productsJson' => $productsJson,
+            'unitsJson' => $unitsJson,
+            'suggestedNumber' => $suggestedNumber,
+            'canEditPrice' => $canEditPrice,
+            'activeShift' => $activeShift,
+        ]);
+    }
+
+    /**
+     * Store a newly created sales invoice in storage.
+     */
+    public function store(Request $request, InventoryService $inventoryService): RedirectResponse
+    {
+        $validated = $request->validate([
+            'customer_id' => ['required', 'exists:customers,id'],
+            'warehouse_id' => ['required', 'exists:warehouses,id'],
+            'invoice_date' => ['required', 'date'],
+            'price_tier' => ['required', 'string', 'in:retail,wholesale,distributor'],
+            'shipping_cost' => ['nullable', 'numeric', 'min:0'],
+            'discount_type' => ['nullable', 'string', 'in:fixed,percentage'],
+            'discount_value' => ['nullable', 'numeric', 'min:0'],
+            'notes' => ['nullable', 'string', 'max:1000'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.product_id' => ['required', 'exists:products,id'],
+            'items.*.unit_id' => ['nullable', 'exists:units,id'],
+            'items.*.conversion_factor' => ['nullable', 'numeric', 'min:0.0001'],
+            'items.*.quantity' => ['required', 'numeric', 'min:0.0001'],
+            'items.*.unit_price' => ['required', 'numeric', 'min:0'],
+            'items.*.line_discount' => ['nullable', 'numeric', 'min:0'],
+            'items.*.notes' => ['nullable', 'string', 'max:255'],
+        ], [
+            'customer_id.required' => 'يرجى اختيار العميل.',
+            'customer_id.exists' => 'العميل المختار غير موجود في النظام.',
+            'warehouse_id.required' => 'يرجى تحديد مستودع الصرف.',
+            'warehouse_id.exists' => 'المستودع المختار غير موجود في النظام.',
+            'invoice_date.required' => 'تاريخ الفاتورة مطلوب.',
+            'price_tier.required' => 'يرجى تحديد فئة السعر.',
+            'items.required' => 'يجب إضافة صنف واحد على الأقل في الفاتورة.',
+            'items.min' => 'يجب إضافة صنف واحد على الأقل في الفاتورة.',
+            'items.*.product_id.required' => 'يرجى اختيار الصنف.',
+            'items.*.quantity.required' => 'الكمية مطلوبة.',
+            'items.*.unit_price.required' => 'سعر الوحدة مطلوب.',
+        ]);
+
+        $user = auth()->user();
+        if ($user && ! $user->canAccessWarehouse($validated['warehouse_id'])) {
+            return back()->withInput()->withErrors([
+                'warehouse_id' => 'غير مصرح لك بإجراء مبيعات أو الصرف من هذا المستودع.',
+            ]);
+        }
+
+        $activeShift = $user ? CashierShift::getActiveShift($user->id, (int) $validated['warehouse_id']) : null;
+        if (! $activeShift && $user) {
+            $activeShift = CashierShift::getActiveShift($user->id);
+        }
+
+        if ($user && $user->isCashier() && ! $activeShift) {
+            return back()->withInput()->withErrors([
+                'shift' => 'لا يمكن إتمام البيع بدون وجود وردية كاشير مفتوحة. يرجى فتح الوردية وإدخال رصيد بداية العهدة للبدء في البيع.',
+            ]);
+        }
+
+        $shippingCost = (float) ($validated['shipping_cost'] ?? 0.00);
+        $discountType = $validated['discount_type'] ?? 'fixed';
+        $discountValue = (float) ($validated['discount_value'] ?? 0.00);
+
+        $invoice = DB::transaction(function () use ($validated, $shippingCost, $discountType, $discountValue, $request, $inventoryService, $activeShift) {
+            $subtotal = 0.00;
+            $itemsData = [];
+
+            foreach ($validated['items'] as $itemInput) {
+                $qty = (float) $itemInput['quantity'];
+                $price = (float) $itemInput['unit_price'];
+                $lineDiscount = (float) ($itemInput['line_discount'] ?? 0.00);
+                $factor = (float) ($itemInput['conversion_factor'] ?? 1.0000);
+                $baseQty = round($qty * $factor, 4);
+
+                $lineSubtotal = max(0.00, round(($qty * $price) - $lineDiscount, 2));
+                $subtotal += $lineSubtotal;
+
+                $itemsData[] = [
+                    'product_id' => (int) $itemInput['product_id'],
+                    'unit_id' => ! empty($itemInput['unit_id']) ? (int) $itemInput['unit_id'] : null,
+                    'conversion_factor' => $factor,
+                    'quantity' => $qty,
+                    'base_quantity' => $baseQty,
+                    'unit_price' => $price,
+                    'line_discount' => $lineDiscount,
+                    'subtotal' => $lineSubtotal,
+                    'total_cogs' => 0.00,
+                    'total_profit' => 0.00,
+                    'notes' => $itemInput['notes'] ?? null,
+                ];
+            }
+
+            $discountAmount = 0.00;
+            if ($discountValue > 0) {
+                if ($discountType === 'percentage') {
+                    $discountAmount = round(($subtotal * min(100, $discountValue)) / 100, 2);
+                } else {
+                    $discountAmount = min($subtotal, $discountValue);
+                }
+            }
+
+            $totalAmount = max(0, round($subtotal - $discountAmount + $shippingCost, 2));
+
+            $invoice = SalesInvoice::create([
+                'invoice_number' => SalesInvoice::generateInvoiceNumber(),
+                'customer_id' => (int) $validated['customer_id'],
+                'warehouse_id' => (int) $validated['warehouse_id'],
+                'cashier_shift_id' => $activeShift?->id,
+                'invoice_date' => $validated['invoice_date'],
+                'price_tier' => $validated['price_tier'],
+                'status' => SalesInvoice::STATUS_DRAFT,
+                'subtotal' => $subtotal,
+                'discount_type' => $discountType,
+                'discount_value' => $discountValue,
+                'discount_amount' => $discountAmount,
+                'shipping_cost' => $shippingCost,
+                'total_amount' => $totalAmount,
+                'total_cogs' => 0.00,
+                'total_profit' => 0.00,
+                'notes' => $validated['notes'] ?? null,
+                'created_by' => auth()->id(),
+            ]);
+
+            foreach ($itemsData as $row) {
+                $row['sales_invoice_id'] = $invoice->id;
+                SalesInvoiceItem::create($row);
+            }
+
+            // Direct posting if requested
+            if ($request->input('action') === 'post') {
+                $this->executePosting($invoice, $inventoryService);
+                if ($activeShift) {
+                    $activeShift->recordCashSale($invoice->total_amount, $invoice->id);
+                }
+            }
+
+            return $invoice;
+        });
+
+        $message = $invoice->status === SalesInvoice::STATUS_POSTED
+            ? 'تم حفظ فاتورة المبيعات وترحيلها وخصم الدفعات المخزنية بنجاح.'
+            : 'تم حفظ مسودة فاتورة المبيعات بنجاح دون أي تأثير على رصيد المخزن.';
+
+        return redirect()->route('sales.show', $invoice)
+            ->with('status', 'success')
+            ->with('message', $message);
+    }
+
+    /**
+     * Display the specified sales invoice.
+     */
+    public function show(SalesInvoice $sale): View
+    {
+        $sale->load([
+            'customer',
+            'warehouse',
+            'creator',
+            'poster',
+            'voider',
+            'items.product',
+            'items.unit',
+            'items.batchAllocations.batch',
+        ]);
+
+        $canViewCogs = auth()->user()?->isAdmin() || Gate::allows('view-cogs');
+
+        return view('sales.show', [
+            'title' => 'فاتورة مبيعات: '.$sale->invoice_number,
+            'moduleName' => 'المبيعات والعملاء',
+            'invoice' => $sale,
+            'canViewCogs' => $canViewCogs,
+        ]);
+    }
+
+    /**
+     * Post a draft sales invoice atomically using FIFO deduction.
+     */
+    public function post(SalesInvoice $sale, InventoryService $inventoryService): RedirectResponse
+    {
+        if ($sale->status !== SalesInvoice::STATUS_DRAFT) {
+            return back()->with('error', 'لا يمكن ترحيل هذه الفاتورة لأنها ليست في حالة مسودة.');
+        }
+
+        DB::transaction(function () use ($sale, $inventoryService) {
+            $this->executePosting($sale, $inventoryService);
+
+            if ($sale->cashier_shift_id) {
+                $shift = CashierShift::find($sale->cashier_shift_id);
+                if ($shift && $shift->status === CashierShift::STATUS_OPEN) {
+                    $shift->recordCashSale($sale->total_amount, $sale->id);
+                }
+            }
+        });
+
+        return redirect()->route('sales.show', $sale)
+            ->with('status', 'success')
+            ->with('message', 'تم ترحيل الفاتورة بنجاح وصرف الكميات وفق سياسة الوارد أولاً يصرف أولاً (FIFO).');
+    }
+
+    /**
+     * Void / Cancel a posted sales invoice with full compensating ledger records.
+     */
+    public function void(Request $request, SalesInvoice $sale, InventoryService $inventoryService): RedirectResponse
+    {
+        $validated = $request->validate([
+            'void_reason' => ['required', 'string', 'max:255'],
+        ], [
+            'void_reason.required' => 'يرجى كتابة سبب إلغاء الفاتورة.',
+        ]);
+
+        if ($sale->status !== SalesInvoice::STATUS_POSTED) {
+            return back()->with('error', 'يمكن فقط إلغاء الفواتير التي في حالة مرحلة.');
+        }
+
+        $inventoryService->voidSalesInvoice($sale, auth()->id(), $validated['void_reason']);
+
+        if ($sale->cashier_shift_id) {
+            $shift = CashierShift::find($sale->cashier_shift_id);
+            if ($shift && $shift->status === CashierShift::STATUS_OPEN) {
+                $shift->recordCashReturn($sale->total_amount, $sale->id);
+            }
+        }
+
+        return redirect()->route('sales.show', $sale)
+            ->with('status', 'success')
+            ->with('message', 'تم إلغاء فاتورة المبيعات واسترجاع رصيد الدفعات المخزنية بحركات عكسية موثقة.');
+    }
+
+    /**
+     * Dedicated printable view of the sales invoice.
+     */
+    public function print(Request $request, SalesInvoice $sale, PrintTemplateService $templateService): View
+    {
+        $sale->loadMissing(['customer', 'warehouse', 'creator', 'items.product', 'items.unit']);
+
+        $format = (string) $request->query('format', PrintTemplate::FORMAT_A4);
+        if (! in_array($format, PrintTemplateService::SUPPORTED_FORMATS, true)) {
+            $format = PrintTemplate::FORMAT_A4;
+        }
+
+        $template = $templateService->getEffectiveTemplate(PrintTemplate::DOC_PURCHASE_INVOICE, $format);
+        $companySetting = CompanySetting::getSettings();
+
+        return view('sales.print', [
+            'title' => 'طباعة فاتورة مبيعات: '.$sale->invoice_number,
+            'invoice' => $sale,
+            'template' => $template,
+            'format' => $format,
+            'company' => $companySetting,
+        ]);
+    }
+
+    /**
+     * Internal atomic posting helper for sales invoices.
+     */
+    private function executePosting(SalesInvoice $invoice, InventoryService $inventoryService): void
+    {
+        $invoice->loadMissing('items.product');
+
+        $totalInvoiceCogs = 0.00;
+        $totalInvoiceProfit = 0.00;
+
+        foreach ($invoice->items as $item) {
+            $baseQty = (float) $item->base_quantity;
+            $unitPriceBase = (float) $item->unit_price / (float) ($item->conversion_factor > 0 ? $item->conversion_factor : 1);
+
+            $result = $inventoryService->deductStockFIFOWithPricing(
+                productId: $item->product_id,
+                warehouseId: $invoice->warehouse_id,
+                baseQuantity: $baseQty,
+                priceTier: $invoice->price_tier,
+                overrideUnitPriceBase: $unitPriceBase,
+                proratedLineDiscount: (float) $item->line_discount,
+                notes: 'فاتورة مبيعات رقم: '.$invoice->invoice_number,
+                referenceType: 'sales_invoice',
+                referenceId: $invoice->id,
+                salesInvoiceItemId: $item->id,
+                userId: auth()->id(),
+                customerId: $invoice->customer_id,
+                allowUnpricedBatches: false
+            );
+
+            $itemCogs = (float) $result['total_cogs'];
+            $itemProfit = round((float) $item->subtotal - $itemCogs, 2);
+
+            $item->update([
+                'total_cogs' => $itemCogs,
+                'total_profit' => $itemProfit,
+            ]);
+
+            $totalInvoiceCogs += $itemCogs;
+            $totalInvoiceProfit += $itemProfit;
+        }
+
+        $invoice->update([
+            'status' => SalesInvoice::STATUS_POSTED,
+            'posted_at' => now(),
+            'posted_by' => auth()->id(),
+            'total_cogs' => round($totalInvoiceCogs, 2),
+            'total_profit' => round($totalInvoiceProfit - (float) $invoice->discount_amount, 2),
+        ]);
+    }
+}

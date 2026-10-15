@@ -52,7 +52,7 @@ class CustomerController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request): RedirectResponse|JsonResponse
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -74,7 +74,7 @@ class CustomerController extends Controller
             'pricing_tier.required' => 'فئة التسعير مطلوبة.',
         ]);
 
-        Customer::create([
+        $customer = Customer::create([
             'name' => trim($validated['name']),
             'company_name' => filled($validated['company_name'] ?? null) ? trim($validated['company_name']) : null,
             'phone' => trim($validated['phone']),
@@ -88,6 +88,20 @@ class CustomerController extends Controller
             'notes' => filled($validated['notes'] ?? null) ? trim($validated['notes']) : null,
             'is_active' => $request->has('is_active') ? $request->boolean('is_active') : true,
         ]);
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'تم إضافة العميل بنجاح.',
+                'customer' => [
+                    'id' => $customer->id,
+                    'name' => $customer->name,
+                    'phone' => $customer->phone,
+                    'pricing_tier' => $customer->pricing_tier,
+                    'customer_type' => $customer->customer_type,
+                ],
+            ], 201);
+        }
 
         return redirect()->route('customers.index')->with('success', 'تم إضافة العميل بنجاح.');
     }

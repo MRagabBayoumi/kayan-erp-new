@@ -152,4 +152,20 @@ export function initProductForm() {
             }
         });
     }
+
+    // 5. Unit of Measure Auto-fill for pieces_per_package
+    const unitSelect = form.querySelector('#productUnit');
+    const piecesInput = form.querySelector('#piecesPerPackage');
+    if (unitSelect && piecesInput) {
+        unitSelect.addEventListener('change', () => {
+            const selectedOpt = unitSelect.options[unitSelect.selectedIndex];
+            const factor = selectedOpt ? selectedOpt.getAttribute('data-factor') : null;
+            if (factor && parseInt(factor, 10) > 1) {
+                piecesInput.value = factor;
+            } else if (factor && parseInt(factor, 10) === 1 && (!piecesInput.value || piecesInput.value === '12' || piecesInput.value === '24' || piecesInput.value === '10')) {
+                piecesInput.value = '1';
+            }
+        });
+    }
 }
+

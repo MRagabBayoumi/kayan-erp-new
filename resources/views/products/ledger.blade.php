@@ -29,52 +29,97 @@
     <div data-page="product-ledger" class="flex flex-col gap-5">
         <!-- Product Header Overview Card -->
         <div class="erp-card p-4">
-            <div class="flex flex-wrap items-center justify-between gap-4">
-                <div class="flex items-center gap-3">
-                    @if($product->image_path)
-                        <img src="{{ $product->image_url }}" alt="{{ $product->name }}" class="w-14 h-14 rounded object-cover border border-[var(--border-color)]">
-                    @else
-                        <div class="w-14 h-14 rounded bg-[var(--surface-muted)] flex items-center justify-center text-[var(--text-muted)] border border-[var(--border-color)]">
-                            <x-icon name="package" size="24" />
-                        </div>
-                    @endif
-                    <div>
-                        <h2 class="text-base font-bold text-[var(--text-main)] m-0">{{ $product->name }}</h2>
-                        <div class="flex items-center gap-2 mt-1 text-xs text-[var(--text-muted)]">
-                            <span>التصنيف: <strong class="text-[var(--text-main)]">{{ $product->category->name ?? 'غير محدد' }}</strong></span>
-                            <span>•</span>
-                            <span>الوحدة: <strong class="text-[var(--text-main)]">{{ $product->unit }}</strong></span>
+            <div class="erp-ledger-header">
+                <!-- Product Identity -->
+                <div class="erp-ledger-identity">
+                    <div class="erp-ledger-avatar">
+                        @if($product->image_path)
+                            <img src="{{ $product->image_url }}" alt="{{ $product->name }}">
+                        @else
+                            <x-icon name="package" size="28" />
+                        @endif
+                    </div>
+                    <div class="erp-ledger-details">
+                        <h2 class="erp-ledger-title">{{ $product->name }}</h2>
+                        <div class="erp-ledger-badges-row">
+                            <span class="erp-ledger-badge">
+                                <x-icon name="tag" size="12" />
+                                <span>التصنيف: <strong>{{ $product->category->name ?? 'غير محدد' }}</strong></span>
+                            </span>
+                            <span class="erp-ledger-badge">
+                                <x-icon name="layers" size="12" />
+                                <span>الوحدة: <strong>{{ $product->unit }}</strong></span>
+                            </span>
                             @if($product->barcode)
-                                <span>•</span>
-                                <span class="font-numeric">باركود: {{ $product->barcode }}</span>
+                                <span class="erp-ledger-badge font-numeric">
+                                    <x-icon name="barcode" size="12" />
+                                    <span>باركود: <strong>{{ $product->barcode }}</strong></span>
+                                </span>
                             @endif
                         </div>
                     </div>
                 </div>
 
-                <!-- Live Balance Highlight -->
-                <div class="flex items-center gap-6 font-numeric">
-                    <div class="text-center p-2 rounded bg-[var(--surface-muted)] border border-[var(--border-color)]">
-                        <small class="block text-[11px] text-[var(--text-muted)]">الرصيد الحالي المتوفر</small>
-                        <span class="text-lg font-bold text-[var(--primary)]">{{ number_format($product->total_stock, 2) }}</span>
-                        <small class="text-xs text-[var(--text-muted)] mr-0.5">{{ $product->unit }}</small>
+                <!-- 5-Metric Strip: Balance & 4 Price Tiers -->
+                <div class="erp-ledger-metrics-grid">
+                    <!-- Current Available Stock -->
+                    <div class="erp-ledger-metric-card highlight">
+                        <span class="erp-ledger-metric-label">الرصيد المتوفر</span>
+                        <div class="erp-ledger-metric-val font-numeric">
+                            {{ number_format($product->total_stock, 2) }}
+                            <span class="erp-ledger-metric-unit">{{ $product->unit }}</span>
+                        </div>
                     </div>
 
-                    <div class="text-xs flex flex-col gap-1 text-[var(--text-muted)]">
-                        <div>سعر التكلفة: <strong class="text-[var(--text-main)]">{{ number_format((float)$product->cost_price, 2) }} ج.م</strong></div>
-                        <div>سعر القطاعي: <strong class="text-[var(--text-main)]">{{ number_format((float)$product->retail_price, 2) }} ج.م</strong></div>
-                        <div>سعر الجملة: <strong class="text-[var(--text-main)]">{{ number_format((float)$product->wholesale_price, 2) }} ج.م</strong></div>
+                    <!-- Cost Price -->
+                    <div class="erp-ledger-metric-card">
+                        <span class="erp-ledger-metric-label">سعر التكلفة</span>
+                        <div class="erp-ledger-metric-val font-numeric">
+                            {{ number_format((float)$product->cost_price, 2) }}
+                            <span class="erp-ledger-metric-unit">ج.م</span>
+                        </div>
+                    </div>
+
+                    <!-- Retail Price -->
+                    <div class="erp-ledger-metric-card">
+                        <span class="erp-ledger-metric-label">سعر القطاعي</span>
+                        <div class="erp-ledger-metric-val font-numeric">
+                            {{ number_format((float)$product->retail_price, 2) }}
+                            <span class="erp-ledger-metric-unit">ج.م</span>
+                        </div>
+                    </div>
+
+                    <!-- Wholesale Price -->
+                    <div class="erp-ledger-metric-card">
+                        <span class="erp-ledger-metric-label">سعر الجملة</span>
+                        <div class="erp-ledger-metric-val font-numeric">
+                            {{ number_format((float)$product->wholesale_price, 2) }}
+                            <span class="erp-ledger-metric-unit">ج.م</span>
+                        </div>
+                    </div>
+
+                    <!-- Distributor Price -->
+                    <div class="erp-ledger-metric-card">
+                        <span class="erp-ledger-metric-label">سعر الموزع</span>
+                        <div class="erp-ledger-metric-val font-numeric">
+                            {{ number_format((float)($product->distributor_price ?? $product->wholesale_price), 2) }}
+                            <span class="erp-ledger-metric-unit">ج.م</span>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Warehouse Distribution Pills -->
+            <!-- Warehouse Distribution Strip -->
             @if($product->stockBalances->isNotEmpty())
-                <div class="mt-3 pt-3 border-t border-[var(--border-color)] flex flex-wrap items-center gap-2">
-                    <span class="text-xs text-[var(--text-muted)]">توزيع الرصيد بالمستودعات:</span>
+                <div class="erp-ledger-warehouses-strip">
+                    <span class="erp-ledger-warehouses-title">
+                        <x-icon name="home" size="14" />
+                        <span>توزيع الرصيد بالمستودعات:</span>
+                    </span>
                     @foreach($product->stockBalances as $sb)
-                        <span class="erp-badge erp-badge-neutral text-xs font-numeric">
-                            {{ $sb->warehouse->name ?? 'مستودع' }}: <strong>{{ number_format((float)$sb->quantity, 2) }} {{ $product->unit }}</strong>
+                        <span class="erp-ledger-wh-pill font-numeric">
+                            <span>{{ $sb->warehouse->name ?? 'مستودع' }}:</span>
+                            <strong>{{ number_format((float)$sb->quantity, 2) }} {{ $product->unit }}</strong>
                         </span>
                     @endforeach
                 </div>
@@ -82,10 +127,14 @@
         </div>
 
         <!-- Filter Bar -->
-        <div class="erp-card p-3">
-            <form action="{{ route('products.ledger', $product) }}" method="GET" class="flex flex-wrap items-center gap-3">
-                <div class="w-48">
-                    <label for="ledgerWarehouse" class="block text-[11px] text-[var(--text-muted)] mb-1">المستودع:</label>
+        <div class="erp-card p-4">
+            <form action="{{ route('products.ledger', $product) }}" method="GET" class="erp-ledger-filter-form">
+                <!-- Warehouse -->
+                <div class="erp-form-group mb-0">
+                    <label for="ledgerWarehouse" class="erp-form-label text-xs font-semibold flex items-center gap-1">
+                        <x-icon name="home" size="13" class="text-[var(--primary)]" />
+                        <span>المستودع</span>
+                    </label>
                     <select id="ledgerWarehouse" name="warehouse_id" class="erp-input w-full text-xs">
                         <option value="">-- جميع المستودعات --</option>
                         @foreach($warehouses as $wh)
@@ -96,8 +145,12 @@
                     </select>
                 </div>
 
-                <div class="w-40">
-                    <label for="ledgerType" class="block text-[11px] text-[var(--text-muted)] mb-1">نوع الحركة:</label>
+                <!-- Movement Type -->
+                <div class="erp-form-group mb-0">
+                    <label for="ledgerType" class="erp-form-label text-xs font-semibold flex items-center gap-1">
+                        <x-icon name="activity" size="13" class="text-[var(--primary)]" />
+                        <span>نوع الحركة</span>
+                    </label>
                     <select id="ledgerType" name="type" class="erp-input w-full text-xs">
                         <option value="">-- جميع الحركات --</option>
                         <option value="in" {{ $currentType === 'in' ? 'selected' : '' }}>وارد / إيداع</option>
@@ -107,24 +160,33 @@
                     </select>
                 </div>
 
-                <div class="w-36">
-                    <label for="dateFrom" class="block text-[11px] text-[var(--text-muted)] mb-1">من تاريخ:</label>
+                <!-- Date From -->
+                <div class="erp-form-group mb-0">
+                    <label for="dateFrom" class="erp-form-label text-xs font-semibold flex items-center gap-1">
+                        <x-icon name="calendar" size="13" />
+                        <span>من تاريخ</span>
+                    </label>
                     <input type="date" id="dateFrom" name="date_from" value="{{ $currentDateFrom }}" class="erp-input w-full text-xs font-numeric">
                 </div>
 
-                <div class="w-36">
-                    <label for="dateTo" class="block text-[11px] text-[var(--text-muted)] mb-1">إلى تاريخ:</label>
+                <!-- Date To -->
+                <div class="erp-form-group mb-0">
+                    <label for="dateTo" class="erp-form-label text-xs font-semibold flex items-center gap-1">
+                        <x-icon name="calendar" size="13" />
+                        <span>إلى تاريخ</span>
+                    </label>
                     <input type="date" id="dateTo" name="date_to" value="{{ $currentDateTo }}" class="erp-input w-full text-xs font-numeric">
                 </div>
 
-                <div class="flex items-center gap-2 self-end">
-                    <button type="submit" class="erp-btn erp-btn-secondary text-xs">
+                <!-- Filter Actions -->
+                <div class="erp-ledger-filter-actions">
+                    <button type="submit" class="erp-btn erp-btn-secondary text-xs h-[36px]">
                         <x-icon name="filter" size="14" />
                         <span>تطبيق الفلتر</span>
                     </button>
 
                     @if($currentWarehouseId || $currentType || $currentDateFrom || $currentDateTo)
-                        <a href="{{ route('products.ledger', $product) }}" class="erp-btn erp-btn-ghost text-xs text-[var(--danger)]">
+                        <a href="{{ route('products.ledger', $product) }}" class="erp-btn erp-btn-ghost text-xs text-[var(--danger)] h-[36px]" title="إلغاء الفلاتر">
                             <x-icon name="x" size="14" />
                             <span>إلغاء</span>
                         </a>

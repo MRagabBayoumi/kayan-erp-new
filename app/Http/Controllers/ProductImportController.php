@@ -85,8 +85,9 @@ class ProductImportController extends Controller
 
         $updateExisting = $request->boolean('update_existing', true);
         $createCategories = $request->boolean('create_categories', true);
+        $canEditPrices = $request->user()?->can('edit-product-prices') ?? false;
 
-        $result = $service->executeImport($reviewData['rows'], $updateExisting, $createCategories);
+        $result = $service->executeImport($reviewData['rows'], $updateExisting, $createCategories, $canEditPrices);
 
         // Clear session review data
         session()->forget('import_review_data');

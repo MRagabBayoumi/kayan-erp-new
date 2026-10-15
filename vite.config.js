@@ -14,6 +14,7 @@ export default defineConfig({
                 'resources/js/pages/print-label.js',
                 'resources/css/print/invoice-document.css',
                 'resources/js/pages/invoice-print.js',
+                'resources/css/print/shift-receipt.css',
             ],
             refresh: true,
             fonts: [

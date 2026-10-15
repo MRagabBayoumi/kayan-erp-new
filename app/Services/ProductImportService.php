@@ -647,9 +647,11 @@ class ProductImportService
      * Records new products, updates existing products, creates categories,
      * and initializes warehouse FIFO batches for opening inventory balances.
      */
-    public function executeImport(array $reviewedRows, bool $updateExisting = true, bool $createCategories = true): array
+    public function executeImport(array $reviewedRows, bool $updateExisting = true, bool $createCategories = true, ?bool $canEditPrices = null): array
     {
-        return DB::transaction(function () use ($reviewedRows, $updateExisting, $createCategories) {
+        $canEditPrices = $canEditPrices ?? (auth()->user()?->can('edit-product-prices') ?? false);
+
+        return DB::transaction(function () use ($reviewedRows, $updateExisting, $createCategories, $canEditPrices) {
             $insertedCount = 0;
             $updatedCount = 0;
             $skippedCount = 0;
@@ -705,6 +707,27 @@ class ProductImportService
                     'opening_balance_date' => $openingQty > 0 ? $openingDate : null,
                     'is_active' => true,
                 ];
+
+                if (! $canEditPrices) {
+                    if ($item['action'] === 'update') {
+                        // Protect existing prices from being overwritten by unauthorized users
+                        unset(
+                            $payload['cost_price'],
+                            $payload['wholesale_price'],
+                            $payload['retail_price'],
+                            $payload['distributor_price'],
+                            $payload['opening_cost']
+                        );
+                    } else {
+                        // For newly created items by users without price permissions, zero out prices
+                        $payload['cost_price'] = 0.00;
+                        $payload['wholesale_price'] = 0.00;
+                        $payload['retail_price'] = 0.00;
+                        $payload['distributor_price'] = null;
+                        $payload['opening_cost'] = null;
+                    }
+                    $openingCost = 0.00;
+                }
 
                 if ($item['action'] === 'update') {
                     if ($updateExisting) {

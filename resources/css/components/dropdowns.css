@@ -43,6 +43,10 @@
     font-size: 12px;
     border-radius: var(--border-radius-sm);
     color: var(--text-secondary);
+    background: transparent;
+    border: none;
+    font-family: inherit;
+    text-decoration: none;
     transition: all 0.12s ease;
     text-align: right;
     cursor: pointer;

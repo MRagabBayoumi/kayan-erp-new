@@ -41,6 +41,18 @@
     border-color: var(--border-color);
 }
 
+.erp-btn-danger {
+    background-color: var(--danger-soft);
+    color: var(--danger-text);
+    border-color: var(--danger-border);
+}
+
+.erp-btn-danger:hover {
+    background-color: var(--danger);
+    color: #FFFFFF;
+    border-color: var(--danger);
+}
+
 .erp-btn-ghost {
     background-color: transparent;
     color: var(--text-secondary);

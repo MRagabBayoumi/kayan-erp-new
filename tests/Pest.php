@@ -1,6 +1,8 @@
 <?php
 
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 /*
@@ -17,6 +19,24 @@ use Tests\TestCase;
 pest()->extend(TestCase::class)
  // ->use(RefreshDatabase::class)
     ->in('Feature');
+
+pest()->beforeEach(function () {
+    try {
+        if (Schema::hasTable('users')) {
+            $admin = User::firstOrCreate(
+                ['email' => 'admin-test@kayan-erp.com'],
+                [
+                    'name' => 'مدير النظام التجريبي',
+                    'password' => bcrypt('password'),
+                    'role' => User::ROLE_ADMIN,
+                ]
+            );
+            $this->actingAs($admin);
+        }
+    } catch (Throwable $e) {
+        // Non-database tests or pre-migration states
+    }
+});
 
 /*
 |--------------------------------------------------------------------------

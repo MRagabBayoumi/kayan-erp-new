@@ -16,6 +16,8 @@ import { initCustomersPage } from './pages/customers.js';
 import { initSuppliersPage } from './pages/suppliers.js';
 import { initShippingOfficesPage } from './pages/shipping-offices.js';
 import { initPurchases } from './pages/purchases.js';
+import { initSales } from './pages/sales.js';
+import { initShifts } from './pages/shifts.js';
 import { initPrintTemplatesPage } from './pages/print-templates.js';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -38,6 +40,8 @@ document.addEventListener('DOMContentLoaded', () => {
     initSuppliersPage();
     initShippingOfficesPage();
     initPurchases();
+    initSales();
+    initShifts();
     initPrintTemplatesPage();
 });
 
@@ -83,16 +87,10 @@ function initThemeAndDensity() {
 }
 
 function updateThemeIcons(theme) {
-    const sunIcon = document.getElementById('themeSunIcon');
-    const moonIcon = document.getElementById('themeMoonIcon');
-    if (sunIcon && moonIcon) {
-        if (theme === 'dark') {
-            sunIcon.style.display = 'inline-block';
-            moonIcon.style.display = 'none';
-        } else {
-            sunIcon.style.display = 'none';
-            moonIcon.style.display = 'inline-block';
-        }
+    const themeToggleBtn = document.getElementById('kayanThemeToggle');
+    if (themeToggleBtn) {
+        themeToggleBtn.setAttribute('title', theme === 'dark' ? 'تبديل إلى الوضع النهاري' : 'تبديل إلى الوضع الليلي');
+        themeToggleBtn.setAttribute('aria-label', theme === 'dark' ? 'تبديل إلى الوضع النهاري' : 'تبديل إلى الوضع الليلي');
     }
 }
 
