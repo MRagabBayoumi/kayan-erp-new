@@ -125,8 +125,11 @@ class SalesInvoiceController extends Controller
             'distributor_price' => (float) ($p->distributor_price ?? $p->wholesale_price),
             'cost_price' => (float) $p->cost_price,
             'unit' => $p->unit ?? 'قطعة',
+            'unit_factor' => (float) $p->unit_factor,
+            'pieces_per_package' => (int) ($p->pieces_per_package ?? round($p->unit_factor)),
             'stocks' => $p->stockBalances->pluck('quantity', 'warehouse_id')->map(fn ($q) => (float) $q)->toArray(),
             'total_stock' => (float) $p->total_stock,
+            'formatted_stock' => $p->formatStockBreakdown(),
         ])->values();
 
         $unitsJson = $units->map(fn ($u) => [
@@ -235,21 +238,36 @@ class SalesInvoiceController extends Controller
             $invoice = DB::transaction(function () use ($validated, $shippingCost, $discountType, $discountValue, $request, $inventoryService, $activeShift) {
                 $subtotal = 0.00;
                 $itemsData = [];
+                $productIds = collect($validated['items'])->pluck('product_id')->unique()->toArray();
+                $productsMap = Product::whereIn('id', $productIds)->get()->keyBy('id');
 
                 foreach ($validated['items'] as $itemInput) {
+                    $prodId = (int) $itemInput['product_id'];
+                    $product = $productsMap->get($prodId);
+                    $productFactor = (float) ($product?->unit_factor ?? 1.0);
+                    if ($productFactor <= 0) {
+                        $productFactor = 1.0;
+                    }
+
                     $qty = (float) $itemInput['quantity'];
                     $price = (float) $itemInput['unit_price'];
                     $lineDiscount = (float) ($itemInput['line_discount'] ?? 0.00);
-                    $factor = (float) ($itemInput['conversion_factor'] ?? 1.0000);
-                    $baseQty = round($qty * $factor, 4);
+                    $selectedFactor = (float) ($itemInput['conversion_factor'] ?? 1.0000);
+                    if ($selectedFactor <= 0) {
+                        $selectedFactor = 1.0;
+                    }
+
+                    // Ratio of transaction unit to product registered inventory unit
+                    $effectiveFactor = $selectedFactor / $productFactor;
+                    $baseQty = round($qty * $effectiveFactor, 4);
 
                     $lineSubtotal = max(0.00, round(($qty * $price) - $lineDiscount, 2));
                     $subtotal += $lineSubtotal;
 
                     $itemsData[] = [
-                        'product_id' => (int) $itemInput['product_id'],
+                        'product_id' => $prodId,
                         'unit_id' => ! empty($itemInput['unit_id']) ? (int) $itemInput['unit_id'] : null,
-                        'conversion_factor' => $factor,
+                        'conversion_factor' => $selectedFactor,
                         'quantity' => $qty,
                         'base_quantity' => $baseQty,
                         'unit_price' => $price,
@@ -481,7 +499,13 @@ class SalesInvoiceController extends Controller
 
         foreach ($invoice->items as $item) {
             $baseQty = (float) $item->base_quantity;
-            $unitPriceBase = (float) $item->unit_price / (float) ($item->conversion_factor > 0 ? $item->conversion_factor : 1);
+            $productFactor = (float) ($item->product?->unit_factor ?? 1.0);
+            if ($productFactor <= 0) {
+                $productFactor = 1.0;
+            }
+            $selectedFactor = (float) ($item->conversion_factor > 0 ? $item->conversion_factor : 1.0);
+            $effectiveFactor = $selectedFactor / $productFactor;
+            $unitPriceBase = (float) $item->unit_price / ($effectiveFactor > 0 ? $effectiveFactor : 1.0);
 
             $result = $inventoryService->deductStockFIFOWithPricing(
                 productId: $item->product_id,

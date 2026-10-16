@@ -232,7 +232,7 @@
                                         {{ (float)$item->quantity }}
                                     </td>
                                     <td class="text-center font-numeric text-xs text-[var(--text-muted)]">
-                                        {{ (float)$item->base_quantity }} قطعة
+                                        {{ (float)$item->base_quantity }} {{ $item->product->unit ?? 'قطعة' }}
                                     </td>
                                     <td class="text-center font-numeric">
                                         {{ number_format((float)$item->unit_price, 2) }} ج.م
@@ -283,7 +283,7 @@
                                                                     {{ $alloc->batch->batch_number ?? '#' . $alloc->inventory_batch_id }}
                                                                 </td>
                                                                 <td>{{ $alloc->batch->warehouse->name ?? 'المخزن' }}</td>
-                                                                <td class="font-numeric font-semibold">{{ (float)$alloc->quantity }} قطعة</td>
+                                                                <td class="font-numeric font-semibold">{{ (float)$alloc->quantity }} {{ $item->product->unit ?? 'قطعة' }}</td>
                                                                 <td class="font-numeric">{{ number_format((float)$alloc->unit_price, 2) }} ج.م</td>
                                                                 @if($canViewCogs)
                                                                 <td class="font-numeric text-[var(--text-muted)]">{{ number_format((float)$alloc->unit_cost, 4) }} ج.م</td>

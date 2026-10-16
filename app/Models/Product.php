@@ -112,6 +112,83 @@ class Product extends Model
     }
 
     /**
+     * Conversion factor of the product's registered unit (e.g. 12 for dozen, 1 for piece).
+     */
+    public function getUnitFactorAttribute(): float
+    {
+        if ($this->pieces_per_package && $this->pieces_per_package > 0) {
+            return (float) $this->pieces_per_package;
+        }
+
+        if (! empty($this->unit)) {
+            $unitModel = Unit::where('name', $this->unit)->first();
+            if ($unitModel && (float) $unitModel->conversion_factor > 0) {
+                return (float) $unitModel->conversion_factor;
+            }
+        }
+
+        return 1.0;
+    }
+
+    /**
+     * Format a given stock quantity into a compound human-readable string.
+     * e.g. "54 دستة و 11 قطعة (659 قطعة)" or "55 دستة (660 قطعة)".
+     */
+    public function formatStockBreakdown(?float $stockQty = null): string
+    {
+        $qty = $stockQty !== null ? $stockQty : $this->total_stock;
+        $factor = (int) round($this->unit_factor);
+        $unitName = $this->unit ?: 'قطعة';
+
+        if ($qty <= 0) {
+            return "0 {$unitName}";
+        }
+
+        if ($factor <= 1) {
+            $formatted = rtrim(rtrim(number_format($qty, 2), '0'), '.');
+
+            return "{$formatted} {$unitName}";
+        }
+
+        $totalPieces = (int) round($qty * $factor);
+        $packages = intdiv($totalPieces, $factor);
+        $remainderPieces = $totalPieces % $factor;
+
+        if ($remainderPieces === 0) {
+            return "{$packages} {$unitName} ({$totalPieces} قطعة)";
+        }
+
+        if ($packages === 0) {
+            return "{$remainderPieces} قطعة";
+        }
+
+        return "{$packages} {$unitName} و {$remainderPieces} قطعة ({$totalPieces} قطعة)";
+    }
+
+    /**
+     * Get price for a specific tier scaled to a target unit factor.
+     */
+    public function getPriceForUnit(string $tier = 'retail', ?float $targetUnitFactor = null): float
+    {
+        $basePrice = match ($tier) {
+            'wholesale' => (float) ($this->wholesale_price ?? $this->retail_price ?? 0),
+            'distributor' => (float) ($this->distributor_price ?? $this->wholesale_price ?? $this->retail_price ?? 0),
+            default => (float) ($this->retail_price ?? 0),
+        };
+
+        if ($targetUnitFactor === null) {
+            return $basePrice;
+        }
+
+        $productFactor = $this->unit_factor;
+        if ($productFactor <= 0) {
+            $productFactor = 1.0;
+        }
+
+        return round($basePrice * ($targetUnitFactor / $productFactor), 2);
+    }
+
+    /**
      * Check if product is low on stock based on min_stock_alert threshold.
      */
     public function getIsLowStockAttribute(): bool

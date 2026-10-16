@@ -90,17 +90,53 @@ function initSalesPOS() {
     let activeSuggestionIndex = -1;
     let isSubmitting = false;
 
-    // Helper: Get product price based on selected tier
-    function getProductPriceForTier(product, tier = null) {
+    // Helper: Get product price based on selected tier and target unit factor
+    function getProductPriceForTier(product, tier = null, targetUnitFactor = null) {
         if (!product) return 0.00;
         const currentTier = tier || (priceTierSelect ? priceTierSelect.value : 'retail');
+        let basePrice = 0.00;
         if (currentTier === 'distributor') {
-            return parseFloat(product.distributor_price ?? product.wholesale_price ?? product.retail_price ?? 0);
+            basePrice = parseFloat(product.distributor_price ?? product.wholesale_price ?? product.retail_price ?? 0);
+        } else if (currentTier === 'wholesale') {
+            basePrice = parseFloat(product.wholesale_price ?? product.retail_price ?? 0);
+        } else {
+            basePrice = parseFloat(product.retail_price ?? 0);
         }
-        if (currentTier === 'wholesale') {
-            return parseFloat(product.wholesale_price ?? product.retail_price ?? 0);
+
+        if (targetUnitFactor !== null && targetUnitFactor !== undefined) {
+            const productFactor = parseFloat(product.unit_factor || 1.0) || 1.0;
+            return basePrice * (targetUnitFactor / productFactor);
         }
-        return parseFloat(product.retail_price ?? 0);
+
+        return basePrice;
+    }
+
+    // Helper: Format stock quantity into compound breakdown (e.g. 54 دستة و 11 قطعة)
+    function formatStockBreakdown(product, stockQty = null) {
+        if (!product) return '0 قطعة';
+        const qty = stockQty !== null ? stockQty : getProductWarehouseStock(product);
+        const factor = Math.round(parseFloat(product.unit_factor || 1.0) || 1);
+        const unitName = (product.unit || 'قطعة').trim();
+
+        if (qty <= 0) {
+            return `0 ${unitName}`;
+        }
+
+        if (factor <= 1) {
+            return `${Number(qty.toFixed(2))} ${unitName}`;
+        }
+
+        const totalPieces = Math.round(qty * factor);
+        const packages = Math.floor(totalPieces / factor);
+        const remainderPieces = totalPieces % factor;
+
+        if (remainderPieces === 0) {
+            return `${packages} ${unitName} (${totalPieces} قطعة)`;
+        }
+        if (packages === 0) {
+            return `${remainderPieces} قطعة`;
+        }
+        return `${packages} ${unitName} و ${remainderPieces} قطعة (${totalPieces} قطعة)`;
     }
 
     // Helper: Get available warehouse stock
@@ -127,20 +163,33 @@ function initSalesPOS() {
         }
 
         const stock = getProductWarehouseStock(product);
-        const unitName = product.unit || 'قطعة';
+        const formatted = formatStockBreakdown(product, stock);
 
         quickStockBadge.classList.remove('hidden', 'in-stock', 'low-stock', 'out-of-stock');
 
         if (stock <= 0) {
             quickStockBadge.classList.add('out-of-stock');
-            quickStockBadge.textContent = `رصيد الصنف: 0 ${unitName} (نفد من المخزن)`;
+            quickStockBadge.textContent = `رصيد الصنف: ${formatted} (نفد من المخزن)`;
         } else if (stock <= 5) {
             quickStockBadge.classList.add('low-stock');
-            quickStockBadge.textContent = `رصيد الصنف: ${stock} ${unitName} (منخفض)`;
+            quickStockBadge.textContent = `رصيد الصنف بالمخزن: ${formatted} (منخفض)`;
         } else {
             quickStockBadge.classList.add('in-stock');
-            quickStockBadge.textContent = `رصيد الصنف بالمخزن: ${stock} ${unitName}`;
+            quickStockBadge.textContent = `رصيد الصنف بالمخزن: ${formatted}`;
         }
+    }
+
+    // Helper: Update price in quick bar based on currently selected product, unit and tier
+    function updateQuickPrice() {
+        const pId = quickProductId ? parseInt(quickProductId.value, 10) : null;
+        if (!pId) return;
+        const prod = productsData.find(p => p.id === pId);
+        if (!prod || !quickPriceInput) return;
+
+        const opt = quickUnitSelect ? quickUnitSelect.options[quickUnitSelect.selectedIndex] : null;
+        const selectedFactor = parseFloat(opt?.dataset.factor || 1.0) || 1.0;
+        const price = getProductPriceForTier(prod, null, selectedFactor);
+        quickPriceInput.value = price.toFixed(2);
     }
 
     // Customer Change Handler: Auto-sets price tier
@@ -155,14 +204,7 @@ function initSalesPOS() {
                     const label = tier === 'distributor' ? 'فئة: موزع' : (tier === 'wholesale' ? 'فئة: جملة' : 'فئة: تجزئة');
                     customerTierHint.textContent = label;
                 }
-                // Refresh price of selected product if any
-                const pId = quickProductId ? parseInt(quickProductId.value, 10) : null;
-                if (pId) {
-                    const prod = productsData.find(p => p.id === pId);
-                    if (prod && quickPriceInput) {
-                        quickPriceInput.value = getProductPriceForTier(prod, tier).toFixed(2);
-                    }
-                }
+                updateQuickPrice();
             }
         });
     }
@@ -211,13 +253,7 @@ function initSalesPOS() {
     // Tier Change Handler
     if (priceTierSelect) {
         priceTierSelect.addEventListener('change', () => {
-            const pId = quickProductId ? parseInt(quickProductId.value, 10) : null;
-            if (pId) {
-                const prod = productsData.find(p => p.id === pId);
-                if (prod && quickPriceInput) {
-                    quickPriceInput.value = getProductPriceForTier(prod).toFixed(2);
-                }
-            }
+            updateQuickPrice();
         });
     }
 
@@ -332,14 +368,15 @@ function initSalesPOS() {
         quickSearchResults.innerHTML = matches.map((p, idx) => {
             const price = getProductPriceForTier(p);
             const stock = getProductWarehouseStock(p);
+            const formattedStock = formatStockBreakdown(p, stock);
             let badgeClass = 'stock-in';
-            let badgeText = `رصيد: ${stock} ${p.unit || 'قطعة'}`;
+            let badgeText = `رصيد: ${formattedStock}`;
             if (stock <= 0) {
                 badgeClass = 'stock-out';
                 badgeText = 'نفد (0)';
             } else if (stock <= 5) {
                 badgeClass = 'stock-low';
-                badgeText = `منخفض: ${stock} ${p.unit || 'قطعة'}`;
+                badgeText = `منخفض: ${formattedStock}`;
             }
 
             return `
@@ -381,11 +418,7 @@ function initSalesPOS() {
         if (quickProductId) quickProductId.value = product.id;
         if (quickProductInput) quickProductInput.value = `${product.name} (${product.sku})`;
 
-        const tierPrice = getProductPriceForTier(product);
-        if (quickPriceInput) quickPriceInput.value = tierPrice.toFixed(2);
-        updateStockBadge(product);
-
-        // Select matching unit
+        // 1. Select matching unit
         if (quickUnitSelect) {
             const productUnitName = (product.unit || 'قطعة').trim();
             let matchedOption = false;
@@ -401,6 +434,10 @@ function initSalesPOS() {
                 quickUnitSelect.selectedIndex = 0;
             }
         }
+
+        // 2. Set price for that unit and update stock badge
+        updateQuickPrice();
+        updateStockBadge(product);
 
         // Hide suggestions
         if (quickSearchResults) {
@@ -508,16 +545,7 @@ function initSalesPOS() {
     // Keyboard Flow: Unit -> Tab -> Qty
     if (quickUnitSelect) {
         quickUnitSelect.addEventListener('change', () => {
-            const opt = quickUnitSelect.options[quickUnitSelect.selectedIndex];
-            const factor = parseFloat(opt?.dataset.factor || 1.0) || 1.0;
-            const pId = parseInt(quickProductId?.value || 0, 10);
-            if (pId) {
-                const prod = productsData.find(p => p.id === pId);
-                if (prod && quickPriceInput) {
-                    const basePrice = getProductPriceForTier(prod);
-                    quickPriceInput.value = (basePrice * factor).toFixed(2);
-                }
-            }
+            updateQuickPrice();
         });
 
         quickUnitSelect.addEventListener('keydown', (e) => {
@@ -725,7 +753,7 @@ function initSalesPOS() {
 
         const prodObj = productsData.find(p => p.id === data.productId);
         const rowStock = prodObj ? getProductWarehouseStock(prodObj) : 0;
-        const rowUnitLabel = (prodObj && prodObj.unit) ? prodObj.unit : 'قطعة';
+        const rowStockFormatted = prodObj ? formatStockBreakdown(prodObj, rowStock) : '0 قطعة';
 
         tr.innerHTML = `
             <td class="text-center font-numeric row-counter">1</td>
@@ -736,7 +764,7 @@ function initSalesPOS() {
                     <span>كود: ${data.productSku || '—'}</span>
                     ${data.productBarcode ? '<span>· باركود: ' + data.productBarcode + '</span>' : ''}
                     <span class="erp-badge ${rowStock <= 0 ? 'erp-badge-danger' : 'erp-badge-info'} text-[10px] py-0 px-1.5 font-bold">
-                        رصيد الصنف: ${rowStock} ${rowUnitLabel}
+                        رصيد الصنف: ${rowStockFormatted}
                     </span>
                 </div>
             </td>
@@ -831,13 +859,13 @@ function initSalesPOS() {
             unitSelect.addEventListener('change', () => {
                 const opt = unitSelect.options[unitSelect.selectedIndex];
                 const newFactor = parseFloat(opt?.dataset.factor || 1.0) || 1.0;
-                const prevFactor = parseFloat(factorHidden.value || 1.0) || 1.0;
                 factorHidden.value = newFactor;
 
-                if (priceInput && prevFactor > 0) {
-                    const currentPrice = parseFloat(priceInput.value) || 0;
-                    const baseUnitPrice = currentPrice / prevFactor;
-                    priceInput.value = (baseUnitPrice * newFactor).toFixed(2);
+                const rowPid = parseInt(row.getAttribute('data-product-id') || row.querySelector('.row-product-id')?.value, 10);
+                const prod = productsData.find(p => p.id === rowPid);
+                if (prod && priceInput) {
+                    const price = getProductPriceForTier(prod, null, newFactor);
+                    priceInput.value = price.toFixed(2);
                 }
 
                 updateRowSubtotal();
@@ -887,16 +915,18 @@ function initSalesPOS() {
                 alert('لا توجد منتجات مسجلة في النظام.');
                 return;
             }
-            const firstUnit = unitsData[0];
+            const prodUnitName = (firstProd.unit || 'قطعة').trim();
+            const matchingUnit = unitsData.find(u => u.name === prodUnitName) || unitsData[0];
+            const unitFactor = matchingUnit ? parseFloat(matchingUnit.factor || 1.0) : 1.0;
             insertRowAtTop({
                 productId: firstProd.id,
                 productName: firstProd.name,
                 productSku: firstProd.sku,
                 productBarcode: firstProd.barcode,
-                unitId: firstUnit?.id || 1,
-                conversionFactor: firstUnit ? parseFloat(firstUnit.factor) : 1.0,
+                unitId: matchingUnit?.id || 1,
+                conversionFactor: unitFactor,
                 quantity: 1,
-                unitPrice: getProductPriceForTier(firstProd),
+                unitPrice: getProductPriceForTier(firstProd, null, unitFactor),
                 lineDiscount: 0,
                 notes: ''
             });

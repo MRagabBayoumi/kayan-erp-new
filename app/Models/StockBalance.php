@@ -20,8 +20,8 @@ class StockBalance extends Model
     protected function casts(): array
     {
         return [
-            'quantity' => 'decimal:2',
-            'reserved_quantity' => 'decimal:2',
+            'quantity' => 'decimal:4',
+            'reserved_quantity' => 'decimal:4',
         ];
     }
 
