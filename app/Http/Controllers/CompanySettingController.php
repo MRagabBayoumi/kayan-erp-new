@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\BarcodeSetting;
+use App\Models\Category;
 use App\Models\CompanySetting;
 use App\Models\PrintTemplate;
+use App\Services\CategoryImportService;
 use App\Services\PrintTemplateService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -56,13 +58,21 @@ class CompanySettingController extends Controller
             ];
         }
 
+        $departmentsData = [];
+        if ($activeTab === 'departments') {
+            $departmentsData = [
+                'categoriesList' => Category::with('parent')->withCount('products')->orderBy('name')->get(),
+                'importPreview' => session('department_import_preview'),
+            ];
+        }
+
         return view('settings.index', array_merge([
             'title' => 'إعدادات الشركة والنظام',
             'moduleName' => 'الإعدادات',
             'settings' => $settings,
             'barcodeSettings' => $barcodeSettings,
             'activeTab' => $activeTab,
-        ], $printTemplateData));
+        ], $printTemplateData, $departmentsData));
     }
 
     /**
@@ -160,5 +170,69 @@ class CompanySettingController extends Controller
         return redirect()->route('settings.index', ['tab' => 'barcode'])
             ->with('status', 'success')
             ->with('message', 'تم حفظ إعدادات طابعة الباركود بنجاح.');
+    }
+
+    /**
+     * Download the standard CSV template for Department / Category import.
+     */
+    public function downloadDepartmentTemplate(CategoryImportService $importService): \Symfony\Component\HttpFoundation\Response
+    {
+        $csvContent = $importService->generateTemplateCsv();
+
+        return response($csvContent, 200, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="departments_categories_template.csv"',
+        ]);
+    }
+
+    /**
+     * Upload and preview departments file before commit.
+     */
+    public function previewDepartmentImport(Request $request, CategoryImportService $importService): RedirectResponse
+    {
+        $request->validate([
+            'import_file' => ['required', 'file', 'mimes:xlsx,csv,txt', 'max:10240'],
+        ], [
+            'import_file.required' => 'يرجى اختيار ملف Excel أو CSV للاستيراد.',
+            'import_file.mimes' => 'صيغة الملف غير مدعومة. الصيغ المسموحة هي: .xlsx, .csv',
+            'import_file.max' => 'حجم الملف يجب ألا يتجاوز 10 ميجابايت.',
+        ]);
+
+        try {
+            $rawRows = $importService->parseFile($request->file('import_file'));
+            $preview = $importService->validateImport($rawRows);
+
+            return redirect()->route('settings.index', ['tab' => 'departments'])
+                ->with('department_import_preview', $preview);
+        } catch (\Throwable $e) {
+            return redirect()->route('settings.index', ['tab' => 'departments'])
+                ->with('error', 'حدث خطأ أثناء قراءة الملف: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Commit valid department rows to database inside a transaction.
+     */
+    public function importDepartments(Request $request, CategoryImportService $importService): RedirectResponse
+    {
+        $validated = $request->validate([
+            'valid_rows' => ['required', 'string'],
+        ]);
+
+        $rows = json_decode($validated['valid_rows'], true);
+        if (! is_array($rows) || empty($rows)) {
+            return redirect()->route('settings.index', ['tab' => 'departments'])
+                ->with('error', 'لا توجد أسطر صالحة للاستيراد.');
+        }
+
+        try {
+            $result = $importService->commitImport($rows);
+
+            return redirect()->route('settings.index', ['tab' => 'departments'])
+                ->with('success', $result['message']);
+        } catch (\Throwable $e) {
+            return redirect()->route('settings.index', ['tab' => 'departments'])
+                ->with('error', 'فشلت عملية حفظ الأقسام: ' . $e->getMessage());
+        }
     }
 }

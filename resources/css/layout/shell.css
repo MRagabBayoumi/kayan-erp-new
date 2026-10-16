@@ -43,7 +43,7 @@
 
 .erp-content {
     padding: 18px 20px 40px;
-    flex: 1;
+    flex: 1 0 auto;
 }
 
 @media (max-width: 600px) {
@@ -51,3 +51,37 @@
         padding: 12px;
     }
 }
+
+/* Enterprise Sticky Footer */
+.erp-footer {
+    margin-top: auto;
+    flex-shrink: 0;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-muted);
+    border-top: 1px solid var(--border-color);
+    background-color: var(--bg-surface);
+    transition: background-color 0.18s ease, border-color 0.18s ease;
+}
+
+.erp-footer a {
+    color: var(--primary);
+    font-weight: 600;
+    text-decoration: none;
+    transition: color 0.15s ease;
+}
+
+.erp-footer a:hover {
+    text-decoration: underline;
+}
+
+.erp-footer-sep {
+    color: var(--border-color);
+    font-weight: 700;
+}
+

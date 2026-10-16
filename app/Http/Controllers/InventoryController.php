@@ -9,11 +9,13 @@ use App\Models\StockMovement;
 use App\Models\Warehouse;
 use App\Services\InventoryService;
 use App\Services\Printing\PythonPrintEngineService;
+use App\Services\StocktakeService;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\Response;
 
 class InventoryController extends Controller
 {
@@ -268,6 +270,115 @@ class InventoryController extends Controller
             return redirect()->back()->with('success', 'تم تسجيل حركة المخزون بنجاح.');
         } catch (Exception $e) {
             return redirect()->back()->with('error', $e->getMessage())->withInput();
+        }
+    }
+
+    /**
+     * Stocktake workspace and discrepancy review.
+     */
+    public function stocktake(Request $request): View
+    {
+        $warehouses = Warehouse::active()->orderBy('name')->get();
+        $selectedWarehouseId = $request->query('warehouse_id');
+        $selectedWarehouse = $selectedWarehouseId
+            ? Warehouse::find($selectedWarehouseId)
+            : (Warehouse::where('is_default', true)->first() ?: $warehouses->first());
+
+        return view('inventory.stocktake', [
+            'title' => 'جرد المخزون والتسوية الدورية',
+            'warehouses' => $warehouses,
+            'selectedWarehouse' => $selectedWarehouse,
+        ]);
+    }
+
+    /**
+     * Download prefilled stocktake template for the selected warehouse.
+     */
+    public function downloadStocktakeTemplate(Request $request, StocktakeService $stocktakeService): Response|RedirectResponse
+    {
+        $warehouseId = $request->query('warehouse_id');
+        $warehouse = $warehouseId
+            ? Warehouse::find($warehouseId)
+            : (Warehouse::where('is_default', true)->first() ?: Warehouse::first());
+
+        if (! $warehouse) {
+            return redirect()->route('inventory.stocktake')->with('error', 'يرجى تحديد المستودع أولاً.');
+        }
+
+        $csvContent = $stocktakeService->generateStocktakeTemplate($warehouse);
+        $filename = 'stocktake_' . ($warehouse->code ?: 'WH') . '_' . date('Y-m-d') . '.csv';
+
+        return response($csvContent, 200, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ]);
+    }
+
+    /**
+     * Upload and preview physical count against book balances.
+     */
+    public function previewStocktake(Request $request, StocktakeService $stocktakeService): RedirectResponse
+    {
+        $request->validate([
+            'warehouse_id' => ['required', 'exists:warehouses,id'],
+            'stocktake_file' => ['required', 'file', 'mimes:xlsx,csv,txt', 'max:10240'],
+        ], [
+            'warehouse_id.required' => 'يرجى اختيار المستودع.',
+            'stocktake_file.required' => 'يرجى اختيار ملف الجرد.',
+            'stocktake_file.mimes' => 'صيغة الملف غير مدعومة. الصيغ المسموحة هي: .xlsx, .csv',
+            'stocktake_file.max' => 'حجم الملف يجب ألا يتجاوز 10 ميجابايت.',
+        ]);
+
+        try {
+            $warehouse = Warehouse::findOrFail($request->input('warehouse_id'));
+            $preview = $stocktakeService->parseAndValidateStocktake($request->file('stocktake_file'), $warehouse);
+
+            if (! $preview['success']) {
+                return redirect()->route('inventory.stocktake', ['warehouse_id' => $warehouse->id])
+                    ->with('error', $preview['message']);
+            }
+
+            return redirect()->route('inventory.stocktake', ['warehouse_id' => $warehouse->id])
+                ->with('stocktake_preview', $preview);
+        } catch (\Throwable $e) {
+            return redirect()->route('inventory.stocktake', ['warehouse_id' => $request->input('warehouse_id')])
+                ->with('error', 'حدث خطأ أثناء فحص ملف الجرد: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Commit approved stocktake adjustments atomically.
+     */
+    public function reconcileStocktake(Request $request, StocktakeService $stocktakeService): RedirectResponse
+    {
+        $validated = $request->validate([
+            'warehouse_id' => ['required', 'exists:warehouses,id'],
+            'discrepancies' => ['required', 'string'],
+            'reason' => ['nullable', 'string', 'max:500'],
+        ], [
+            'warehouse_id.required' => 'يرجى اختيار المستودع.',
+            'discrepancies.required' => 'بيانات الفروقات مطلوبة للاعتماد.',
+        ]);
+
+        $discrepancies = json_decode($validated['discrepancies'], true);
+        if (! is_array($discrepancies) || empty($discrepancies)) {
+            return redirect()->route('inventory.stocktake', ['warehouse_id' => $validated['warehouse_id']])
+                ->with('error', 'لا توجد فروقات جردية صالحة للتسوية.');
+        }
+
+        try {
+            $warehouse = Warehouse::findOrFail($validated['warehouse_id']);
+            $result = $stocktakeService->commitStocktakeAdjustments(
+                $warehouse,
+                $discrepancies,
+                $validated['reason'] ?? null
+            );
+
+            return redirect()->route('inventory.stocktake', ['warehouse_id' => $warehouse->id])
+                ->with('success', $result['message']);
+        } catch (\Throwable $e) {
+            return redirect()->route('inventory.stocktake', ['warehouse_id' => $validated['warehouse_id']])
+                ->with('error', 'فشلت عملية تسوية الجرد: ' . $e->getMessage());
         }
     }
 }

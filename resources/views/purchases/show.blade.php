@@ -4,11 +4,16 @@
     <x-control-panel title="فاتورة شراء: {{ $invoice->invoice_number }}" :breadcrumbs="['المشتريات والموردين' => route('purchases.index'), $invoice->invoice_number => '#']">
         <x-slot:actions>
             @if($invoice->status === 'draft')
+                <a href="{{ route('purchases.pricing-review', $invoice) }}" class="erp-btn erp-btn-warning">
+                    <x-icon name="tag" size="16" />
+                    <span>مراجعة الأسعار والترحيل</span>
+                </a>
+
                 <form action="{{ route('purchases.post', $invoice) }}" method="POST" data-confirm="هل تريد ترحيل هذه الفاتورة إلى المخازن وتوليد دفعات FIFO آلياً؟">
                     @csrf
                     <button type="submit" class="erp-btn erp-btn-primary">
                         <x-icon name="check-circle" size="16" />
-                        <span>ترحيل للمخازن (إيداع FIFO)</span>
+                        <span>ترحيل مباشر (FIFO)</span>
                     </button>
                 </form>
 
@@ -138,6 +143,24 @@
                         <span class="text-[var(--text-muted)]">الشحن والتخليص:</span>
                         <span>{{ number_format((float)$invoice->shipping_cost, 2) }} ج.م</span>
                     </div>
+                    <div class="flex justify-between items-center py-1 border-b border-[var(--border-color)]">
+                        <span class="text-[var(--text-muted)]">طريقة السداد:</span>
+                        <span class="erp-badge {{ $invoice->payment_type_badge_class }} text-[11px]">{{ $invoice->payment_type_label }}</span>
+                    </div>
+                    <div class="flex justify-between items-center py-1 border-b border-[var(--border-color)]">
+                        <span class="text-[var(--text-muted)]">المسدد للمورد:</span>
+                        <span class="font-bold text-emerald-600">{{ number_format((float)($invoice->paid_amount ?? 0), 2) }} ج.م</span>
+                    </div>
+                    <div class="flex justify-between items-center py-1 border-b border-[var(--border-color)]">
+                        <span class="text-[var(--text-muted)]">المتبقي الآجل المعلق:</span>
+                        <span class="font-bold text-rose-600">{{ number_format((float)($invoice->remaining_amount ?? 0), 2) }} ج.م</span>
+                    </div>
+                    @if($invoice->due_date)
+                    <div class="flex justify-between items-center py-1 border-b border-[var(--border-color)]">
+                        <span class="text-[var(--text-muted)]">تاريخ الاستحقاق:</span>
+                        <span class="text-amber-700 font-semibold">{{ $invoice->due_date->format('Y-m-d') }}</span>
+                    </div>
+                    @endif
                     <div class="flex justify-between items-center pt-1 text-sm font-bold text-[var(--primary)]">
                         <span>إجمالي الفاتورة:</span>
                         <span class="text-base">{{ number_format((float)$invoice->total_amount, 2) }} ج.م</span>
@@ -191,8 +214,14 @@
                                 <td>
                                     <span class="erp-badge erp-badge-neutral text-[11px]">{{ $item->product->category->name ?? '—' }}</span>
                                 </td>
-                                <td class="font-numeric text-center font-bold text-xs">
-                                    {{ number_format((float)$item->quantity, 2) }} {{ $item->product->unit ?? 'قطعة' }}
+                                <td class="text-center text-xs">
+                                    <span class="font-numeric font-bold">{{ (float)$item->quantity }}</span>
+                                    <span class="text-[var(--text-muted)]">{{ $item->unit->name ?? ($item->product->unit ?? 'قطعة') }}</span>
+                                    @if((float)($item->conversion_factor ?? 1.0) != 1.0)
+                                        <div class="text-[10px] text-[var(--primary)] font-numeric font-semibold">
+                                            = {{ (float)($item->base_quantity ?: ($item->quantity * $item->conversion_factor)) }} {{ $item->product->unit ?? 'قطعة' }}
+                                        </div>
+                                    @endif
                                 </td>
                                 <td class="font-numeric text-center text-xs">
                                     {{ number_format((float)$item->unit_cost, 2) }} ج.م

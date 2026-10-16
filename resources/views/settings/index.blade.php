@@ -89,6 +89,13 @@
                     <span>قوالب الطباعة والمستندات</span>
                 </a>
 
+                <!-- Tab 4: Departments & Categories Import -->
+                <a href="{{ route('settings.index', ['tab' => 'departments']) }}"
+                   class="erp-tab-link {{ $activeTab === 'departments' ? 'active' : '' }}">
+                    <x-icon name="folder" size="16" />
+                    <span>الأقسام والتصنيفات</span>
+                </a>
+
                 <span class="erp-tab-link disabled" title="مرحلة قادمة في المخطط">
                     <x-icon name="printer" size="16" />
                     <span>إعدادات الفاتورة - الطابعة الثانية</span>
@@ -112,6 +119,9 @@
         @if($activeTab === 'print_templates')
             <!-- TAB 3: PRINT TEMPLATE VISUAL DESIGNER -->
             @include('settings.tabs.print-templates')
+        @elseif($activeTab === 'departments')
+            <!-- TAB 4: DEPARTMENTS & CATEGORIES IMPORT -->
+            @include('settings.tabs.departments')
         @elseif($activeTab === 'barcode')
             <!-- TAB 2: BARCODE PRINTER SETTINGS -->
             <div class="grid grid-cols-[minmax(400px,1fr)_340px] gap-5 items-start">

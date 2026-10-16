@@ -30,6 +30,7 @@ class CashierShift extends Model
         'difference',
         'opening_notes',
         'closing_notes',
+        'opened_by',
         'closed_by',
     ];
 
@@ -52,6 +53,11 @@ class CashierShift extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function openedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'opened_by');
     }
 
     public function warehouse(): BelongsTo

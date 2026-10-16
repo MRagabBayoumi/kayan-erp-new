@@ -873,10 +873,18 @@ class InventoryService
             }
 
             // 6. Reverse cashier shift cash receipt if shift is open
-            if ($invoice->cashier_shift_id) {
+            if ($invoice->cashier_shift_id && (float) $invoice->paid_amount > 0) {
                 $shift = CashierShift::find($invoice->cashier_shift_id);
                 if ($shift && $shift->status === CashierShift::STATUS_OPEN) {
-                    $shift->recordCashReturn($invoice->total_amount, $invoice->id);
+                    $shift->recordCashReturn((float) $invoice->paid_amount, $invoice->id);
+                }
+            }
+
+            // 6.1 Revert customer credit balance if remaining_amount was posted
+            if ((float) $invoice->remaining_amount > 0 && $invoice->customer_id) {
+                $customer = Customer::lockForUpdate()->find($invoice->customer_id);
+                if ($customer) {
+                    $customer->decrement('current_balance', (float) $invoice->remaining_amount);
                 }
             }
 

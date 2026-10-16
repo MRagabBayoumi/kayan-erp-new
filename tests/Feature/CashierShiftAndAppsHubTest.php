@@ -131,3 +131,119 @@ test('cashier can open shift, record movements and close shift with variance tra
     expect($shift->difference)->toEqual(5.00);
     expect($shift->closed_by)->toBe($manager->id);
 });
+
+test('manager can open shift on behalf of an eligible cashier', function () {
+    $warehouse = Warehouse::create(['name' => 'المستودع الرئيسي', 'code' => 'WH-MAIN', 'is_default' => true]);
+    $cashierRole = Role::where('slug', 'cashier')->first();
+
+    $cashier = User::factory()->create([
+        'name' => 'كاشير أحمد',
+        'role' => User::ROLE_CASHIER,
+        'role_id' => $cashierRole->id,
+        'warehouse_id' => $warehouse->id,
+    ]);
+
+    $manager = User::factory()->create([
+        'role' => User::ROLE_ADMIN,
+        'can_access_all_warehouses' => true,
+    ]);
+
+    $response = $this->actingAs($manager)->post(route('shifts.store'), [
+        'user_id' => $cashier->id,
+        'warehouse_id' => $warehouse->id,
+        'opening_balance' => 200.00,
+        'opening_notes' => 'فتح وردية للكاشير أحمد بواسطة المشرف',
+    ]);
+
+    $response->assertRedirect(route('shifts.index'));
+    $this->assertDatabaseHas('cashier_shifts', [
+        'user_id' => $cashier->id,
+        'opened_by' => $manager->id,
+        'warehouse_id' => $warehouse->id,
+        'opening_balance' => 200.00,
+        'status' => 'open',
+    ]);
+});
+
+test('regular cashier cannot open shift on behalf of another user', function () {
+    $warehouse = Warehouse::create(['name' => 'المستودع الرئيسي', 'code' => 'WH-MAIN', 'is_default' => true]);
+    $cashierRole = Role::where('slug', 'cashier')->first();
+
+    $cashier1 = User::factory()->create([
+        'role' => User::ROLE_CASHIER,
+        'role_id' => $cashierRole->id,
+        'warehouse_id' => $warehouse->id,
+    ]);
+
+    $cashier2 = User::factory()->create([
+        'role' => User::ROLE_CASHIER,
+        'role_id' => $cashierRole->id,
+        'warehouse_id' => $warehouse->id,
+    ]);
+
+    // Cashier1 tries to pass user_id = cashier2
+    $response = $this->actingAs($cashier1)->post(route('shifts.store'), [
+        'user_id' => $cashier2->id,
+        'warehouse_id' => $warehouse->id,
+        'opening_balance' => 150.00,
+    ]);
+
+    $response->assertSessionHas('error');
+    $this->assertDatabaseMissing('cashier_shifts', [
+        'user_id' => $cashier2->id,
+    ]);
+});
+
+test('manager cannot open second active shift for a cashier who already has one', function () {
+    $warehouse = Warehouse::create(['name' => 'المستودع الرئيسي', 'code' => 'WH-MAIN', 'is_default' => true]);
+    $cashierRole = Role::where('slug', 'cashier')->first();
+
+    $cashier = User::factory()->create([
+        'role' => User::ROLE_CASHIER,
+        'role_id' => $cashierRole->id,
+        'warehouse_id' => $warehouse->id,
+    ]);
+
+    $manager = User::factory()->create([
+        'role' => User::ROLE_ADMIN,
+        'can_access_all_warehouses' => true,
+    ]);
+
+    CashierShift::create([
+        'shift_number' => CashierShift::generateShiftNumber(),
+        'user_id' => $cashier->id,
+        'warehouse_id' => $warehouse->id,
+        'opened_at' => now(),
+        'opening_balance' => 100.00,
+        'status' => 'open',
+    ]);
+
+    $response = $this->actingAs($manager)->post(route('shifts.store'), [
+        'user_id' => $cashier->id,
+        'warehouse_id' => $warehouse->id,
+        'opening_balance' => 200.00,
+    ]);
+
+    $response->assertSessionHas('error');
+});
+
+test('shift report can be printed in a4, a5 and thermal formats', function () {
+    $warehouse = Warehouse::create(['name' => 'المستودع الرئيسي', 'code' => 'WH-MAIN', 'is_default' => true]);
+    $manager = User::factory()->create(['role' => User::ROLE_ADMIN]);
+
+    $shift = CashierShift::create([
+        'shift_number' => CashierShift::generateShiftNumber(),
+        'user_id' => $manager->id,
+        'warehouse_id' => $warehouse->id,
+        'opened_at' => now(),
+        'opening_balance' => 500.00,
+        'status' => 'open',
+    ]);
+
+    foreach (['a4', 'a5', 'thermal'] as $format) {
+        $response = $this->actingAs($manager)->get(route('shifts.print', [$shift, 'format' => $format]));
+        $response->assertOk();
+        $response->assertSee('وردية');
+    }
+});
+

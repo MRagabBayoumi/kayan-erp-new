@@ -107,4 +107,50 @@ class WarehouseController extends Controller
 
         return redirect()->route('warehouses.index')->with('success', 'تم حذف المستودع بنجاح.');
     }
+
+    /**
+     * Display real-time warehouse inventory breakdown.
+     */
+    public function show(Warehouse $warehouse, Request $request, \App\Services\StocktakeService $stocktakeService): View
+    {
+        $search = $request->input('search');
+        $categoryId = $request->filled('category_id') ? (int) $request->input('category_id') : null;
+
+        $breakdown = $stocktakeService->getWarehouseStockBreakdown($warehouse, $search, $categoryId);
+        $categories = \App\Models\Category::active()->orderBy('name')->get();
+
+        return view('warehouses.show', [
+            'title' => 'جرد ورصيد مستودع: ' . $warehouse->name,
+            'warehouse' => $warehouse,
+            'breakdown' => $breakdown,
+            'categories' => $categories,
+            'search' => $search,
+            'categoryId' => $categoryId,
+        ]);
+    }
+
+    /**
+     * Dedicated printable warehouse stock report supporting A4, A5, and Thermal 80mm.
+     */
+    public function printStock(Warehouse $warehouse, Request $request, \App\Services\StocktakeService $stocktakeService): View
+    {
+        $search = $request->input('search');
+        $categoryId = $request->filled('category_id') ? (int) $request->input('category_id') : null;
+        $format = $request->input('format', 'a4');
+        if (! in_array($format, ['a4', 'a5', 'thermal_80mm', 'thermal'], true)) {
+            $format = 'a4';
+        }
+
+        $breakdown = $stocktakeService->getWarehouseStockBreakdown($warehouse, $search, $categoryId);
+        $company = \App\Models\CompanySetting::getSettings();
+
+        return view('warehouses.stock-print', [
+            'title' => 'تقرير مخزون مستودع: ' . $warehouse->name,
+            'warehouse' => $warehouse,
+            'breakdown' => $breakdown,
+            'format' => $format,
+            'company' => $company,
+            'autoPrint' => $request->boolean('auto_print', false),
+        ]);
+    }
 }

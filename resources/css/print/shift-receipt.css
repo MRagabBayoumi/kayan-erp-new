@@ -38,6 +38,10 @@ body[data-format="a4"] {
     page: a4_sheet;
 }
 
+body[data-format="a5"] {
+    page: a5_sheet;
+}
+
 /* Screen-Only Floating Action Toolbar */
 .shift-print-toolbar {
     position: sticky;

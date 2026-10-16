@@ -13,7 +13,10 @@ class PurchaseInvoiceItem extends Model
     protected $fillable = [
         'purchase_invoice_id',
         'product_id',
+        'unit_id',
+        'conversion_factor',
         'quantity',
+        'base_quantity',
         'unit_cost',
         'subtotal',
         'notes',
@@ -22,7 +25,9 @@ class PurchaseInvoiceItem extends Model
     protected function casts(): array
     {
         return [
-            'quantity' => 'decimal:2',
+            'conversion_factor' => 'decimal:4',
+            'quantity' => 'decimal:4',
+            'base_quantity' => 'decimal:4',
             'unit_cost' => 'decimal:2',
             'subtotal' => 'decimal:2',
         ];
@@ -36,5 +41,10 @@ class PurchaseInvoiceItem extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function unit(): BelongsTo
+    {
+        return $this->belongsTo(Unit::class);
     }
 }

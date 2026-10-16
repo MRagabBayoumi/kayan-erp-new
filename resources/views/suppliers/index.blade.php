@@ -7,6 +7,35 @@
                 <x-icon name="plus" size="16" />
                 <span>إضافة مورد جديد</span>
             </button>
+
+            <!-- Supplier Balance Due Report & Print Menu -->
+            <div class="erp-dropdown">
+                <button type="button" class="erp-btn erp-btn-secondary" data-dropdown-toggle="supplierIndexBalanceMenu">
+                    <x-icon name="briefcase" size="16" />
+                    <span>تقرير المستحقات (Balance Due)</span>
+                    <x-icon name="chevron-down" size="14" />
+                </button>
+                <div id="supplierIndexBalanceMenu" class="erp-dropdown-menu">
+                    <a href="{{ route('suppliers.balance-due-report') }}" class="erp-dropdown-item">
+                        <x-icon name="eye" size="16" />
+                        <span>استعراض تقرير الأرصدة المستحقة</span>
+                    </a>
+                    <div class="erp-dropdown-divider"></div>
+                    <a href="{{ route('suppliers.balance-due-report.print', ['format' => 'a4']) }}" target="_blank" class="erp-dropdown-item">
+                        <x-icon name="file-text" size="16" />
+                        <span>طباعة تقرير الأرصدة A4 قياسي</span>
+                    </a>
+                    <a href="{{ route('suppliers.balance-due-report.print', ['format' => 'a5']) }}" target="_blank" class="erp-dropdown-item">
+                        <x-icon name="file" size="16" />
+                        <span>طباعة تقرير الأرصدة A5 وسط</span>
+                    </a>
+                    <a href="{{ route('suppliers.balance-due-report.print', ['format' => 'thermal_80mm']) }}" target="_blank" class="erp-dropdown-item">
+                        <x-icon name="printer" size="16" />
+                        <span>طباعة تقرير الأرصدة 80 مم حراري</span>
+                    </a>
+                </div>
+            </div>
+
             <a href="{{ route('customers.index') }}" class="erp-btn erp-btn-secondary">
                 <x-icon name="users" size="16" />
                 <span>دليل العملاء</span>
@@ -95,6 +124,16 @@
                 <div class="supplier-kpi-info">
                     <div class="supplier-kpi-label">وكلاء الشحن والتخليص</div>
                     <div class="supplier-kpi-value font-numeric">{{ number_format($metrics['shipping_agents_count']) }}</div>
+                </div>
+            </div>
+
+            <div class="supplier-kpi-card">
+                <div class="supplier-kpi-icon success">
+                    <x-icon name="dollar-sign" size="22" />
+                </div>
+                <div class="supplier-kpi-info">
+                    <div class="supplier-kpi-label">مستحقات آجلة للموردين</div>
+                    <div class="supplier-kpi-value font-numeric">{{ number_format($metrics['total_payables'] ?? 0, 2) }} <span class="text-xs font-normal text-[var(--text-muted)]">ج.م</span></div>
                 </div>
             </div>
         </div>

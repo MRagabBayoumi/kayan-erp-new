@@ -40,22 +40,35 @@
                 @endcan
             @endif
 
-            <button type="button" data-action="python-direct-print" data-url="{{ route('sales.direct-print', $invoice) }}" class="erp-btn erp-btn-primary" title="طباعة مباشرة بطابعة الإيصالات عبر بايثون">
-                <x-icon name="printer" size="16" />
-                <span>طباعة بايثون المباشرة</span>
-            </button>
-
-            <div class="inline-flex items-center gap-1">
-                <a href="{{ route('sales.print', [$invoice, 'format' => 'a4']) }}" target="_blank" class="erp-btn erp-btn-secondary" title="طباعة A4">
+            <!-- Compact Print Selection Menu -->
+            <div class="erp-dropdown">
+                <button type="button" class="erp-btn erp-btn-secondary" data-dropdown-toggle="salesPrintMenu" title="خيارات ونماذج الطباعة">
                     <x-icon name="printer" size="16" />
-                    <span>طباعة الفاتورة (A4)</span>
-                </a>
-                <a href="{{ route('sales.print', [$invoice, 'format' => 'a5']) }}" target="_blank" class="erp-btn erp-btn-ghost text-xs px-2" title="طباعة A5">
-                    <span>A5</span>
-                </a>
-                <a href="{{ route('sales.print', [$invoice, 'format' => 'thermal_80mm']) }}" target="_blank" class="erp-btn erp-btn-ghost text-xs px-2" title="طباعة إيصال حراري 80 مم">
-                    <span>80 مم</span>
-                </a>
+                    <span>طباعة الفاتورة</span>
+                    <x-icon name="chevron-down" size="12" class="opacity-80" />
+                </button>
+                <div id="salesPrintMenu" class="erp-dropdown-menu w-[220px] left-0">
+                    <div class="erp-dropdown-header">
+                        <strong class="text-xs text-[var(--text-main)]">خيارات ونماذج الطباعة</strong>
+                    </div>
+                    <button type="button" data-action="python-direct-print" data-url="{{ route('sales.direct-print', $invoice) }}" class="erp-dropdown-item text-[var(--primary)] font-semibold" title="طباعة فورية مباشرة عبر خادم الطباعة">
+                        <x-icon name="zap" size="14" />
+                        <span>طباعة فورية (Instant Print)</span>
+                    </button>
+                    <div class="erp-dropdown-divider"></div>
+                    <a href="{{ route('sales.print', [$invoice, 'format' => 'a4']) }}" target="_blank" class="erp-dropdown-item" title="طباعة نموذج A4">
+                        <x-icon name="file-text" size="14" />
+                        <span>نموذج قياسي (A4)</span>
+                    </a>
+                    <a href="{{ route('sales.print', [$invoice, 'format' => 'a5']) }}" target="_blank" class="erp-dropdown-item" title="طباعة نموذج A5">
+                        <x-icon name="file" size="14" />
+                        <span>نموذج مدمج (A5)</span>
+                    </a>
+                    <a href="{{ route('sales.print', [$invoice, 'format' => 'thermal_80mm']) }}" target="_blank" class="erp-dropdown-item" title="طباعة إيصال حراري 80 مم">
+                        <x-icon name="printer" size="14" />
+                        <span>إيصال حراري (80 مم)</span>
+                    </a>
+                </div>
             </div>
 
             <a href="{{ route('sales.index') }}" class="erp-btn erp-btn-ghost">
@@ -200,7 +213,7 @@
             </div>
 
             <div class="erp-card-body p-0">
-                <div class="table-responsive">
+                <div class="erp-table-responsive">
                     <table class="erp-table">
                         <thead>
                             <tr>
@@ -272,10 +285,10 @@
                                                 <x-icon name="layers" size="14" />
                                                 <span>تفاصيل توزيع دفعات المخزن (FIFO Batch Allocation):</span>
                                             </div>
-                                            <div class="table-responsive">
+                                            <div class="erp-table-responsive">
                                                 <table class="erp-table text-xs border border-[var(--border-color)]">
                                                     <thead>
-                                                        <tr class="bg-white">
+                                                        <tr class="bg-[var(--bg-surface-alt)]">
                                                             <th>رقم الدفعة</th>
                                                             <th>المستودع</th>
                                                             <th>الكمية المنصرفة</th>
@@ -290,7 +303,7 @@
                                                     </thead>
                                                     <tbody>
                                                         @foreach($item->batchAllocations as $alloc)
-                                                            <tr class="bg-white">
+                                                            <tr class="hover:bg-[var(--bg-hover)]">
                                                                 <td class="font-numeric font-bold text-[var(--primary)]">
                                                                     {{ $alloc->batch->batch_number ?? '#' . $alloc->inventory_batch_id }}
                                                                 </td>
@@ -379,12 +392,32 @@
                                 <td class="text-[var(--text-main)]">صافي إجمالي الفاتورة:</td>
                                 <td class="text-left font-numeric text-[var(--primary)] text-base">{{ number_format((float)$invoice->total_amount, 2) }} ج.م</td>
                             </tr>
+                            <tr>
+                                <td class="text-[var(--text-muted)] font-semibold">طريقة السداد:</td>
+                                <td class="text-left">
+                                    <span class="erp-badge {{ $invoice->payment_type_badge_class }} text-xs">{{ $invoice->payment_type_label }}</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="text-emerald-700 font-semibold">المدفوع نقداً بالدرج:</td>
+                                <td class="text-left font-numeric font-bold text-emerald-600">{{ number_format((float)($invoice->paid_amount ?? 0), 2) }} ج.م</td>
+                            </tr>
+                            <tr>
+                                <td class="text-rose-700 font-semibold">المتبقي الآجل (حساب العميل):</td>
+                                <td class="text-left font-numeric font-bold text-rose-600">{{ number_format((float)($invoice->remaining_amount ?? 0), 2) }} ج.م</td>
+                            </tr>
+                            @if($invoice->due_date)
+                            <tr>
+                                <td class="text-amber-700 font-semibold">تاريخ الاستحقاق:</td>
+                                <td class="text-left font-numeric text-amber-700 font-bold">{{ $invoice->due_date->format('Y-m-d') }}</td>
+                            </tr>
+                            @endif
                             @if($canViewCogs && $invoice->status === 'posted')
                             <tr>
                                 <td class="text-[var(--text-muted)] font-semibold">إجمالي تكلفة البضاعة المباعة (COGS):</td>
                                 <td class="text-left font-numeric">{{ number_format((float)$invoice->total_cogs, 2) }} ج.م</td>
                             </tr>
-                            <tr class="bg-emerald-50 text-emerald-900 font-bold">
+                            <tr class="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-bold">
                                 <td>صافي ربح الفاتورة:</td>
                                 <td class="text-left font-numeric">{{ number_format((float)$invoice->total_profit, 2) }} ج.م</td>
                             </tr>

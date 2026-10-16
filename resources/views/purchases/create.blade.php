@@ -7,9 +7,13 @@
                 <x-icon name="file-text" size="16" />
                 <span>حفظ كمسودة</span>
             </button>
+            <button type="submit" form="purchaseForm" name="action" value="review_pricing" class="erp-btn erp-btn-warning">
+                <x-icon name="tag" size="16" />
+                <span>حفظ ومراجعة الأسعار قبل الترحيل</span>
+            </button>
             <button type="submit" form="purchaseForm" name="action" value="post" class="erp-btn erp-btn-primary">
                 <x-icon name="check-circle" size="16" />
-                <span>حفظ وترحيل للمخازن مباشرة</span>
+                <span>حفظ وترحيل فوري</span>
             </button>
             <a href="{{ route('purchases.index') }}" class="erp-btn erp-btn-ghost">
                 <x-icon name="x" size="16" />
@@ -478,6 +482,98 @@
                     <div class="flex items-center justify-between text-xs text-[var(--text-muted)] pt-1 border-t border-[var(--border-color)]">
                         <span>* سيتم احتساب تكلفة كل دفعة مخزنية بالجنيه المصري وتسجيلها بدفاتر الوارد أولاً يصرف أولاً (FIFO).</span>
                         <span class="font-mono text-[11px]">Kayan ERP • Inventory & Purchases Engine</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payment & Supplier Settlement (Cash vs Credit vs Partial) -->
+            <div class="purchases-payment-card erp-card">
+                <div class="erp-card-header flex items-center justify-between py-2.5">
+                    <div class="erp-card-title flex items-center gap-2">
+                        <x-icon name="credit-card" size="18" class="text-[var(--primary)]" />
+                        <span>طريقة السداد للمورد (نظام الآجل والتحصيل)</span>
+                    </div>
+                </div>
+                <div class="erp-card-body p-4">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                        <!-- Payment Type Option -->
+                        <div class="erp-form-group mb-0">
+                            <label class="erp-form-label text-xs font-bold mb-1.5 flex items-center gap-1">
+                                <x-icon name="dollar-sign" size="13" class="text-[var(--primary)]" />
+                                <span>طريقة الدفع للمورد</span>
+                            </label>
+                            <div class="payment-method-toggle-group" id="purchasePaymentToggleGroup">
+                                <label class="payment-toggle-btn {{ old('payment_type', 'cash') === 'cash' ? 'active' : '' }}" data-type="cash">
+                                    <input type="radio" name="payment_type" value="cash" {{ old('payment_type', 'cash') === 'cash' ? 'checked' : '' }} class="sr-only">
+                                    <span>نقدي (مسدد)</span>
+                                </label>
+                                <label class="payment-toggle-btn {{ old('payment_type', 'cash') === 'credit' ? 'active' : '' }}" data-type="credit">
+                                    <input type="radio" name="payment_type" value="credit" {{ old('payment_type', 'cash') === 'credit' ? 'checked' : '' }} class="sr-only">
+                                    <span>آجل بالكامل</span>
+                                </label>
+                                <label class="payment-toggle-btn {{ old('payment_type', 'cash') === 'partial' ? 'active' : '' }}" data-type="partial">
+                                    <input type="radio" name="payment_type" value="partial" {{ old('payment_type', 'cash') === 'partial' ? 'checked' : '' }} class="sr-only">
+                                    <span>دفع جزئي</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Paid Cash Amount -->
+                        <div class="erp-form-group mb-0">
+                            <label for="purchasePaidAmountInput" class="erp-form-label text-xs font-semibold flex items-center justify-between">
+                                <span class="flex items-center gap-1">
+                                    <x-icon name="check" size="13" class="text-[var(--success)]" />
+                                    <span>المدفوع نقداً للمورد (ج.م)</span>
+                                </span>
+                                <span id="purchasePaidHint" class="text-[10px] text-[var(--text-muted)]">كامل الفاتورة</span>
+                            </label>
+                            <input 
+                                type="number" 
+                                step="0.01" 
+                                min="0" 
+                                id="purchasePaidAmountInput" 
+                                name="paid_amount" 
+                                value="{{ old('paid_amount', '0.00') }}" 
+                                class="erp-input font-numeric font-bold text-center text-sm text-[var(--success)]"
+                                readonly
+                            >
+                        </div>
+
+                        <!-- Remaining Deferred Amount -->
+                        <div class="erp-form-group mb-0">
+                            <label for="purchaseRemainingAmountInput" class="erp-form-label text-xs font-semibold flex items-center justify-between">
+                                <span class="flex items-center gap-1">
+                                    <x-icon name="clock" size="13" class="text-[var(--danger)]" />
+                                    <span>المتبقي الآجل للمورد (ج.م)</span>
+                                </span>
+                                <span id="purchaseRemainingHint" class="text-[10px] text-[var(--text-muted)]">مسدد بالكامل</span>
+                            </label>
+                            <input 
+                                type="number" 
+                                step="0.01" 
+                                id="purchaseRemainingAmountInput" 
+                                name="remaining_amount" 
+                                value="{{ old('remaining_amount', '0.00') }}" 
+                                class="erp-input font-numeric font-bold text-center text-sm text-[var(--danger)] bg-[var(--surface-muted)]" 
+                                readonly
+                                tabindex="-1"
+                            >
+                        </div>
+
+                        <!-- Due Date (for Credit & Partial) -->
+                        <div class="erp-form-group mb-0 {{ old('payment_type', 'cash') === 'cash' ? 'hidden' : '' }}" id="purchaseDueDateGroup">
+                            <label for="purchaseDueDateInput" class="erp-form-label text-xs font-semibold flex items-center gap-1">
+                                <x-icon name="calendar" size="13" class="text-amber-500" />
+                                <span>تاريخ استحقاق المورد</span>
+                            </label>
+                            <input 
+                                type="date" 
+                                id="purchaseDueDateInput" 
+                                name="due_date" 
+                                value="{{ old('due_date') }}" 
+                                class="erp-input text-xs font-numeric"
+                            >
+                        </div>
                     </div>
                 </div>
             </div>

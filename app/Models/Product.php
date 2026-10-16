@@ -92,6 +92,14 @@ class Product extends Model
     }
 
     /**
+     * Alias for batches().
+     */
+    public function inventoryBatches(): HasMany
+    {
+        return $this->batches();
+    }
+
+    /**
      * Stock movements history.
      */
     public function movements(): HasMany

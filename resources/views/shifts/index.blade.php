@@ -197,7 +197,7 @@
 
         <!-- Shifts Table -->
         <div class="erp-card overflow-hidden">
-            <div class="table-responsive">
+            <div class="erp-table-responsive">
                 <table class="erp-table">
                     <thead>
                         <tr>
@@ -225,6 +225,9 @@
                                 </td>
                                 <td>
                                     <div class="font-bold text-[var(--text-main)]">{{ $shift->user?->name ?? '—' }}</div>
+                                    @if($shift->opened_by && $shift->opened_by !== $shift->user_id)
+                                        <div class="text-[10px] text-[var(--text-muted)] font-semibold">بواسطة: {{ $shift->openedBy?->name }}</div>
+                                    @endif
                                 </td>
                                 <td>
                                     <span class="text-xs">{{ $shift->warehouse?->name ?? '—' }}</span>
@@ -328,6 +331,24 @@
                 <form method="POST" action="{{ route('shifts.store') }}">
                     @csrf
                     <div class="erp-modal-body">
+                        @if($isManager)
+                            <div class="erp-form-group mb-3">
+                                <label for="shiftCashierSelect" class="erp-form-label text-xs">
+                                    الكاشير المسؤول عن الوردية <span class="text-[var(--danger)]">*</span>
+                                </label>
+                                <select id="shiftCashierSelect" name="user_id" class="erp-input text-xs" required>
+                                    @foreach($eligibleCashiers as $c)
+                                        <option value="{{ $c->id }}" {{ $c->id === auth()->id() ? 'selected' : '' }}>
+                                            {{ $c->name }} ({{ $c->role_label }})
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <span class="text-[11px] text-[var(--text-muted)]">بصفتك مديراً/مشرفاً، يمكنك فتح الوردية وتعيين الكاشير المسؤول عنها.</span>
+                            </div>
+                        @else
+                            <input type="hidden" name="user_id" value="{{ auth()->id() }}">
+                        @endif
+
                         <div class="erp-form-group mb-3">
                             <label for="shiftWarehouseSelect" class="erp-form-label text-xs">
                                 المستودع / الفرع <span class="text-[var(--danger)]">*</span>

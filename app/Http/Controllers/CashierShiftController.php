@@ -24,7 +24,7 @@ class CashierShiftController extends Controller
      */
     public function index(Request $request): View
     {
-        $query = CashierShift::with(['user', 'warehouse', 'closedBy'])->latest('id');
+        $query = CashierShift::with(['user', 'openedBy', 'warehouse', 'closedBy'])->latest('id');
 
         if ($request->filled('status')) {
             $query->where('status', $request->input('status'));
@@ -46,6 +46,8 @@ class CashierShiftController extends Controller
 
         $warehouses = Warehouse::active()->orderBy('name')->get();
         $cashiers = User::orderBy('name')->get();
+        $isManager = auth()->user()?->isAdmin() || auth()->user()?->can('close-shifts');
+        $eligibleCashiers = User::where('status', 'active')->orderBy('name')->get();
 
         $metrics = [
             'open_shifts_count' => CashierShift::open()->count(),
@@ -62,6 +64,8 @@ class CashierShiftController extends Controller
             'shifts' => $shifts,
             'warehouses' => $warehouses,
             'cashiers' => $cashiers,
+            'eligibleCashiers' => $eligibleCashiers,
+            'isManager' => $isManager,
             'metrics' => $metrics,
             'currentActiveShift' => $currentActiveShift,
             'currentStatus' => $request->input('status'),
@@ -72,16 +76,40 @@ class CashierShiftController extends Controller
     }
 
     /**
-     * Open a new shift for the authenticated cashier.
+     * Open a new shift for the authenticated cashier or on behalf of an eligible cashier by manager.
      */
     public function store(Request $request): RedirectResponse|JsonResponse
     {
-        $user = auth()->user();
+        $auth = auth()->user();
+        $isManager = $auth->isAdmin() || $auth->can('close-shifts');
 
-        // Check if cashier already has an active open shift
-        $existing = CashierShift::getActiveShift($user->id);
+        $validated = $request->validate([
+            'user_id' => ['nullable', 'exists:users,id'],
+            'warehouse_id' => ['required', 'exists:warehouses,id'],
+            'opening_balance' => ['required', 'numeric', 'min:0'],
+            'opening_notes' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        // Determine target assigned cashier
+        if (! empty($validated['user_id']) && (int) $validated['user_id'] !== (int) $auth->id) {
+            if (! $isManager) {
+                $msg = 'غير مصرح لك بفتح وردية نيابة عن كاشير آخر. هذه الصلاحية مقتصرة على مدراء النظام والمشرفين.';
+                if ($request->wantsJson()) {
+                    return response()->json(['success' => false, 'message' => $msg], 403);
+                }
+
+                return redirect()->back()->with('error', $msg);
+            }
+            $assignedUser = User::findOrFail((int) $validated['user_id']);
+        } else {
+            $assignedUser = $auth;
+        }
+
+        // Check if assigned cashier already has an active open shift
+        $existing = CashierShift::getActiveShift($assignedUser->id);
         if ($existing) {
-            $msg = 'لديك بالفعل وردية نشطة مفتوحة حالياً (رقم: '.$existing->shift_number.').';
+            $subject = $assignedUser->id === $auth->id ? 'لديك' : 'للكاشير ('.$assignedUser->name.')';
+            $msg = $subject.' بالفعل وردية نشطة مفتوحة حالياً (رقم: '.$existing->shift_number.').';
             if ($request->wantsJson()) {
                 return response()->json(['success' => false, 'message' => $msg], 422);
             }
@@ -89,15 +117,9 @@ class CashierShiftController extends Controller
             return redirect()->back()->with('error', $msg);
         }
 
-        $validated = $request->validate([
-            'warehouse_id' => ['required', 'exists:warehouses,id'],
-            'opening_balance' => ['required', 'numeric', 'min:0'],
-            'opening_notes' => ['nullable', 'string', 'max:500'],
-        ]);
-
-        // Verify warehouse authorization
-        if (! $user->canAccessWarehouse($validated['warehouse_id'])) {
-            $msg = 'غير مصرح لك بفتح وردية في هذا المستودع.';
+        // Verify warehouse authorization for the assigned cashier
+        if (! $assignedUser->canAccessWarehouse($validated['warehouse_id'])) {
+            $msg = 'غير مصرح للكاشير المحدد بالعمل في هذا المستودع / الفرع.';
             if ($request->wantsJson()) {
                 return response()->json(['success' => false, 'message' => $msg], 403);
             }
@@ -107,10 +129,11 @@ class CashierShiftController extends Controller
 
         $openingBalance = round((float) $validated['opening_balance'], 2);
 
-        $shift = DB::transaction(function () use ($user, $validated, $openingBalance) {
+        $shift = DB::transaction(function () use ($assignedUser, $auth, $validated, $openingBalance) {
             $newShift = CashierShift::create([
                 'shift_number' => CashierShift::generateShiftNumber(),
-                'user_id' => $user->id,
+                'user_id' => $assignedUser->id,
+                'opened_by' => $auth->id,
                 'warehouse_id' => (int) $validated['warehouse_id'],
                 'status' => CashierShift::STATUS_OPEN,
                 'opened_at' => now(),
@@ -125,14 +148,18 @@ class CashierShiftController extends Controller
                 'opening_notes' => $validated['opening_notes'] ?? null,
             ]);
 
-            // Record initial movement
+            // Record initial opening cash movement
+            $movementNote = $assignedUser->id === $auth->id
+                ? 'رصيد بداية عهدة الوردية'
+                : 'رصيد بداية عهدة الوردية (تم الفتح بواسطة المشرف: '.$auth->name.')';
+
             $newShift->cashMovements()->create([
-                'user_id' => $user->id,
+                'user_id' => $auth->id,
                 'movement_type' => CashierCashMovement::TYPE_OPENING,
                 'amount' => $openingBalance,
                 'reference_id' => $newShift->id,
                 'reference_type' => CashierShift::class,
-                'notes' => 'رصيد بداية عهدة الوردية',
+                'notes' => $movementNote,
                 'created_at' => now(),
             ]);
 
@@ -147,6 +174,10 @@ class CashierShiftController extends Controller
                 'message' => $successMsg,
                 'shift' => $shift,
             ], 201);
+        }
+
+        if ($assignedUser->id !== $auth->id) {
+            return redirect()->route('shifts.index')->with('status', 'success')->with('message', $successMsg);
         }
 
         return redirect()->route('sales.create')->with('status', 'success')->with('message', $successMsg);

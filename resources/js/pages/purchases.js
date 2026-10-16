@@ -52,6 +52,14 @@ function initPurchaseCreate() {
     const shippingText = document.getElementById('purchaseShippingText');
     const grandTotalText = document.getElementById('purchaseGrandTotalText');
 
+    // Payment & Deferred Elements
+    const purchasePaymentToggleGroup = document.getElementById('purchasePaymentToggleGroup');
+    const purchasePaidAmountInput = document.getElementById('purchasePaidAmountInput');
+    const purchaseRemainingAmountInput = document.getElementById('purchaseRemainingAmountInput');
+    const purchasePaidHint = document.getElementById('purchasePaidHint');
+    const purchaseRemainingHint = document.getElementById('purchaseRemainingHint');
+    const purchaseDueDateGroup = document.getElementById('purchaseDueDateGroup');
+
     const createPage = document.querySelector('[data-page="purchases-create"]');
     let productsData = [];
     let unitsData = [];
@@ -581,6 +589,136 @@ function initPurchaseCreate() {
         if (discountText) discountText.textContent = discAmount.toFixed(2);
         if (shippingText) shippingText.textContent = shipping.toFixed(2);
         if (grandTotalText) grandTotalText.textContent = grandTotal.toFixed(2);
+        updatePurchasePaymentStatus(grandTotal);
+    }
+
+    function getCurrentPurchasePaymentType() {
+        const checked = document.querySelector('input[name="payment_type"]:checked');
+        return checked ? checked.value : 'cash';
+    }
+
+    function updatePurchasePaymentStatus(grandTotal = null) {
+        if (grandTotal === null) {
+            grandTotal = parseFloat(grandTotalText ? grandTotalText.textContent : 0) || 0;
+        }
+
+        const paymentType = getCurrentPurchasePaymentType();
+
+        const purchaseDueDateHint = document.getElementById('purchaseDueDateHint');
+
+        if (paymentType === 'cash') {
+            if (purchasePaidAmountInput) {
+                purchasePaidAmountInput.value = grandTotal.toFixed(2);
+                purchasePaidAmountInput.readOnly = true;
+                purchasePaidAmountInput.classList.remove('bg-[var(--bg-surface)]');
+                purchasePaidAmountInput.classList.add('bg-[var(--surface-muted)]');
+            }
+            if (purchaseRemainingAmountInput) {
+                purchaseRemainingAmountInput.value = '0.00';
+            }
+            if (purchasePaidHint) purchasePaidHint.textContent = 'كامل الفاتورة مسدد للمورد';
+            if (purchaseRemainingHint) purchaseRemainingHint.textContent = 'لا توجد مستحقات معلقة للمورد';
+            if (purchaseDueDateInput) {
+                purchaseDueDateInput.disabled = true;
+                purchaseDueDateInput.value = '';
+                purchaseDueDateInput.classList.add('bg-[var(--surface-muted)]', 'cursor-not-allowed', 'opacity-60');
+            }
+            if (purchaseDueDateHint) purchaseDueDateHint.textContent = 'غير مطلوب في السداد النقدي';
+        } else if (paymentType === 'credit') {
+            if (purchasePaidAmountInput) {
+                purchasePaidAmountInput.value = '0.00';
+                purchasePaidAmountInput.readOnly = true;
+                purchasePaidAmountInput.classList.remove('bg-[var(--bg-surface)]');
+                purchasePaidAmountInput.classList.add('bg-[var(--surface-muted)]');
+            }
+            if (purchaseRemainingAmountInput) {
+                purchaseRemainingAmountInput.value = grandTotal.toFixed(2);
+            }
+            if (purchasePaidHint) purchasePaidHint.textContent = 'لا يوجد سداد نقدي حالي';
+            if (purchaseRemainingHint) purchaseRemainingHint.textContent = 'كامل الفاتورة آجل على حساب المورد';
+            if (purchaseDueDateInput) {
+                purchaseDueDateInput.disabled = false;
+                purchaseDueDateInput.classList.remove('bg-[var(--surface-muted)]', 'cursor-not-allowed', 'opacity-60');
+            }
+            if (purchaseDueDateHint) purchaseDueDateHint.textContent = 'تاريخ استحقاق سداد فاتورة المورد';
+        } else { // partial
+            if (purchasePaidAmountInput) {
+                purchasePaidAmountInput.readOnly = false;
+                purchasePaidAmountInput.classList.remove('bg-[var(--surface-muted)]');
+                purchasePaidAmountInput.classList.add('bg-[var(--bg-surface)]');
+                let paid = parseFloat(purchasePaidAmountInput.value) || 0;
+                if (paid > grandTotal) {
+                    paid = grandTotal;
+                    purchasePaidAmountInput.value = paid.toFixed(2);
+                }
+                const remaining = Math.max(0, grandTotal - paid);
+                if (purchaseRemainingAmountInput) {
+                    purchaseRemainingAmountInput.value = remaining.toFixed(2);
+                }
+            }
+            if (purchasePaidHint) purchasePaidHint.textContent = 'المبلغ المسدد الآن للمورد';
+            if (purchaseRemainingHint) purchaseRemainingHint.textContent = 'المتبقي الآجل المستحق للمورد';
+            if (purchaseDueDateInput) {
+                purchaseDueDateInput.disabled = false;
+                purchaseDueDateInput.classList.remove('bg-[var(--surface-muted)]', 'cursor-not-allowed', 'opacity-60');
+            }
+            if (purchaseDueDateHint) purchaseDueDateHint.textContent = 'تاريخ استحقاق سداد المبلغ المتبقي';
+        }
+
+    }
+
+    // Attach Payment Method Events
+    if (purchasePaymentToggleGroup) {
+        const toggleButtons = purchasePaymentToggleGroup.querySelectorAll('.payment-toggle-btn');
+        toggleButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                if (e.target && e.target.tagName && e.target.tagName.toLowerCase() === 'input') {
+                    return;
+                }
+                toggleButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const radio = btn.querySelector('input[type="radio"]');
+                if (radio) {
+                    radio.checked = true;
+                }
+                updatePurchasePaymentStatus();
+            });
+        });
+
+        const radios = purchasePaymentToggleGroup.querySelectorAll('input[type="radio"]');
+        radios.forEach(radio => {
+            radio.addEventListener('change', () => {
+                toggleButtons.forEach(b => {
+                    const r = b.querySelector('input[type="radio"]');
+                    if (r && r.checked) {
+                        b.classList.add('active');
+                    } else {
+                        b.classList.remove('active');
+                    }
+                });
+                updatePurchasePaymentStatus();
+            });
+        });
+    }
+
+    if (purchasePaidAmountInput) {
+        purchasePaidAmountInput.addEventListener('input', () => {
+            const grandTotal = parseFloat(grandTotalText ? grandTotalText.textContent : 0) || 0;
+            let paid = parseFloat(purchasePaidAmountInput.value) || 0;
+            if (paid < 0) {
+                paid = 0;
+                purchasePaidAmountInput.value = '0.00';
+            }
+            if (paid > grandTotal) {
+                paid = grandTotal;
+                purchasePaidAmountInput.value = paid.toFixed(2);
+            }
+            const remaining = Math.max(0, grandTotal - paid);
+            if (purchaseRemainingAmountInput) {
+                purchaseRemainingAmountInput.value = remaining.toFixed(2);
+            }
+            updatePurchasePaymentStatus(grandTotal);
+        });
     }
 
     function attachRowEvents(row) {

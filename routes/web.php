@@ -27,6 +27,11 @@ Route::middleware('guest')->group(function () {
     Route::post('/login', [AuthController::class, 'login'])->name('login.post');
 });
 
+// Browser Telemetry and Log Endpoint (Silences 405 Method Not Allowed)
+Route::any('/_boots/browser-log', function () {
+    return response()->json(['status' => 'ok'], 200);
+})->name('boots.browser-log');
+
 // Authenticated Application Routes (Protected by auth middleware)
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
@@ -42,6 +47,11 @@ Route::middleware('auth')->group(function () {
         Route::get('/settings', [CompanySettingController::class, 'index'])->name('settings.index');
         Route::put('/settings', [CompanySettingController::class, 'update'])->name('settings.update');
         Route::put('/settings/barcode', [CompanySettingController::class, 'updateBarcode'])->name('settings.barcode.update');
+
+        // Department / Category Import
+        Route::get('/settings/departments/template', [CompanySettingController::class, 'downloadDepartmentTemplate'])->name('settings.departments.template');
+        Route::post('/settings/departments/preview', [CompanySettingController::class, 'previewDepartmentImport'])->name('settings.departments.preview');
+        Route::post('/settings/departments/import', [CompanySettingController::class, 'importDepartments'])->name('settings.departments.import');
 
         Route::prefix('settings/print-templates')->name('settings.print-templates.')->group(function () {
             Route::get('/data', [PrintTemplateController::class, 'data'])->name('data');
@@ -110,6 +120,14 @@ Route::middleware('auth')->group(function () {
             ->middleware('can:cancel-purchase-invoice')
             ->name('purchases.cancel');
 
+        Route::get('/purchases/{purchase}/pricing-review', [PurchaseInvoiceController::class, 'pricingReview'])
+            ->middleware('can:post-purchase-invoice')
+            ->name('purchases.pricing-review');
+
+        Route::post('/purchases/{purchase}/confirm-pricing', [PurchaseInvoiceController::class, 'confirmPricingAndPost'])
+            ->middleware('can:post-purchase-invoice')
+            ->name('purchases.confirm-pricing');
+
         Route::post('/purchases/{purchase}/direct-print', [PurchaseInvoiceController::class, 'directPrint'])->name('purchases.direct-print');
         Route::get('/purchases/{purchase}/print', [PurchaseInvoiceController::class, 'print'])->name('purchases.print');
         Route::resource('purchases', PurchaseInvoiceController::class)->except(['edit', 'update', 'destroy']);
@@ -153,6 +171,14 @@ Route::middleware('auth')->group(function () {
 
     // Warehouse & Inventory Management (Admin & Warehouse)
     Route::middleware('can:access-inventory')->group(function () {
+        // Stocktake & Inventory Reconciliation
+        Route::get('/inventory/stocktake', [InventoryController::class, 'stocktake'])->name('inventory.stocktake');
+        Route::get('/inventory/stocktake/template', [InventoryController::class, 'downloadStocktakeTemplate'])->name('inventory.stocktake.template');
+        Route::post('/inventory/stocktake/preview', [InventoryController::class, 'previewStocktake'])->name('inventory.stocktake.preview');
+        Route::post('/inventory/stocktake/reconcile', [InventoryController::class, 'reconcileStocktake'])->name('inventory.stocktake.reconcile');
+
+        Route::get('/warehouses/{warehouse}/stock/print', [WarehouseController::class, 'printStock'])->name('warehouses.stock.print');
+        Route::get('/warehouses/{warehouse}', [WarehouseController::class, 'show'])->name('warehouses.show');
         Route::resource('warehouses', WarehouseController::class)->except(['create', 'show', 'edit']);
         Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');
         Route::get('/inventory/movements', [InventoryController::class, 'movements'])->name('inventory.movements');
@@ -172,11 +198,20 @@ Route::middleware('auth')->group(function () {
         ->name('customers.store');
 
     Route::middleware('can:manage-customers')->group(function () {
+        Route::get('/customers/{customer}/statement', [CustomerController::class, 'statement'])->name('customers.statement');
+        Route::get('/customers/{customer}/statement/print', [CustomerController::class, 'printStatement'])->name('customers.statement.print');
+        Route::get('/customers/{customer}/purchased-items', [CustomerController::class, 'purchasedItems'])->name('customers.purchased-items');
+        Route::get('/customers/{customer}/purchased-items/print', [CustomerController::class, 'printPurchasedItems'])->name('customers.purchased-items.print');
+        Route::get('/customers/{customer}/whatsapp', [CustomerController::class, 'whatsappShare'])->name('customers.whatsapp');
         Route::resource('customers', CustomerController::class)->except(['store']);
     });
 
     // Directory of Suppliers & Shipping Offices (Purchases & Inventory)
     Route::middleware('can:manage-purchases')->group(function () {
+        Route::get('/suppliers/balance-due-report', [SupplierController::class, 'balanceDueReport'])->name('suppliers.balance-due-report');
+        Route::get('/suppliers/balance-due-report/print', [SupplierController::class, 'printBalanceDueReport'])->name('suppliers.balance-due-report.print');
+        Route::get('/suppliers/{supplier}/statement', [SupplierController::class, 'statement'])->name('suppliers.statement');
+        Route::get('/suppliers/{supplier}/statement/print', [SupplierController::class, 'printStatement'])->name('suppliers.statement.print');
         Route::get('/suppliers/lookup', [SupplierController::class, 'lookup'])->name('suppliers.lookup');
         Route::resource('suppliers', SupplierController::class);
 

@@ -168,7 +168,7 @@
         <!-- Table View -->
         <div class="erp-card">
             @if($invoices->count() > 0)
-                <div class="table-responsive">
+                <div class="erp-table-responsive">
                     <table class="erp-table">
                         <thead>
                             <tr>

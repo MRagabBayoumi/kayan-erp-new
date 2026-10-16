@@ -428,13 +428,13 @@
                             <thead>
                                 <tr>
                                     <th class="w-10 text-center">#</th>
-                                    <th>الصنف المختار</th>
-                                    <th class="w-28 text-center">وحدة القياس</th>
-                                    <th class="w-32 text-center">الكمية</th>
-                                    <th class="w-28 text-center">سعر الوحدة</th>
-                                    <th class="w-24 text-center">خصم البند</th>
-                                    <th class="w-28 text-center">الإجمالي الصافي</th>
-                                    <th class="w-36">ملاحظات</th>
+                                    <th class="min-w-[200px]">الصنف المختار</th>
+                                    <th class="w-36 text-center">وحدة القياس</th>
+                                    <th class="w-36 text-center">الكمية</th>
+                                    <th class="w-32 text-center">سعر الوحدة</th>
+                                    <th class="w-28 text-center">خصم البند</th>
+                                    <th class="w-32 text-center">الإجمالي الصافي</th>
+                                    <th class="w-40">ملاحظات</th>
                                     <th class="w-12 text-center">حذف</th>
                                 </tr>
                             </thead>
@@ -561,7 +561,115 @@
                 </div>
             </div>
 
-            <!-- 5. Big Touch/POS Cashier Action Bar -->
+            <!-- 5. Payment & Settlement Configuration (Cash vs Credit vs Partial) -->
+            <div class="pos-payment-card erp-card">
+                <div class="erp-card-header flex flex-wrap items-center justify-between gap-2 py-2.5">
+                    <div class="erp-card-title flex items-center gap-2">
+                        <x-icon name="dollar-sign" size="18" class="text-[var(--primary)]" />
+                        <span>طريقة السداد والتحصيل المالي (نظام الآجل والتحصيل)</span>
+                    </div>
+                    <div id="customerCreditStatusBadge" class="hidden text-xs px-2.5 py-1 rounded font-semibold border"></div>
+                </div>
+                <div class="erp-card-body p-4 flex flex-col gap-4">
+                    <!-- Row 1: Payment Method Toggle Bar -->
+                    <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-[var(--border-color)]">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold text-[var(--text-main)] flex items-center gap-1.5">
+                                <x-icon name="credit-card" size="15" class="text-[var(--primary)]" />
+                                <span>اختر طريقة سداد الفاتورة:</span>
+                            </span>
+                        </div>
+                        <div class="payment-method-toggle-group" id="posPaymentToggleGroup">
+                            <label class="payment-toggle-btn {{ old('payment_type', $invoice->payment_type ?? 'cash') === 'cash' ? 'active' : '' }}" data-type="cash">
+                                <input type="radio" name="payment_type" value="cash" {{ old('payment_type', $invoice->payment_type ?? 'cash') === 'cash' ? 'checked' : '' }} class="sr-only">
+                                <x-icon name="banknote" size="14" />
+                                <span>نقدي (كاش بالكامل)</span>
+                            </label>
+                            <label class="payment-toggle-btn {{ old('payment_type', $invoice->payment_type ?? 'cash') === 'credit' ? 'active' : '' }}" data-type="credit">
+                                <input type="radio" name="payment_type" value="credit" {{ old('payment_type', $invoice->payment_type ?? 'cash') === 'credit' ? 'checked' : '' }} class="sr-only">
+                                <x-icon name="clock" size="14" />
+                                <span>آجل بالكامل (مديونية)</span>
+                            </label>
+                            <label class="payment-toggle-btn {{ old('payment_type', $invoice->payment_type ?? 'cash') === 'partial' ? 'active' : '' }}" data-type="partial">
+                                <input type="radio" name="payment_type" value="partial" {{ old('payment_type', $invoice->payment_type ?? 'cash') === 'partial' ? 'checked' : '' }} class="sr-only">
+                                <x-icon name="pie-chart" size="14" />
+                                <span>دفع جزئي (مقدم + آجل)</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Row 2: 3 Balanced Financial Fields -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <!-- Paid Cash Amount -->
+                        <div class="erp-form-group mb-0">
+                            <label for="posPaidAmountInput" class="erp-form-label text-xs font-semibold flex items-center gap-1.5">
+                                <x-icon name="check-circle" size="14" class="text-[var(--success)]" />
+                                <span>المدفوع نقداً بالدرج (ج.م)</span>
+                            </label>
+                            <div class="relative">
+                                <input 
+                                    type="number" 
+                                    step="0.01" 
+                                    min="0" 
+                                    id="posPaidAmountInput" 
+                                    name="paid_amount" 
+                                    value="{{ old('paid_amount', number_format((float)($invoice->paid_amount ?? 0), 2, '.', '')) }}" 
+                                    class="erp-input font-numeric font-bold text-center text-sm text-[var(--success)] bg-[var(--surface-muted)]"
+                                    readonly
+                                >
+                            </div>
+                            <span id="posPaidHint" class="erp-form-hint text-[11px] block text-[var(--text-muted)] mt-1">كامل الفاتورة مسدد نقداً بالدرج</span>
+                        </div>
+
+                        <!-- Remaining Deferred Amount -->
+                        <div class="erp-form-group mb-0">
+                            <label for="posRemainingAmountInput" class="erp-form-label text-xs font-semibold flex items-center gap-1.5">
+                                <x-icon name="alert-circle" size="14" class="text-[var(--danger)]" />
+                                <span>المتبقي الآجل على العميل (ج.م)</span>
+                            </label>
+                            <div class="relative">
+                                <input 
+                                    type="number" 
+                                    step="0.01" 
+                                    id="posRemainingAmountInput" 
+                                    name="remaining_amount" 
+                                    value="{{ old('remaining_amount', number_format((float)($invoice->remaining_amount ?? 0), 2, '.', '')) }}" 
+                                    class="erp-input font-numeric font-bold text-center text-sm text-[var(--danger)] bg-[var(--surface-muted)]" 
+                                    readonly
+                                    tabindex="-1"
+                                >
+                            </div>
+                            <span id="posRemainingHint" class="erp-form-hint text-[11px] block text-[var(--text-muted)] mt-1">لا يوجد دين آجل على العميل</span>
+                        </div>
+
+                        <!-- Due Date (for Credit & Partial) -->
+                        <div class="erp-form-group mb-0" id="posDueDateGroup">
+                            <label for="posDueDateInput" class="erp-form-label text-xs font-semibold flex items-center gap-1.5">
+                                <x-icon name="calendar" size="14" class="text-amber-500" />
+                                <span>تاريخ استحقاق الآجل</span>
+                            </label>
+                            <div class="relative">
+                                <input 
+                                    type="date" 
+                                    id="posDueDateInput" 
+                                    name="due_date" 
+                                    value="{{ old('due_date', $invoice->due_date?->format('Y-m-d') ?? '') }}" 
+                                    class="erp-input text-xs font-numeric {{ old('payment_type', $invoice->payment_type ?? 'cash') === 'cash' ? 'bg-[var(--surface-muted)] cursor-not-allowed opacity-60' : '' }}"
+                                    {{ old('payment_type', $invoice->payment_type ?? 'cash') === 'cash' ? 'disabled' : '' }}
+                                >
+                            </div>
+                            <span id="posDueDateHint" class="erp-form-hint text-[11px] block text-[var(--text-muted)] mt-1">
+                                {{ old('payment_type', $invoice->payment_type ?? 'cash') === 'cash' ? 'غير مطلوب في البيع النقدي' : 'حدد تاريخ المطالبة بسداد المتبقي' }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Live Credit Limit & Warning Banner -->
+                    <div id="creditLimitAlertBox" class="hidden p-3 rounded text-xs border flex items-center gap-2"></div>
+                </div>
+            </div>
+
+            <!-- 6. Big Touch/POS Cashier Action Bar -->
             <div class="pos-cashier-actions">
                 <div class="flex items-center gap-2">
                     <button type="button" id="clearCartBtn" class="erp-btn erp-btn-ghost text-[var(--danger)] text-xs">

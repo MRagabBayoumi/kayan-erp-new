@@ -40,8 +40,17 @@ class ProductController extends Controller
             $query->search($request->input('search'));
         }
 
-        if ($request->filled('category_id')) {
-            $query->byCategory((int) $request->input('category_id'));
+        $selectedCategoryIds = [];
+        if ($request->has('category_ids') && is_array($request->input('category_ids'))) {
+            $selectedCategoryIds = array_map('intval', array_filter($request->input('category_ids')));
+        } elseif ($request->filled('categories')) {
+            $selectedCategoryIds = array_map('intval', array_filter(explode(',', (string) $request->input('categories'))));
+        } elseif ($request->filled('category_id')) {
+            $selectedCategoryIds = [(int) $request->input('category_id')];
+        }
+
+        if (! empty($selectedCategoryIds)) {
+            $query->whereIn('category_id', $selectedCategoryIds);
         }
 
         if ($request->filled('status')) {
@@ -67,7 +76,8 @@ class ProductController extends Controller
             'products' => $products,
             'categories' => $categories,
             'currentSearch' => $request->input('search'),
-            'currentCategoryId' => $request->input('category_id'),
+            'currentCategoryId' => count($selectedCategoryIds) === 1 ? $selectedCategoryIds[0] : null,
+            'selectedCategoryIds' => $selectedCategoryIds,
             'currentStatus' => $request->input('status'),
             'currentPerPage' => $perPage,
             'barcodeSettings' => BarcodeSetting::getSettings(),

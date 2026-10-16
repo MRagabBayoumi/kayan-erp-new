@@ -42,13 +42,13 @@
             </a>
 
             <!-- Direct Python Print -->
-            <button type="button" data-action="python-direct-print" data-url="{{ route('shifts.direct-print', $shift) }}" class="dispatch-btn dispatch-btn-primary" title="طباعة مباشرة بطابعة الإيصالات عبر بايثون">
+            <button type="button" data-action="python-direct-print" data-url="{{ route('shifts.direct-print', $shift) }}" class="dispatch-btn dispatch-btn-primary" title="طباعة فورية مباشرة بطابعة الإيصالات عبر بايثون">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="6 9 6 2 18 2 18 9"></polyline>
                     <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
                     <rect x="6" y="14" width="12" height="8"></rect>
                 </svg>
-                <span>طباعة بايثون المباشرة</span>
+                <span>طباعة فورية (Instant Print)</span>
             </button>
 
             <!-- Print Now -->
@@ -92,6 +92,12 @@
                             <span class="dispatch-meta-label">اسم الكاشير :</span>
                             <span class="dispatch-meta-val font-bold">{{ $shift->user?->name ?? 'كاشير' }}</span>
                         </div>
+                        @if($shift->opened_by && $shift->opened_by !== $shift->user_id)
+                        <div class="dispatch-meta-row">
+                            <span class="dispatch-meta-label">فاتح الوردية :</span>
+                            <span class="dispatch-meta-val font-bold">{{ $shift->openedBy?->name ?? 'مدير النظام' }}</span>
+                        </div>
+                        @endif
                         <div class="dispatch-meta-row">
                             <span class="dispatch-meta-label">الفرع / المستودع :</span>
                             <span class="dispatch-meta-val">{{ $shift->warehouse?->name ?? 'الرئيسي' }}</span>

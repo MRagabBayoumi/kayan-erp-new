@@ -7,6 +7,10 @@
                 <x-icon name="arrow-left-right" size="16" />
                 <span>تسجيل حركة مخزون جديدة</span>
             </button>
+            <a href="{{ route('inventory.stocktake') }}" class="erp-btn erp-btn-secondary">
+                <x-icon name="clipboard-check" size="16" />
+                <span>جرد وتسوية المخزون</span>
+            </a>
             <a href="{{ route('inventory.movements') }}" class="erp-btn erp-btn-secondary">
                 <x-icon name="file-text" size="16" />
                 <span>سجل الحركات</span>

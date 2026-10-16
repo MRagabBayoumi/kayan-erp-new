@@ -73,16 +73,29 @@
                     </button>
                 </div>
 
-                <!-- Category Filter -->
-                <div class="min-w-[180px]">
-                    <select name="category_id" class="erp-input w-full">
-                        <option value="">-- كل التصنيفات --</option>
+                <!-- Category Multi-Select Filter -->
+                <div class="erp-dropdown min-w-[200px]">
+                    <button type="button" class="erp-btn erp-btn-secondary w-full justify-between" data-dropdown-toggle="productCategoryFilterDropdown">
+                        <span class="truncate">
+                            @if(empty($selectedCategoryIds))
+                                كل التصنيفات
+                            @elseif(count($selectedCategoryIds) === 1)
+                                {{ $categories->firstWhere('id', $selectedCategoryIds[0])?->name ?? 'تصنيف محدد' }}
+                            @else
+                                {{ count($selectedCategoryIds) }} تصنيفات محددة
+                            @endif
+                        </span>
+                        <x-icon name="chevron-down" size="14" />
+                    </button>
+                    <div id="productCategoryFilterDropdown" class="erp-dropdown-menu p-3 max-h-64 overflow-y-auto w-64">
+                        <div class="text-xs font-bold text-[var(--text-muted)] mb-2">اختر التصنيفات المطلوبة:</div>
                         @foreach($categories as $category)
-                            <option value="{{ $category->id }}" {{ (string)$currentCategoryId === (string)$category->id ? 'selected' : '' }}>
-                                {{ $category->name }}
-                            </option>
+                            <label class="flex items-center gap-2 py-1.5 px-2 hover:bg-[var(--bg-hover)] rounded cursor-pointer text-xs">
+                                <input type="checkbox" name="category_ids[]" value="{{ $category->id }}" {{ in_array($category->id, $selectedCategoryIds) ? 'checked' : '' }} class="rounded border-[var(--border-color)]">
+                                <span class="text-[var(--text-main)]">{{ $category->name }}</span>
+                            </label>
                         @endforeach
-                    </select>
+                    </div>
                 </div>
 
                 <!-- Status Filter -->
@@ -99,13 +112,27 @@
                     <span>تصفية</span>
                 </button>
 
-                @if($currentSearch || $currentCategoryId || $currentStatus)
+                @if($currentSearch || !empty($selectedCategoryIds) || $currentStatus)
                     <a href="{{ route('products.index') }}" class="erp-btn erp-btn-secondary py-1.5 px-3" title="إلغاء التصفية">
                         <x-icon name="x" size="14" />
                         <span>إلغاء الفلترة</span>
                     </a>
                 @endif
             </form>
+
+            @if(!empty($selectedCategoryIds))
+                <div class="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-[var(--border-color)]">
+                    <span class="text-xs text-[var(--text-muted)] font-bold">التصنيفات المحددة ({{ count($selectedCategoryIds) }}):</span>
+                    @foreach($categories->whereIn('id', $selectedCategoryIds) as $selCat)
+                        <span class="erp-badge erp-badge-info text-xs flex items-center gap-1">
+                            <span>{{ $selCat->name }}</span>
+                        </span>
+                    @endforeach
+                    <a href="{{ request()->fullUrlWithQuery(['category_ids' => null, 'category_id' => null, 'categories' => null]) }}" class="text-xs text-[var(--danger)] hover:underline mr-2">
+                        مسح التصنيفات
+                    </a>
+                </div>
+            @endif
         </div>
 
         <!-- Products Table Card -->

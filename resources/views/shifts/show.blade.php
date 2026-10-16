@@ -3,14 +3,36 @@
 @section('control_panel')
     <x-control-panel title="تفاصيل الوردية: {{ $shift->shift_number }}" :breadcrumbs="['المبيعات' => route('sales.index'), 'ورديات الكاشير' => route('shifts.index'), $shift->shift_number => '#']">
         <x-slot:actions>
-            <button type="button" data-action="python-direct-print" data-url="{{ route('shifts.direct-print', $shift) }}" class="erp-btn erp-btn-primary" title="طباعة مباشرة بطابعة الإيصالات عبر بايثون">
-                <x-icon name="printer" size="16" />
-                <span>طباعة بايثون المباشرة</span>
-            </button>
-            <a href="{{ route('shifts.print', $shift) }}" target="_blank" class="erp-btn erp-btn-secondary">
-                <x-icon name="printer" size="16" />
-                <span>طباعة التقرير</span>
-            </a>
+            <!-- Compact Print Menu -->
+            <div class="erp-dropdown">
+                <button type="button" class="erp-btn erp-btn-secondary" data-dropdown-toggle="shiftPrintMenu" title="خيارات ونماذج الطباعة">
+                    <x-icon name="printer" size="16" />
+                    <span>طباعة التقرير</span>
+                    <x-icon name="chevron-down" size="12" class="opacity-80" />
+                </button>
+                <div id="shiftPrintMenu" class="erp-dropdown-menu w-[220px] left-0">
+                    <div class="erp-dropdown-header">
+                        <strong class="text-xs text-[var(--text-main)]">نماذج الطباعة المتاحة</strong>
+                    </div>
+                    <button type="button" data-action="python-direct-print" data-url="{{ route('shifts.direct-print', $shift) }}" class="erp-dropdown-item text-[var(--primary)] font-semibold" title="طباعة فورية مباشرة عبر خادم الطباعة">
+                        <x-icon name="zap" size="14" />
+                        <span>طباعة فورية (Instant Print)</span>
+                    </button>
+                    <div class="erp-dropdown-divider"></div>
+                    <a href="{{ route('shifts.print', [$shift, 'format' => 'a4']) }}" target="_blank" class="erp-dropdown-item" title="طباعة تقرير A4">
+                        <x-icon name="file-text" size="14" />
+                        <span>تقرير قياسي (A4)</span>
+                    </a>
+                    <a href="{{ route('shifts.print', [$shift, 'format' => 'a5']) }}" target="_blank" class="erp-dropdown-item" title="طباعة تقرير A5">
+                        <x-icon name="file" size="14" />
+                        <span>تقرير مدمج (A5)</span>
+                    </a>
+                    <a href="{{ route('shifts.print', [$shift, 'format' => 'thermal_80mm']) }}" target="_blank" class="erp-dropdown-item" title="طباعة إيصال حراري 80 مم">
+                        <x-icon name="printer" size="14" />
+                        <span>إيصال حراري (80 مم)</span>
+                    </a>
+                </div>
+            </div>
             @if($shift->status === 'open' && (auth()->id() === $shift->user_id || auth()->user()->isAdmin()))
                 <button type="button" id="closeThisShiftBtn" class="erp-btn erp-btn-danger close-shift-trigger-btn"
                     data-shift-id="{{ $shift->id }}"
@@ -126,9 +148,15 @@
                 </h3>
                 <div class="space-y-2 text-xs">
                     <div class="flex justify-between py-1 border-b border-[var(--border-color)]">
-                        <span class="text-[var(--text-muted)]">الكاشير:</span>
+                        <span class="text-[var(--text-muted)]">الكاشير المسؤول:</span>
                         <strong class="text-[var(--text-main)]">{{ $shift->user?->name }}</strong>
                     </div>
+                    @if($shift->opened_by)
+                    <div class="flex justify-between py-1 border-b border-[var(--border-color)]">
+                        <span class="text-[var(--text-muted)]">المشرف فاتح الوردية:</span>
+                        <strong class="text-[var(--primary)]">{{ $shift->openedBy?->name ?? 'مدير النظام' }}</strong>
+                    </div>
+                    @endif
                     <div class="flex justify-between py-1 border-b border-[var(--border-color)]">
                         <span class="text-[var(--text-muted)]">المستودع / الفرع:</span>
                         <strong class="text-[var(--text-main)]">{{ $shift->warehouse?->name }}</strong>
@@ -220,7 +248,7 @@
                 </h3>
                 <span class="erp-badge erp-badge-neutral font-numeric">{{ $shift->cashMovements->count() }} حركة</span>
             </div>
-            <div class="table-responsive">
+            <div class="erp-table-responsive">
                 <table class="erp-table">
                     <thead>
                         <tr>
@@ -275,7 +303,7 @@
                 </h3>
                 <span class="erp-badge erp-badge-neutral font-numeric">{{ $shift->salesInvoices->count() }} فاتورة</span>
             </div>
-            <div class="table-responsive">
+            <div class="erp-table-responsive">
                 <table class="erp-table">
                     <thead>
                         <tr>
@@ -338,7 +366,7 @@
                 </h3>
                 <span class="erp-badge erp-badge-info font-numeric">{{ isset($soldItems) ? count($soldItems) : 0 }} صنف مباع</span>
             </div>
-            <div class="table-responsive">
+            <div class="erp-table-responsive">
                 <table class="erp-table">
                     <thead>
                         <tr>

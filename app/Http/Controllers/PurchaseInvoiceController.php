@@ -128,12 +128,18 @@ class PurchaseInvoiceController extends Controller
             'supplier_id' => ['required', 'exists:suppliers,id'],
             'warehouse_id' => ['required', 'exists:warehouses,id'],
             'invoice_date' => ['required', 'date'],
+            'payment_type' => ['nullable', 'string', 'in:cash,credit,partial'],
+            'paid_amount' => ['nullable', 'numeric', 'min:0'],
+            'due_date' => ['nullable', 'date'],
             'shipping_cost' => ['nullable', 'numeric', 'min:0'],
             'discount_type' => ['nullable', 'string', 'in:fixed,percentage'],
             'discount_value' => ['nullable', 'numeric', 'min:0'],
             'notes' => ['nullable', 'string', 'max:1000'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['required', 'exists:products,id'],
+            'items.*.unit_id' => ['nullable', 'exists:units,id'],
+            'items.*.unit_name' => ['nullable', 'string', 'max:50'],
+            'items.*.conversion_factor' => ['nullable', 'numeric', 'min:0.0001'],
             'items.*.quantity' => ['required', 'numeric', 'min:0.01'],
             'items.*.unit_cost' => ['required', 'numeric', 'min:0'],
             'items.*.notes' => ['nullable', 'string', 'max:255'],
@@ -166,9 +172,33 @@ class PurchaseInvoiceController extends Controller
                 $lineSubtotal = round($qty * $cost, 2);
                 $subtotal += $lineSubtotal;
 
+                // Determine unit & conversion factor
+                $unitId = ! empty($itemInput['unit_id']) ? (int) $itemInput['unit_id'] : null;
+                $factor = 1.0000;
+
+                if (! empty($itemInput['conversion_factor']) && (float) $itemInput['conversion_factor'] > 0) {
+                    $factor = (float) $itemInput['conversion_factor'];
+                } elseif ($unitId) {
+                    $unit = \App\Models\Unit::find($unitId);
+                    if ($unit && (float) $unit->conversion_factor > 0) {
+                        $factor = (float) $unit->conversion_factor;
+                    }
+                } elseif (! empty($itemInput['unit_name'])) {
+                    $unit = \App\Models\Unit::where('name', trim($itemInput['unit_name']))->first();
+                    if ($unit) {
+                        $unitId = $unit->id;
+                        $factor = (float) $unit->conversion_factor > 0 ? (float) $unit->conversion_factor : 1.0000;
+                    }
+                }
+
+                $baseQty = round($qty * $factor, 4);
+
                 $itemsData[] = [
                     'product_id' => (int) $itemInput['product_id'],
+                    'unit_id' => $unitId,
+                    'conversion_factor' => $factor,
                     'quantity' => $qty,
+                    'base_quantity' => $baseQty,
                     'unit_cost' => $cost,
                     'subtotal' => $lineSubtotal,
                     'notes' => $itemInput['notes'] ?? null,
@@ -186,6 +216,19 @@ class PurchaseInvoiceController extends Controller
 
             $totalAmount = max(0, round($subtotal - $discountAmount + $shippingCost, 2));
 
+            $paymentType = $validated['payment_type'] ?? PurchaseInvoice::PAYMENT_CASH;
+            if ($paymentType === PurchaseInvoice::PAYMENT_CASH) {
+                $paidAmount = $totalAmount;
+                $remainingAmount = 0.00;
+            } elseif ($paymentType === PurchaseInvoice::PAYMENT_CREDIT) {
+                $paidAmount = 0.00;
+                $remainingAmount = $totalAmount;
+            } else {
+                $paidAmount = min($totalAmount, max(0.00, (float) ($validated['paid_amount'] ?? 0.00)));
+                $remainingAmount = max(0.00, round($totalAmount - $paidAmount, 2));
+            }
+            $dueDate = filled($validated['due_date'] ?? null) ? $validated['due_date'] : null;
+
             $notes = $validated['notes'] ?? null;
             if ($discountAmount > 0) {
                 $discountNote = $discountType === 'percentage'
@@ -199,10 +242,14 @@ class PurchaseInvoiceController extends Controller
                 'supplier_id' => (int) $validated['supplier_id'],
                 'warehouse_id' => (int) $validated['warehouse_id'],
                 'invoice_date' => $validated['invoice_date'],
+                'payment_type' => $paymentType,
                 'status' => PurchaseInvoice::STATUS_DRAFT,
                 'subtotal' => $subtotal,
                 'shipping_cost' => $shippingCost,
                 'total_amount' => $totalAmount,
+                'paid_amount' => $paidAmount,
+                'remaining_amount' => $remainingAmount,
+                'due_date' => $dueDate,
                 'notes' => $notes,
                 'created_by' => auth()->id(),
             ]);
@@ -212,6 +259,11 @@ class PurchaseInvoiceController extends Controller
                 PurchaseInvoiceItem::create($row);
             }
 
+            // If user chose to review pricing before final posting
+            if ($request->input('action') === 'review_pricing') {
+                return $invoice;
+            }
+
             // If user chose to post directly upon creation
             if ($request->input('action') === 'post') {
                 $this->executePosting($invoice, $inventoryService);
@@ -219,6 +271,12 @@ class PurchaseInvoiceController extends Controller
 
             return $invoice;
         });
+
+        if ($request->input('action') === 'review_pricing') {
+            return redirect()->route('purchases.pricing-review', $invoice)
+                ->with('status', 'info')
+                ->with('message', 'تم حفظ المسودة بنجاح. يرجى مراجعة واعتماد أسعار البيع قبل الترحيل النهائي للمخزن.');
+        }
 
         $message = $invoice->status === PurchaseInvoice::STATUS_POSTED
             ? 'تم حفظ فاتورة الشراء وترحيل أصنافها للمخازن كدفعات واردة بنجاح.'
@@ -303,10 +361,94 @@ class PurchaseInvoiceController extends Controller
     /**
      * Post a draft purchase invoice and receive items into the warehouse atomically.
      */
-    public function post(PurchaseInvoice $purchase, InventoryService $inventoryService): RedirectResponse
+    /**
+     * Dedicated Product Pricing Review Page before final posting of purchase invoice.
+     */
+    public function pricingReview(PurchaseInvoice $purchase): View|RedirectResponse
+    {
+        if ($purchase->status !== PurchaseInvoice::STATUS_DRAFT) {
+            return redirect()->route('purchases.show', $purchase)
+                ->with('error', 'هذه الفاتورة تم ترحيلها بالفعل ولا يمكن مراجعة تسعيرها مجدداً.');
+        }
+
+        $purchase->loadMissing(['supplier', 'warehouse', 'items.product.category', 'items.unit']);
+
+        return view('purchases.pricing-review', [
+            'purchase' => $purchase,
+            'canEditPrices' => auth()->user()?->can('edit-product-prices') ?? false,
+        ]);
+    }
+
+    /**
+     * Confirm pricing decisions and finalize posting into FIFO layers.
+     */
+    public function confirmPricingAndPost(Request $request, PurchaseInvoice $purchase, InventoryService $inventoryService): RedirectResponse
+    {
+        if ($purchase->status !== PurchaseInvoice::STATUS_DRAFT) {
+            return redirect()->route('purchases.show', $purchase)
+                ->with('error', 'هذه الفاتورة تم ترحيلها مسبقاً.');
+        }
+
+        $canEditPrices = auth()->user()?->can('edit-product-prices') ?? false;
+
+        $validated = $request->validate([
+            'prices' => ['nullable', 'array'],
+            'prices.*.retail_price' => ['nullable', 'numeric', 'min:0'],
+            'prices.*.wholesale_price' => ['nullable', 'numeric', 'min:0'],
+            'prices.*.distributor_price' => ['nullable', 'numeric', 'min:0'],
+            'update_master_prices' => ['nullable', 'boolean'],
+        ]);
+
+        $customPrices = $validated['prices'] ?? [];
+        $updateMaster = ! empty($validated['update_master_prices']) && $canEditPrices;
+
+        DB::transaction(function () use ($purchase, $inventoryService, $customPrices, $updateMaster) {
+            $invoice = PurchaseInvoice::where('id', $purchase->id)->lockForUpdate()->first();
+            if ($invoice->status !== PurchaseInvoice::STATUS_DRAFT) {
+                throw new \InvalidArgumentException('تم ترحيل هذه الفاتورة بالفعل من قبل مستخدم آخر.');
+            }
+
+            // Update master product prices if authorized and requested
+            if ($updateMaster) {
+                foreach ($customPrices as $productId => $prices) {
+                    $product = Product::lockForUpdate()->find((int) $productId);
+                    if ($product) {
+                        $updates = [];
+                        if (isset($prices['retail_price']) && is_numeric($prices['retail_price'])) {
+                            $updates['retail_price'] = (float) $prices['retail_price'];
+                        }
+                        if (isset($prices['wholesale_price']) && is_numeric($prices['wholesale_price'])) {
+                            $updates['wholesale_price'] = (float) $prices['wholesale_price'];
+                        }
+                        if (isset($prices['distributor_price']) && is_numeric($prices['distributor_price'])) {
+                            $updates['distributor_price'] = (float) $prices['distributor_price'];
+                        }
+                        if (! empty($updates)) {
+                            $product->update($updates);
+                        }
+                    }
+                }
+            }
+
+            $this->executePosting($invoice, $inventoryService, $customPrices);
+        });
+
+        return redirect()->route('purchases.show', $purchase)
+            ->with('status', 'success')
+            ->with('message', 'تم اعتماد أسعار البيع وترحيل فاتورة الشراء للمخازن وتوليد طبقات FIFO بنجاح.');
+    }
+
+    /**
+     * Post a draft purchase invoice and receive items into the warehouse atomically.
+     */
+    public function post(Request $request, PurchaseInvoice $purchase, InventoryService $inventoryService): RedirectResponse
     {
         if ($purchase->status !== PurchaseInvoice::STATUS_DRAFT) {
             return back()->with('error', 'لا يمكن ترحيل هذه الفاتورة لأنها ليست في حالة مسودة.');
+        }
+
+        if ($request->has('review')) {
+            return redirect()->route('purchases.pricing-review', $purchase);
         }
 
         DB::transaction(function () use ($purchase, $inventoryService) {
@@ -335,29 +477,51 @@ class PurchaseInvoiceController extends Controller
     }
 
     /**
-     * Internal atomic posting helper.
+     * Internal atomic posting helper with unit conversion and optional batch price overrides.
+     *
+     * @param array<int, array{retail_price?: float, wholesale_price?: float, distributor_price?: float}> $customPrices
      */
-    private function executePosting(PurchaseInvoice $invoice, InventoryService $inventoryService): void
+    private function executePosting(PurchaseInvoice $invoice, InventoryService $inventoryService, array $customPrices = []): void
     {
-        $invoice->loadMissing('items.product');
+        $invoice->loadMissing(['items.product', 'items.unit']);
 
         foreach ($invoice->items as $item) {
             $product = $item->product;
+            $factor = (float) ($item->conversion_factor > 0 ? $item->conversion_factor : 1.0);
+            $baseQty = (float) ($item->base_quantity ?: round((float) $item->quantity * $factor, 4));
+            $costPerBaseUnit = $baseQty > 0 ? round((float) $item->subtotal / $baseQty, 4) : (float) $item->unit_cost;
+
+            $pricing = $customPrices[$item->product_id] ?? [];
+
+            $retailPrice = isset($pricing['retail_price']) && is_numeric($pricing['retail_price'])
+                ? (float) $pricing['retail_price']
+                : (! is_null($product?->retail_price) ? (float) $product->retail_price : null);
+
+            $wholesalePrice = isset($pricing['wholesale_price']) && is_numeric($pricing['wholesale_price'])
+                ? (float) $pricing['wholesale_price']
+                : (! is_null($product?->wholesale_price) ? (float) $product->wholesale_price : null);
+
+            $distributorPrice = isset($pricing['distributor_price']) && is_numeric($pricing['distributor_price'])
+                ? (float) $pricing['distributor_price']
+                : (! is_null($product?->distributor_price) ? (float) $product->distributor_price : (! is_null($product?->wholesale_price) ? (float) $product->wholesale_price : null));
+
             $inventoryService->addStock(
                 productId: $item->product_id,
                 warehouseId: $invoice->warehouse_id,
-                quantity: (float) $item->quantity,
-                costPrice: (float) $item->unit_cost,
+                quantity: $baseQty,
+                costPrice: $costPerBaseUnit,
                 notes: 'فاتورة شراء رقم: '.$invoice->invoice_number,
                 referenceType: 'purchase_invoice',
                 referenceId: $invoice->id,
                 userId: auth()->id(),
                 receivedAt: Carbon::parse($invoice->invoice_date),
                 supplierId: $invoice->supplier_id,
-                retailPrice: ! is_null($product?->retail_price) ? (float) $product->retail_price : null,
-                wholesalePrice: ! is_null($product?->wholesale_price) ? (float) $product->wholesale_price : null,
-                distributorPrice: ! is_null($product?->distributor_price) ? (float) $product->distributor_price : (! is_null($product?->wholesale_price) ? (float) $product->wholesale_price : null),
+                retailPrice: $retailPrice,
+                wholesalePrice: $wholesalePrice,
+                distributorPrice: $distributorPrice,
                 totalInitialCost: (float) $item->subtotal,
+                unitId: $item->unit_id,
+                conversionFactor: $factor,
                 sourceType: 'purchase_invoice',
                 sourceId: $invoice->id
             );
@@ -367,5 +531,12 @@ class PurchaseInvoiceController extends Controller
             'status' => PurchaseInvoice::STATUS_POSTED,
             'posted_at' => now(),
         ]);
+
+        if ((float) $invoice->remaining_amount > 0 && $invoice->supplier_id) {
+            $supplier = Supplier::lockForUpdate()->find($invoice->supplier_id);
+            if ($supplier) {
+                $supplier->increment('current_balance', (float) $invoice->remaining_amount);
+            }
+        }
     }
 }

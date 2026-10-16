@@ -5,11 +5,52 @@
         <x-slot:actions>
             <a href="{{ route('customers.index') }}" class="erp-btn erp-btn-secondary">
                 <x-icon name="arrow-right" size="16" />
-                <span>العودة لقائمة العملاء</span>
+                <span>العودة للعملاء</span>
             </a>
-            <a href="tel:{{ $customer->phone }}" class="erp-btn erp-btn-secondary">
+            <a href="{{ route('customers.statement', $customer) }}" class="erp-btn erp-btn-primary">
+                <x-icon name="file-text" size="16" />
+                <span>كشف الحساب المالي</span>
+            </a>
+            <a href="{{ route('customers.purchased-items', $customer) }}" class="erp-btn erp-btn-secondary">
+                <x-icon name="shopping-bag" size="16" />
+                <span>مسحوبات الأصناف</span>
+            </a>
+            <a href="{{ $whatsAppUrl }}" target="_blank" rel="noopener noreferrer" class="erp-btn erp-btn-success" title="مشاركة كشف الحساب عبر واتساب">
+                <x-icon name="message-circle" size="16" />
+                <span>واتساب</span>
+            </a>
+
+            <!-- Compact Print Dropdown -->
+            <div class="erp-dropdown">
+                <button type="button" class="erp-btn erp-btn-secondary" data-dropdown-toggle="customerShowPrintMenu">
+                    <x-icon name="printer" size="16" />
+                    <span>طباعة</span>
+                    <x-icon name="chevron-down" size="14" />
+                </button>
+                <div id="customerShowPrintMenu" class="erp-dropdown-menu">
+                    <a href="{{ route('customers.statement.print', [$customer, 'format' => 'a4']) }}" target="_blank" class="erp-dropdown-item">
+                        <x-icon name="file-text" size="16" />
+                        <span>كشف حساب A4 قياسي</span>
+                    </a>
+                    <a href="{{ route('customers.statement.print', [$customer, 'format' => 'a5']) }}" target="_blank" class="erp-dropdown-item">
+                        <x-icon name="file" size="16" />
+                        <span>كشف حساب A5 وسط</span>
+                    </a>
+                    <a href="{{ route('customers.statement.print', [$customer, 'format' => 'thermal_80mm']) }}" target="_blank" class="erp-dropdown-item">
+                        <x-icon name="printer" size="16" />
+                        <span>كشف حساب 80 مم حراري</span>
+                    </a>
+                    <div class="erp-dropdown-divider"></div>
+                    <a href="{{ route('customers.purchased-items.print', [$customer, 'format' => 'a4']) }}" target="_blank" class="erp-dropdown-item">
+                        <x-icon name="shopping-bag" size="16" />
+                        <span>تقرير مسحوبات الأصناف A4</span>
+                    </a>
+                </div>
+            </div>
+
+            <a href="tel:{{ $customer->phone }}" class="erp-btn erp-btn-secondary" title="اتصال">
                 <x-icon name="phone" size="16" />
-                <span>اتصال بالعميل</span>
+                <span>اتصال</span>
             </a>
         </x-slot:actions>
 
@@ -127,21 +168,163 @@
             @endif
         </div>
 
-        <!-- Ledger & Future Transactions Tab / Card -->
-        <div class="erp-card">
-            <div class="erp-card-header">
-                <div class="erp-card-title">
-                    <x-icon name="calculator" size="18" />
-                    <span>كشف حساب وحركات الفواتير (جاهزية المرحلة السابعة)</span>
+        <!-- Customer Invoices & Credit Ledger -->
+        <div class="erp-card mt-6">
+            <div class="erp-card-header flex items-center justify-between">
+                <div class="erp-card-title flex items-center gap-2">
+                    <x-icon name="calculator" size="18" class="text-[var(--primary)]" />
+                    <span>سجل فواتير المبيعات وحركات الآجل للعميل (كشف حساب وحركات الفواتير)</span>
                 </div>
-                <span class="erp-badge erp-badge-neutral text-xs">مبيعات وفواتير</span>
+                <div class="flex items-center gap-2">
+                    <span class="erp-badge erp-badge-neutral text-xs">
+                        إجمالي الفواتير: {{ $salesInvoices->count() }}
+                    </span>
+                    <a href="{{ route('sales.create') }}" class="erp-btn erp-btn-primary erp-btn-sm">
+                        <x-icon name="plus" size="14" />
+                        <span>فاتورة مبيعات جديدة</span>
+                    </a>
+                </div>
             </div>
-            <div class="erp-card-body text-center py-8">
-                <x-icon name="shopping-bag" size="40" class="text-[var(--text-muted)] mb-2 inline-block" />
-                <h4 class="font-bold text-base m-0 mb-1">كشف الحساب وسجل المبيعات</h4>
-                <p class="text-xs text-[var(--text-muted)] max-w-md mx-auto m-0">
-                    سيتم إدراج فواتير المبيعات، سندات القبض والدفع، ومرتجعات المبيعات تلقائياً فور تشغيل وحدة فواتير الجملة والباركود.
-                </p>
+
+            <!-- Customer Financial KPI Row -->
+            <div class="p-4 border-b border-[var(--border-color)] bg-[var(--bg-surface-alt)]">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                    <div class="p-3 bg-[var(--bg-surface)] rounded border border-[var(--border-color)]">
+                        <div class="text-xs text-[var(--text-muted)] font-medium mb-1">إجمالي المشتريات</div>
+                        <div class="font-numeric font-bold text-lg text-[var(--text-main)]">
+                            {{ number_format($salesInvoices->where('status', 'posted')->sum('total_amount'), 2) }} ج.م
+                        </div>
+                    </div>
+                    <div class="p-3 bg-[var(--bg-surface)] rounded border border-[var(--border-color)]">
+                        <div class="text-xs text-[var(--text-muted)] font-medium mb-1">إجمالي المسدد نقداً</div>
+                        <div class="font-numeric font-bold text-lg text-[var(--success)]">
+                            {{ number_format($salesInvoices->where('status', 'posted')->sum('paid_amount'), 2) }} ج.م
+                        </div>
+                    </div>
+                    <div class="p-3 bg-[var(--bg-surface)] rounded border border-[var(--border-color)]">
+                        <div class="text-xs text-[var(--text-muted)] font-medium mb-1">الرصيد الآجل المعلق</div>
+                        <div class="font-numeric font-bold text-lg text-[var(--danger)]">
+                            {{ number_format($customer->current_balance, 2) }} ج.م
+                        </div>
+                    </div>
+                    <div class="p-3 bg-[var(--bg-surface)] rounded border border-[var(--border-color)]">
+                        <div class="text-xs text-[var(--text-muted)] font-medium mb-1">المتاح من حد الائتمان</div>
+                        <div class="font-numeric font-bold text-lg {{ ($customer->credit_limit > 0 && ($customer->credit_limit - $customer->current_balance) <= 0) ? 'text-[var(--danger)]' : 'text-[var(--primary)]' }}">
+                            @if($customer->credit_limit > 0)
+                                {{ number_format(max(0, $customer->credit_limit - $customer->current_balance), 2) }} ج.م
+                            @else
+                                <span class="text-xs text-[var(--text-muted)]">مفتوح (بدون سقف)</span>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="erp-card-body p-0">
+                @if($salesInvoices->isEmpty())
+                    <div class="text-center py-10">
+                        <x-icon name="shopping-bag" size="40" class="text-[var(--text-muted)] mb-2 inline-block" />
+                        <h4 class="font-bold text-base m-0 mb-1">لا توجد فواتير مبيعات مسجلة لهذا العميل حتى الآن</h4>
+                        <p class="text-xs text-[var(--text-muted)] max-w-md mx-auto m-0 mb-4">
+                            يمكنك البدء بإنشاء فاتورة مبيعات نقدية أو آجلة وسيتم قيدها مباشرة على كشف حساب العميل ورصيده.
+                        </p>
+                        <a href="{{ route('sales.create') }}" class="erp-btn erp-btn-primary erp-btn-sm inline-flex">
+                            <x-icon name="plus" size="14" />
+                            <span>إنشاء فاتورة الآن</span>
+                        </a>
+                    </div>
+                @else
+                    <div class="erp-table-responsive">
+                        <table class="erp-table">
+                            <thead>
+                                <tr>
+                                    <th class="w-12 text-center">#</th>
+                                    <th>رقم الفاتورة</th>
+                                    <th>تاريخ الفاتورة</th>
+                                    <th>مستودع الصرف</th>
+                                    <th class="text-center">طريقة السداد</th>
+                                    <th class="text-center">إجمالي الفاتورة</th>
+                                    <th class="text-center">المدفوع نقداً</th>
+                                    <th class="text-center">المتبقي الآجل</th>
+                                    <th class="text-center">استحقاق الآجل</th>
+                                    <th class="text-center">الحالة</th>
+                                    <th class="w-24 text-center">إجراءات</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if((float) $customer->opening_balance != 0.0)
+                                    <tr class="bg-[var(--bg-surface-alt)] font-semibold">
+                                        <td class="text-center font-numeric text-xs">—</td>
+                                        <td class="font-numeric font-bold text-xs">OPENING</td>
+                                        <td class="text-xs">—</td>
+                                        <td class="text-xs">الرصيد الافتتاحي للعميل</td>
+                                        <td class="text-center text-xs">—</td>
+                                        <td class="text-center font-numeric font-bold text-xs">{{ number_format($customer->opening_balance, 2) }} ج.م</td>
+                                        <td class="text-center text-xs font-numeric">0.00 ج.م</td>
+                                        <td class="text-center font-numeric font-bold text-xs {{ $customer->opening_balance > 0 ? 'text-[var(--danger)]' : 'text-[var(--success)]' }}">{{ number_format($customer->opening_balance, 2) }} ج.م</td>
+                                        <td class="text-center text-xs">—</td>
+                                        <td class="text-center"><span class="erp-badge erp-badge-neutral text-xs">افتتاحي</span></td>
+                                        <td class="text-center">—</td>
+                                    </tr>
+                                @endif
+                                @foreach($salesInvoices as $index => $invoice)
+                                    <tr>
+                                        <td class="text-center font-numeric text-xs text-[var(--text-muted)]">
+                                            {{ $index + 1 }}
+                                        </td>
+                                        <td class="font-numeric font-bold">
+                                            <a href="{{ route('sales.show', $invoice) }}" class="text-[var(--primary)] hover:underline">
+                                                {{ $invoice->invoice_number }}
+                                            </a>
+                                        </td>
+                                        <td class="text-xs font-numeric">
+                                            {{ $invoice->invoice_date ? $invoice->invoice_date->format('Y-m-d') : '—' }}
+                                        </td>
+                                        <td class="text-xs">
+                                            {{ $invoice->warehouse?->name ?? '—' }}
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="erp-badge {{ $invoice->payment_type_badge_class }} text-xs">
+                                                {{ $invoice->payment_type_label }}
+                                            </span>
+                                        </td>
+                                        <td class="text-center font-numeric font-bold text-xs">
+                                            {{ number_format($invoice->total_amount, 2) }} ج.م
+                                        </td>
+                                        <td class="text-center font-numeric text-xs text-[var(--success)] font-semibold">
+                                            {{ number_format($invoice->paid_amount, 2) }} ج.م
+                                        </td>
+                                        <td class="text-center font-numeric text-xs {{ $invoice->remaining_amount > 0 ? 'text-[var(--danger)] font-bold' : 'text-[var(--text-muted)]' }}">
+                                            {{ number_format($invoice->remaining_amount, 2) }} ج.م
+                                        </td>
+                                        <td class="text-center font-numeric text-xs text-[var(--text-muted)]">
+                                            {{ $invoice->due_date ? $invoice->due_date->format('Y-m-d') : '—' }}
+                                        </td>
+                                        <td class="text-center">
+                                            @if($invoice->status === \App\Models\SalesInvoice::STATUS_POSTED)
+                                                <span class="erp-badge erp-badge-success text-xs">مرحلة للمخزن</span>
+                                            @elseif($invoice->status === \App\Models\SalesInvoice::STATUS_VOIDED)
+                                                <span class="erp-badge erp-badge-danger text-xs">ملغاة</span>
+                                            @else
+                                                <span class="erp-badge erp-badge-warning text-xs">مسودة</span>
+                                            @endif
+                                        </td>
+                                        <td class="text-center">
+                                            <div class="flex items-center justify-center gap-1">
+                                                <a href="{{ route('sales.show', $invoice) }}" class="erp-btn erp-btn-ghost erp-btn-xs" title="عرض الفاتورة">
+                                                    <x-icon name="eye" size="14" />
+                                                </a>
+                                                <a href="{{ route('sales.print', $invoice) }}" target="_blank" class="erp-btn erp-btn-ghost erp-btn-xs" title="طباعة الفاتورة">
+                                                    <x-icon name="printer" size="14" />
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endif
             </div>
         </div>
     </div>

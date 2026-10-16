@@ -17,15 +17,25 @@ class PurchaseInvoice extends Model
 
     public const STATUS_CANCELLED = 'cancelled';
 
+    public const PAYMENT_CASH = 'cash';
+
+    public const PAYMENT_CREDIT = 'credit';
+
+    public const PAYMENT_PARTIAL = 'partial';
+
     protected $fillable = [
         'invoice_number',
         'supplier_id',
         'warehouse_id',
         'invoice_date',
+        'payment_type',
         'status',
         'subtotal',
         'shipping_cost',
         'total_amount',
+        'paid_amount',
+        'remaining_amount',
+        'due_date',
         'notes',
         'created_by',
         'posted_at',
@@ -35,11 +45,34 @@ class PurchaseInvoice extends Model
     {
         return [
             'invoice_date' => 'date',
+            'due_date' => 'date',
             'posted_at' => 'datetime',
             'subtotal' => 'decimal:2',
             'shipping_cost' => 'decimal:2',
             'total_amount' => 'decimal:2',
+            'paid_amount' => 'decimal:2',
+            'remaining_amount' => 'decimal:2',
         ];
+    }
+
+    public function getPaymentTypeLabelAttribute(): string
+    {
+        return match ($this->payment_type) {
+            self::PAYMENT_CASH => 'نقدي',
+            self::PAYMENT_CREDIT => 'آجل',
+            self::PAYMENT_PARTIAL => 'دفع جزئي',
+            default => 'نقدي',
+        };
+    }
+
+    public function getPaymentTypeBadgeClassAttribute(): string
+    {
+        return match ($this->payment_type) {
+            self::PAYMENT_CASH => 'erp-badge-success',
+            self::PAYMENT_CREDIT => 'erp-badge-danger',
+            self::PAYMENT_PARTIAL => 'erp-badge-warning',
+            default => 'erp-badge-neutral',
+        };
     }
 
     public function supplier(): BelongsTo
@@ -89,10 +122,6 @@ class PurchaseInvoice extends Model
 
     public static function generateInvoiceNumber(): string
     {
-        $prefix = 'PUR-'.date('Ymd').'-';
-        $count = static::whereDate('created_at', today())->count() + 1;
-        $random = strtoupper(bin2hex(random_bytes(2)));
-
-        return $prefix.str_pad((string) $count, 4, '0', STR_PAD_LEFT).'-'.$random;
+        return \App\Services\DocumentSequenceService::getNextNumber('purchase_invoice', 'PUR-', 6);
     }
 }

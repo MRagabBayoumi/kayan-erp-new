@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Customer extends Model
@@ -20,6 +21,7 @@ class Customer extends Model
         'address',
         'customer_type',
         'pricing_tier',
+        'opening_balance',
         'credit_limit',
         'current_balance',
         'notes',
@@ -29,6 +31,7 @@ class Customer extends Model
     protected function casts(): array
     {
         return [
+            'opening_balance' => 'decimal:2',
             'credit_limit' => 'decimal:2',
             'current_balance' => 'decimal:2',
             'is_active' => 'boolean',
@@ -78,5 +81,10 @@ class Customer extends Model
             'retail' => 'سعر التجزئة',
             default => 'سعر الجملة',
         };
+    }
+
+    public function salesInvoices(): HasMany
+    {
+        return $this->hasMany(SalesInvoice::class)->latest('invoice_date');
     }
 }

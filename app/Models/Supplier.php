@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Supplier extends Model
@@ -22,6 +23,7 @@ class Supplier extends Model
         'city',
         'address',
         'currency',
+        'opening_balance',
         'current_balance',
         'notes',
         'is_active',
@@ -30,6 +32,7 @@ class Supplier extends Model
     protected function casts(): array
     {
         return [
+            'opening_balance' => 'decimal:2',
             'current_balance' => 'decimal:2',
             'is_active' => 'boolean',
         ];
@@ -80,5 +83,10 @@ class Supplier extends Model
             'EGP' => 'ج.م',
             default => $this->currency,
         };
+    }
+
+    public function purchaseInvoices(): HasMany
+    {
+        return $this->hasMany(PurchaseInvoice::class)->latest('invoice_date');
     }
 }

@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Category;
+use App\Models\CompanySetting;
 use App\Models\Customer;
+use App\Services\StatementService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -10,6 +13,9 @@ use Illuminate\View\View;
 
 class CustomerController extends Controller
 {
+    public function __construct(
+        protected StatementService $statementService
+    ) {}
     public function index(Request $request): View
     {
         $query = Customer::query();
@@ -115,10 +121,133 @@ class CustomerController extends Controller
             ]);
         }
 
+        $customer->loadMissing(['salesInvoices' => function ($q) {
+            $q->with('warehouse')->latest('invoice_date')->latest('id');
+        }]);
+
+        $statement = $this->statementService->getCustomerStatement($customer);
+        $whatsAppUrl = $this->statementService->generateWhatsAppUrl($customer);
+
         return view('customers.show', [
             'title' => $customer->name,
             'customer' => $customer,
+            'salesInvoices' => $customer->salesInvoices,
+            'statement' => $statement,
+            'whatsAppUrl' => $whatsAppUrl,
         ]);
+    }
+
+    /**
+     * Display dedicated customer account statement page.
+     */
+    public function statement(Customer $customer, Request $request): View
+    {
+        $fromDate = $request->input('from_date');
+        $toDate = $request->input('to_date');
+
+        $statement = $this->statementService->getCustomerStatement($customer, $fromDate, $toDate);
+        $whatsAppUrl = $this->statementService->generateWhatsAppUrl($customer);
+
+        return view('customers.statement', [
+            'title' => 'كشف حساب العميل: ' . $customer->name,
+            'customer' => $customer,
+            'statement' => $statement,
+            'fromDate' => $fromDate,
+            'toDate' => $toDate,
+            'whatsAppUrl' => $whatsAppUrl,
+        ]);
+    }
+
+    /**
+     * Dedicated printable customer statement supporting A4, A5, and Thermal 80mm.
+     */
+    public function printStatement(Customer $customer, Request $request): View
+    {
+        $fromDate = $request->input('from_date');
+        $toDate = $request->input('to_date');
+        $format = $request->input('format', 'a4');
+        if (! in_array($format, ['a4', 'a5', 'thermal_80mm', 'thermal'], true)) {
+            $format = 'a4';
+        }
+
+        $statement = $this->statementService->getCustomerStatement($customer, $fromDate, $toDate);
+        $company = CompanySetting::getSettings();
+
+        return view('customers.statement-print', [
+            'title' => 'كشف حساب: ' . $customer->name,
+            'customer' => $customer,
+            'statement' => $statement,
+            'format' => $format,
+            'fromDate' => $fromDate,
+            'toDate' => $toDate,
+            'company' => $company,
+            'autoPrint' => $request->boolean('auto_print', false),
+        ]);
+    }
+
+    /**
+     * Display customer purchased items breakdown report.
+     */
+    public function purchasedItems(Customer $customer, Request $request): View
+    {
+        $fromDate = $request->input('from_date');
+        $toDate = $request->input('to_date');
+        $search = $request->input('search');
+        $categoryId = $request->filled('category_id') ? (int) $request->input('category_id') : null;
+
+        $report = $this->statementService->getCustomerPurchasedItems($customer, $fromDate, $toDate, $search, $categoryId);
+        $categories = Category::active()->orderBy('name')->get();
+
+        return view('customers.purchased-items', [
+            'title' => 'تقرير مسحوبات وأصناف العميل: ' . $customer->name,
+            'customer' => $customer,
+            'report' => $report,
+            'categories' => $categories,
+            'fromDate' => $fromDate,
+            'toDate' => $toDate,
+            'search' => $search,
+            'categoryId' => $categoryId,
+        ]);
+    }
+
+    /**
+     * Dedicated printable customer purchased items report supporting A4, A5, and Thermal 80mm.
+     */
+    public function printPurchasedItems(Customer $customer, Request $request): View
+    {
+        $fromDate = $request->input('from_date');
+        $toDate = $request->input('to_date');
+        $search = $request->input('search');
+        $categoryId = $request->filled('category_id') ? (int) $request->input('category_id') : null;
+
+        $format = $request->input('format', 'a4');
+        if (! in_array($format, ['a4', 'a5', 'thermal_80mm', 'thermal'], true)) {
+            $format = 'a4';
+        }
+
+        $report = $this->statementService->getCustomerPurchasedItems($customer, $fromDate, $toDate, $search, $categoryId);
+        $company = CompanySetting::getSettings();
+
+        return view('customers.purchased-items-print', [
+            'title' => 'تقرير مسحوبات الصنف: ' . $customer->name,
+            'customer' => $customer,
+            'report' => $report,
+            'format' => $format,
+            'fromDate' => $fromDate,
+            'toDate' => $toDate,
+            'company' => $company,
+            'autoPrint' => $request->boolean('auto_print', false),
+        ]);
+    }
+
+    /**
+     * Redirect to prefilled WhatsApp share message for this customer.
+     */
+    public function whatsappShare(Customer $customer): RedirectResponse
+    {
+        $url = $this->statementService->generateWhatsAppUrl($customer);
+
+        return redirect()->away($url);
     }
 
     public function update(Request $request, Customer $customer): RedirectResponse

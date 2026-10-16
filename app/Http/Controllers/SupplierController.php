@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CompanySetting;
 use App\Models\Supplier;
+use App\Services\StatementService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -10,6 +12,9 @@ use Illuminate\View\View;
 
 class SupplierController extends Controller
 {
+    public function __construct(
+        protected StatementService $statementService
+    ) {}
     public function index(Request $request): View
     {
         $query = Supplier::query();
@@ -35,6 +40,7 @@ class SupplierController extends Controller
             'china_factories_count' => Supplier::where('supplier_type', 'china_factory')->count(),
             'local_suppliers_count' => Supplier::where('supplier_type', 'local_supplier')->count(),
             'shipping_agents_count' => Supplier::where('supplier_type', 'shipping_agent')->count(),
+            'total_payables' => (float) Supplier::where('current_balance', '>', 0)->sum('current_balance'),
         ];
 
         $countries = Supplier::whereNotNull('country')
@@ -102,9 +108,108 @@ class SupplierController extends Controller
             ]);
         }
 
+        $supplier->loadMissing(['purchaseInvoices' => function ($q) {
+            $q->with('warehouse')->latest('invoice_date')->latest('id');
+        }]);
+
+        $statement = $this->statementService->getSupplierStatement($supplier);
+
         return view('suppliers.show', [
             'title' => $supplier->name,
             'supplier' => $supplier,
+            'purchaseInvoices' => $supplier->purchaseInvoices,
+            'statement' => $statement,
+        ]);
+    }
+
+    /**
+     * Display dedicated supplier account statement page.
+     */
+    public function statement(Supplier $supplier, Request $request): View
+    {
+        $fromDate = $request->input('from_date');
+        $toDate = $request->input('to_date');
+
+        $statement = $this->statementService->getSupplierStatement($supplier, $fromDate, $toDate);
+
+        return view('suppliers.statement', [
+            'title' => 'كشف حساب المورد: ' . $supplier->name,
+            'supplier' => $supplier,
+            'statement' => $statement,
+            'fromDate' => $fromDate,
+            'toDate' => $toDate,
+        ]);
+    }
+
+    /**
+     * Dedicated printable supplier statement supporting A4, A5, and Thermal 80mm.
+     */
+    public function printStatement(Supplier $supplier, Request $request): View
+    {
+        $fromDate = $request->input('from_date');
+        $toDate = $request->input('to_date');
+        $format = $request->input('format', 'a4');
+        if (! in_array($format, ['a4', 'a5', 'thermal_80mm', 'thermal'], true)) {
+            $format = 'a4';
+        }
+
+        $statement = $this->statementService->getSupplierStatement($supplier, $fromDate, $toDate);
+        $company = CompanySetting::getSettings();
+
+        return view('suppliers.statement-print', [
+            'title' => 'كشف حساب مورد: ' . $supplier->name,
+            'supplier' => $supplier,
+            'statement' => $statement,
+            'format' => $format,
+            'fromDate' => $fromDate,
+            'toDate' => $toDate,
+            'company' => $company,
+            'autoPrint' => $request->boolean('auto_print', false),
+        ]);
+    }
+
+    /**
+     * Display Supplier Balance Due report across all suppliers.
+     */
+    public function balanceDueReport(Request $request): View
+    {
+        $supplierId = $request->filled('supplier_id') ? (int) $request->input('supplier_id') : null;
+        $currency = $request->input('currency');
+
+        $report = $this->statementService->getSupplierBalanceDueReport($supplierId, $currency);
+        $allSuppliers = Supplier::active()->orderBy('name')->get();
+
+        return view('suppliers.balance-due-report', [
+            'title' => 'تقرير أرصدة ومستحقات الموردين (Balance Due)',
+            'report' => $report,
+            'allSuppliers' => $allSuppliers,
+            'supplierId' => $supplierId,
+            'currency' => $currency,
+        ]);
+    }
+
+    /**
+     * Dedicated printable Supplier Balance Due report supporting A4, A5, and Thermal 80mm.
+     */
+    public function printBalanceDueReport(Request $request): View
+    {
+        $supplierId = $request->filled('supplier_id') ? (int) $request->input('supplier_id') : null;
+        $currency = $request->input('currency');
+        $format = $request->input('format', 'a4');
+        if (! in_array($format, ['a4', 'a5', 'thermal_80mm', 'thermal'], true)) {
+            $format = 'a4';
+        }
+
+        $report = $this->statementService->getSupplierBalanceDueReport($supplierId, $currency);
+        $company = CompanySetting::getSettings();
+
+        return view('suppliers.balance-due-report-print', [
+            'title' => 'تقرير أرصدة الموردين المستحقة',
+            'report' => $report,
+            'format' => $format,
+            'currency' => $currency,
+            'company' => $company,
+            'autoPrint' => $request->boolean('auto_print', false),
         ]);
     }
 

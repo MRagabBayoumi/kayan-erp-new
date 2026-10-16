@@ -23,6 +23,12 @@ class SalesInvoice extends Model
 
     public const TIER_DISTRIBUTOR = 'distributor';
 
+    public const PAYMENT_CASH = 'cash';
+
+    public const PAYMENT_CREDIT = 'credit';
+
+    public const PAYMENT_PARTIAL = 'partial';
+
     protected $fillable = [
         'invoice_number',
         'customer_id',
@@ -30,6 +36,7 @@ class SalesInvoice extends Model
         'cashier_shift_id',
         'invoice_date',
         'price_tier',
+        'payment_type',
         'status',
         'subtotal',
         'discount_type',
@@ -37,6 +44,9 @@ class SalesInvoice extends Model
         'discount_amount',
         'shipping_cost',
         'total_amount',
+        'paid_amount',
+        'remaining_amount',
+        'due_date',
         'total_cogs',
         'total_profit',
         'notes',
@@ -52,6 +62,7 @@ class SalesInvoice extends Model
     {
         return [
             'invoice_date' => 'date',
+            'due_date' => 'date',
             'posted_at' => 'datetime',
             'voided_at' => 'datetime',
             'subtotal' => 'decimal:2',
@@ -59,9 +70,31 @@ class SalesInvoice extends Model
             'discount_amount' => 'decimal:2',
             'shipping_cost' => 'decimal:2',
             'total_amount' => 'decimal:2',
+            'paid_amount' => 'decimal:2',
+            'remaining_amount' => 'decimal:2',
             'total_cogs' => 'decimal:2',
             'total_profit' => 'decimal:2',
         ];
+    }
+
+    public function getPaymentTypeLabelAttribute(): string
+    {
+        return match ($this->payment_type) {
+            self::PAYMENT_CASH => 'نقدي',
+            self::PAYMENT_CREDIT => 'آجل',
+            self::PAYMENT_PARTIAL => 'دفع جزئي',
+            default => 'نقدي',
+        };
+    }
+
+    public function getPaymentTypeBadgeClassAttribute(): string
+    {
+        return match ($this->payment_type) {
+            self::PAYMENT_CASH => 'erp-badge-success',
+            self::PAYMENT_CREDIT => 'erp-badge-danger',
+            self::PAYMENT_PARTIAL => 'erp-badge-warning',
+            default => 'erp-badge-neutral',
+        };
     }
 
     public function customer(): BelongsTo

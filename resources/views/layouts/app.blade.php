@@ -8,7 +8,6 @@
     <title>{{ $title ?? 'الرئيسية' }} | {{ $globalCompanySetting?->company_name ?? config('app.name', 'Kayan ERP') }}</title>
 
     @if(!empty($globalCompanySetting?->logo_url))
-        <link rel="icon" type="image/png" href="{{ $globalCompanySetting->logo_url }}">
         <link rel="apple-touch-icon" href="{{ $globalCompanySetting->logo_url }}">
     @endif
     <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
@@ -64,9 +63,10 @@
             </div>
 
             <!-- Footer -->
-            <footer class="erp-footer flex items-center gap-1 justify-center text-lg">
+            <footer class="erp-footer">
                 <div><a href="#">BayoSoft</a> © {{ date('Y') }}</div>
-                <div class="font-numeric">الإصدار 1.0 </div>
+                <span class="erp-footer-sep">·</span>
+                <div class="font-numeric">الإصدار 1.0</div>
             </footer>
         </main>
     </div>

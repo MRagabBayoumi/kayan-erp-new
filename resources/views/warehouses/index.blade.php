@@ -7,6 +7,10 @@
                 <x-icon name="plus" size="16" />
                 <span>إضافة مستودع جديد</span>
             </button>
+            <a href="{{ route('inventory.stocktake') }}" class="erp-btn erp-btn-secondary">
+                <x-icon name="clipboard-check" size="16" />
+                <span>جرد وتسوية المخزون</span>
+            </a>
             <a href="{{ route('inventory.index') }}" class="erp-btn erp-btn-secondary">
                 <x-icon name="warehouse" size="16" />
                 <span>نظرة عامة على المخزون</span>
@@ -83,6 +87,11 @@
                     </div>
 
                     <div class="warehouse-card-footer">
+                        <a href="{{ route('warehouses.show', $warehouse) }}" class="erp-btn erp-btn-sm erp-btn-primary" title="عرض تفاصيل المخزون والجرد">
+                            <x-icon name="eye" size="14" />
+                            <span>رصيد المخزون</span>
+                        </a>
+
                         <button 
                             type="button" 
                             data-action="edit-warehouse"

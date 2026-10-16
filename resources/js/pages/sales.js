@@ -63,6 +63,16 @@ function initSalesPOS(posPage = null) {
     const summaryDiscountHint = document.getElementById('summaryDiscountHint');
     const summaryGrandTotal = document.getElementById('summaryGrandTotal');
 
+    // Payment & Deferred Credit Elements
+    const posPaymentToggleGroup = document.getElementById('posPaymentToggleGroup');
+    const posPaidAmountInput = document.getElementById('posPaidAmountInput');
+    const posRemainingAmountInput = document.getElementById('posRemainingAmountInput');
+    const posPaidHint = document.getElementById('posPaidHint');
+    const posRemainingHint = document.getElementById('posRemainingHint');
+    const posDueDateGroup = document.getElementById('posDueDateGroup');
+    const customerCreditStatusBadge = document.getElementById('customerCreditStatusBadge');
+    const creditLimitAlertBox = document.getElementById('creditLimitAlertBox');
+
     // Parse Data attributes
     let productsData = [];
     let unitsData = [];
@@ -206,6 +216,7 @@ function initSalesPOS(posPage = null) {
                 }
                 updateQuickPrice();
             }
+            updatePaymentAndCreditStatus();
         });
     }
 
@@ -995,6 +1006,198 @@ function initSalesPOS(posPage = null) {
             }
         }
         if (summaryGrandTotal) summaryGrandTotal.textContent = `${grandTotal.toFixed(2)} ج.م`;
+        updatePaymentAndCreditStatus(grandTotal);
+    }
+
+    function getCurrentGrandTotal() {
+        if (summaryGrandTotal) {
+            const raw = summaryGrandTotal.textContent.replace(/[^\d.-]/g, '');
+            const parsed = parseFloat(raw);
+            if (!isNaN(parsed)) return parsed;
+        }
+        return 0;
+    }
+
+    function getCurrentPaymentType() {
+        const checked = document.querySelector('input[name="payment_type"]:checked');
+        return checked ? checked.value : 'cash';
+    }
+
+    function getSelectedCustomer() {
+        if (!customerSelect) return null;
+        const custId = parseInt(customerSelect.value, 10);
+        return customersData.find(c => c.id === custId) || null;
+    }
+
+    function updatePaymentAndCreditStatus(grandTotal = null) {
+        if (grandTotal === null) {
+            grandTotal = getCurrentGrandTotal();
+        }
+
+        const paymentType = getCurrentPaymentType();
+        const customer = getSelectedCustomer();
+        const posDueDateHint = document.getElementById('posDueDateHint');
+
+        // 1. Sync inputs based on payment type
+        if (paymentType === 'cash') {
+            if (posPaidAmountInput) {
+                posPaidAmountInput.value = grandTotal.toFixed(2);
+                posPaidAmountInput.readOnly = true;
+                posPaidAmountInput.classList.remove('bg-[var(--bg-surface)]');
+                posPaidAmountInput.classList.add('bg-[var(--surface-muted)]');
+            }
+            if (posRemainingAmountInput) {
+                posRemainingAmountInput.value = '0.00';
+            }
+            if (posPaidHint) posPaidHint.textContent = 'كامل الفاتورة مسدد نقداً بالدرج';
+            if (posRemainingHint) posRemainingHint.textContent = 'لا يوجد دين آجل على العميل';
+            if (posDueDateInput) {
+                posDueDateInput.disabled = true;
+                posDueDateInput.value = '';
+                posDueDateInput.classList.add('bg-[var(--surface-muted)]', 'cursor-not-allowed', 'opacity-60');
+            }
+            if (posDueDateHint) posDueDateHint.textContent = 'غير مطلوب في البيع النقدي';
+        } else if (paymentType === 'credit') {
+            if (posPaidAmountInput) {
+                posPaidAmountInput.value = '0.00';
+                posPaidAmountInput.readOnly = true;
+                posPaidAmountInput.classList.remove('bg-[var(--bg-surface)]');
+                posPaidAmountInput.classList.add('bg-[var(--surface-muted)]');
+            }
+            if (posRemainingAmountInput) {
+                posRemainingAmountInput.value = grandTotal.toFixed(2);
+            }
+            if (posPaidHint) posPaidHint.textContent = 'لا توجد دفعات نقدية مسددة بالدرج';
+            if (posRemainingHint) posRemainingHint.textContent = 'كامل الفاتورة آجل على حساب العميل';
+            if (posDueDateInput) {
+                posDueDateInput.disabled = false;
+                posDueDateInput.classList.remove('bg-[var(--surface-muted)]', 'cursor-not-allowed', 'opacity-60');
+            }
+            if (posDueDateHint) posDueDateHint.textContent = 'حدد تاريخ المطالبة بسداد المديونية';
+        } else { // partial
+            if (posPaidAmountInput) {
+                posPaidAmountInput.readOnly = false;
+                posPaidAmountInput.classList.remove('bg-[var(--surface-muted)]');
+                posPaidAmountInput.classList.add('bg-[var(--bg-surface)]');
+                let paid = parseFloat(posPaidAmountInput.value) || 0;
+                if (paid > grandTotal) {
+                    paid = grandTotal;
+                    posPaidAmountInput.value = paid.toFixed(2);
+                }
+                const remaining = Math.max(0, grandTotal - paid);
+                if (posRemainingAmountInput) {
+                    posRemainingAmountInput.value = remaining.toFixed(2);
+                }
+            }
+            if (posPaidHint) posPaidHint.textContent = 'المبلغ المحصل نقداً الآن بالدرج';
+            if (posRemainingHint) posRemainingHint.textContent = 'المتبقي الآجل المسجل على العميل';
+            if (posDueDateInput) {
+                posDueDateInput.disabled = false;
+                posDueDateInput.classList.remove('bg-[var(--surface-muted)]', 'cursor-not-allowed', 'opacity-60');
+            }
+            if (posDueDateHint) posDueDateHint.textContent = 'تاريخ استحقاق سداد المبلغ المتبقي';
+        }
+
+
+        // 2. Customer Credit Limit Badge and Alerts
+        const remainingDebt = parseFloat(posRemainingAmountInput ? posRemainingAmountInput.value : 0) || 0;
+
+        if (customer) {
+            const currentBal = parseFloat(customer.current_balance) || 0;
+            const creditLim = parseFloat(customer.credit_limit) || 0;
+
+            if (customerCreditStatusBadge) {
+                customerCreditStatusBadge.classList.remove('hidden');
+                if (creditLim > 0) {
+                    const availableCredit = creditLim - currentBal;
+                    customerCreditStatusBadge.textContent = `حد الائتمان: ${creditLim.toFixed(2)} ج.م (المتاح: ${availableCredit.toFixed(2)} ج.م)`;
+                    if (availableCredit <= 0) {
+                        customerCreditStatusBadge.className = 'text-xs px-2.5 py-1 rounded font-semibold border bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-900';
+                    } else {
+                        customerCreditStatusBadge.className = 'text-xs px-2.5 py-1 rounded font-semibold border bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900';
+                    }
+                } else {
+                    customerCreditStatusBadge.textContent = currentBal > 0 ? `الرصيد السابق: ${currentBal.toFixed(2)} ج.م (مستحق)` : `رصيد العميل: ${currentBal.toFixed(2)} ج.م`;
+                    customerCreditStatusBadge.className = 'text-xs px-2.5 py-1 rounded font-semibold border bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-900 dark:text-slate-300 dark:border-slate-800';
+                }
+            }
+
+            if (creditLimitAlertBox) {
+                if (remainingDebt > 0) {
+                    if (customer.name === 'عميل نقدي') {
+                        creditLimitAlertBox.classList.remove('hidden');
+                        creditLimitAlertBox.className = 'mt-3 p-3 rounded text-xs border flex items-center gap-2 danger bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-900';
+                        creditLimitAlertBox.innerHTML = `<strong>تنبيه مالي:</strong> لا يمكن تسجيل بيع آجل على "العميل النقدي العام". يرجى اختيار عميل مسجل أو إضافة عميل جديد.`;
+                    } else if (creditLim > 0 && (currentBal + remainingDebt) > creditLim) {
+                        const exceededBy = (currentBal + remainingDebt) - creditLim;
+                        creditLimitAlertBox.classList.remove('hidden');
+                        creditLimitAlertBox.className = 'mt-3 p-3 rounded text-xs border flex items-center gap-2 danger bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-900';
+                        creditLimitAlertBox.innerHTML = `<strong>تحذير تجاوز سقف الائتمان:</strong> سيتم تجاوز الحد الائتماني للعميل بمقدار ${exceededBy.toFixed(2)} ج.م (الحد المسموح: ${creditLim.toFixed(2)} ج.م، الرصيد بعد الفاتورة: ${(currentBal + remainingDebt).toFixed(2)} ج.م).`;
+                    } else {
+                        creditLimitAlertBox.classList.add('hidden');
+                    }
+                } else {
+                    creditLimitAlertBox.classList.add('hidden');
+                }
+            }
+        } else {
+            if (customerCreditStatusBadge) customerCreditStatusBadge.classList.add('hidden');
+            if (creditLimitAlertBox) creditLimitAlertBox.classList.add('hidden');
+        }
+    }
+
+    // Attach Payment Method Events
+    if (posPaymentToggleGroup) {
+        const toggleButtons = posPaymentToggleGroup.querySelectorAll('.payment-toggle-btn');
+        toggleButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                if (e.target && e.target.tagName && e.target.tagName.toLowerCase() === 'input') {
+                    return;
+                }
+                toggleButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const radio = btn.querySelector('input[type="radio"]');
+                if (radio) {
+                    radio.checked = true;
+                }
+                updatePaymentAndCreditStatus();
+            });
+        });
+
+        const radios = posPaymentToggleGroup.querySelectorAll('input[type="radio"]');
+        radios.forEach(radio => {
+            radio.addEventListener('change', () => {
+                toggleButtons.forEach(b => {
+                    const r = b.querySelector('input[type="radio"]');
+                    if (r && r.checked) {
+                        b.classList.add('active');
+                    } else {
+                        b.classList.remove('active');
+                    }
+                });
+                updatePaymentAndCreditStatus();
+            });
+        });
+    }
+
+    if (posPaidAmountInput) {
+        posPaidAmountInput.addEventListener('input', () => {
+            const grandTotal = getCurrentGrandTotal();
+            let paid = parseFloat(posPaidAmountInput.value) || 0;
+            if (paid < 0) {
+                paid = 0;
+                posPaidAmountInput.value = '0.00';
+            }
+            if (paid > grandTotal) {
+                paid = grandTotal;
+                posPaidAmountInput.value = paid.toFixed(2);
+            }
+            const remaining = Math.max(0, grandTotal - paid);
+            if (posRemainingAmountInput) {
+                posRemainingAmountInput.value = remaining.toFixed(2);
+            }
+            updatePaymentAndCreditStatus(grandTotal);
+        });
     }
 
     function fmod(a, b) {

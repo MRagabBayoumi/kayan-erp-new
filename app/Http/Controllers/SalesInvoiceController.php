@@ -146,6 +146,8 @@ class SalesInvoiceController extends Controller
             'name' => $c->name,
             'pricing_tier' => $c->pricing_tier ?: 'retail',
             'phone' => $c->phone ?? '',
+            'credit_limit' => (float) $c->credit_limit,
+            'current_balance' => (float) $c->current_balance,
         ])->values();
 
         $activeShift = $user ? CashierShift::getActiveShift($user->id) : null;
@@ -184,6 +186,9 @@ class SalesInvoiceController extends Controller
             'warehouse_id' => ['required', 'exists:warehouses,id'],
             'invoice_date' => ['required', 'date'],
             'price_tier' => ['required', 'string', 'in:retail,wholesale,distributor'],
+            'payment_type' => ['nullable', 'string', 'in:cash,credit,partial'],
+            'paid_amount' => ['nullable', 'numeric', 'min:0'],
+            'due_date' => ['nullable', 'date'],
             'shipping_cost' => ['nullable', 'numeric', 'min:0'],
             'discount_type' => ['nullable', 'string', 'in:fixed,percentage'],
             'discount_value' => ['nullable', 'numeric', 'min:0'],
@@ -294,6 +299,30 @@ class SalesInvoiceController extends Controller
 
                 $totalAmount = max(0, round($subtotal - $discountAmount + $shippingCost, 2));
 
+                $paymentType = $validated['payment_type'] ?? SalesInvoice::PAYMENT_CASH;
+                if ($paymentType === SalesInvoice::PAYMENT_CASH) {
+                    $paidAmount = $totalAmount;
+                    $remainingAmount = 0.00;
+                } elseif ($paymentType === SalesInvoice::PAYMENT_CREDIT) {
+                    $paidAmount = 0.00;
+                    $remainingAmount = $totalAmount;
+                } else {
+                    $paidAmount = min($totalAmount, max(0.00, (float) ($validated['paid_amount'] ?? 0.00)));
+                    $remainingAmount = max(0.00, round($totalAmount - $paidAmount, 2));
+                }
+                $dueDate = filled($validated['due_date'] ?? null) ? $validated['due_date'] : null;
+
+                $customer = Customer::findOrFail((int) $validated['customer_id']);
+                if ($remainingAmount > 0) {
+                    if ($customer->name === 'عميل نقدي') {
+                        throw new \InvalidArgumentException('لا يمكن إجراء بيع آجل أو تسجيل مديونية على "العميل النقدي". يرجى اختيار عميل مسجل أو إضافة عميل جديد.');
+                    }
+                    if ((float) $customer->credit_limit > 0 && ((float) $customer->current_balance + $remainingAmount) > (float) $customer->credit_limit) {
+                        $exceeded = round(((float) $customer->current_balance + $remainingAmount) - (float) $customer->credit_limit, 2);
+                        throw new \InvalidArgumentException("لا يمكن إتمام البيع الآجل: تم تجاوز السقف الائتماني للعميل بمقدار {$exceeded} ج.م (الحد المسموح: {$customer->credit_limit} ج.م، الرصيد بعد العملية: ".((float) $customer->current_balance + $remainingAmount).' ج.م).');
+                    }
+                }
+
                 $invoice = SalesInvoice::create([
                     'invoice_number' => SalesInvoice::generateInvoiceNumber(),
                     'customer_id' => (int) $validated['customer_id'],
@@ -301,6 +330,7 @@ class SalesInvoiceController extends Controller
                     'cashier_shift_id' => $activeShift?->id,
                     'invoice_date' => $validated['invoice_date'],
                     'price_tier' => $validated['price_tier'],
+                    'payment_type' => $paymentType,
                     'status' => SalesInvoice::STATUS_DRAFT,
                     'subtotal' => $subtotal,
                     'discount_type' => $discountType,
@@ -308,6 +338,9 @@ class SalesInvoiceController extends Controller
                     'discount_amount' => $discountAmount,
                     'shipping_cost' => $shippingCost,
                     'total_amount' => $totalAmount,
+                    'paid_amount' => $paidAmount,
+                    'remaining_amount' => $remainingAmount,
+                    'due_date' => $dueDate,
                     'total_cogs' => 0.00,
                     'total_profit' => 0.00,
                     'notes' => $validated['notes'] ?? null,
@@ -322,8 +355,8 @@ class SalesInvoiceController extends Controller
                 // Direct posting if requested
                 if ($request->input('action') === 'post') {
                     $this->executePosting($invoice, $inventoryService);
-                    if ($activeShift) {
-                        $activeShift->recordCashSale($invoice->total_amount, $invoice->id);
+                    if ($activeShift && (float) $invoice->paid_amount > 0) {
+                        $activeShift->recordCashSale((float) $invoice->paid_amount, $invoice->id);
                     }
                 }
 
@@ -444,6 +477,8 @@ class SalesInvoiceController extends Controller
             'name' => $c->name,
             'pricing_tier' => $c->pricing_tier ?: 'retail',
             'phone' => $c->phone ?? '',
+            'credit_limit' => (float) $c->credit_limit,
+            'current_balance' => (float) $c->current_balance,
         ])->values();
 
         $activeShift = $user ? CashierShift::getActiveShift($user->id, (int) $sale->warehouse_id) : null;
@@ -499,6 +534,9 @@ class SalesInvoiceController extends Controller
             'warehouse_id' => ['required', 'exists:warehouses,id'],
             'invoice_date' => ['required', 'date'],
             'price_tier' => ['required', 'string', 'in:retail,wholesale,distributor'],
+            'payment_type' => ['nullable', 'string', 'in:cash,credit,partial'],
+            'paid_amount' => ['nullable', 'numeric', 'min:0'],
+            'due_date' => ['nullable', 'date'],
             'shipping_cost' => ['nullable', 'numeric', 'min:0'],
             'discount_type' => ['nullable', 'string', 'in:fixed,percentage'],
             'discount_value' => ['nullable', 'numeric', 'min:0'],
@@ -600,6 +638,30 @@ class SalesInvoiceController extends Controller
 
                 $totalAmount = max(0, round($subtotal - $discountAmount + $shippingCost, 2));
 
+                $paymentType = $validated['payment_type'] ?? SalesInvoice::PAYMENT_CASH;
+                if ($paymentType === SalesInvoice::PAYMENT_CASH) {
+                    $paidAmount = $totalAmount;
+                    $remainingAmount = 0.00;
+                } elseif ($paymentType === SalesInvoice::PAYMENT_CREDIT) {
+                    $paidAmount = 0.00;
+                    $remainingAmount = $totalAmount;
+                } else {
+                    $paidAmount = min($totalAmount, max(0.00, (float) ($validated['paid_amount'] ?? 0.00)));
+                    $remainingAmount = max(0.00, round($totalAmount - $paidAmount, 2));
+                }
+                $dueDate = filled($validated['due_date'] ?? null) ? $validated['due_date'] : null;
+
+                $customer = Customer::findOrFail((int) $validated['customer_id']);
+                if ($remainingAmount > 0) {
+                    if ($customer->name === 'عميل نقدي') {
+                        throw new \InvalidArgumentException('لا يمكن إجراء بيع آجل أو تسجيل مديونية على "العميل النقدي". يرجى اختيار عميل مسجل أو إضافة عميل جديد.');
+                    }
+                    if ((float) $customer->credit_limit > 0 && ((float) $customer->current_balance + $remainingAmount) > (float) $customer->credit_limit) {
+                        $exceeded = round(((float) $customer->current_balance + $remainingAmount) - (float) $customer->credit_limit, 2);
+                        throw new \InvalidArgumentException("لا يمكن إتمام البيع الآجل: تم تجاوز السقف الائتماني للعميل بمقدار {$exceeded} ج.م (الحد المسموح: {$customer->credit_limit} ج.م، الرصيد بعد العملية: ".((float) $customer->current_balance + $remainingAmount).' ج.م).');
+                    }
+                }
+
                 // 1. Update invoice header
                 $sale->update([
                     'customer_id' => (int) $validated['customer_id'],
@@ -607,12 +669,16 @@ class SalesInvoiceController extends Controller
                     'cashier_shift_id' => $activeShift?->id ?? $sale->cashier_shift_id,
                     'invoice_date' => $validated['invoice_date'],
                     'price_tier' => $validated['price_tier'],
+                    'payment_type' => $paymentType,
                     'subtotal' => $subtotal,
                     'discount_type' => $discountType,
                     'discount_value' => $discountValue,
                     'discount_amount' => $discountAmount,
                     'shipping_cost' => $shippingCost,
                     'total_amount' => $totalAmount,
+                    'paid_amount' => $paidAmount,
+                    'remaining_amount' => $remainingAmount,
+                    'due_date' => $dueDate,
                     'notes' => $validated['notes'] ?? null,
                 ]);
 
@@ -625,8 +691,8 @@ class SalesInvoiceController extends Controller
                 // 3. Post if requested
                 if ($request->input('action') === 'post') {
                     $this->executePosting($sale, $inventoryService);
-                    if ($activeShift) {
-                        $activeShift->recordCashSale($sale->total_amount, $sale->id);
+                    if ($activeShift && (float) $sale->paid_amount > 0) {
+                        $activeShift->recordCashSale((float) $sale->paid_amount, $sale->id);
                     }
                 }
             });
@@ -680,6 +746,18 @@ class SalesInvoiceController extends Controller
             return back()->with('error', 'لا يمكن ترحيل هذه الفاتورة لأنها ليست في حالة مسودة.');
         }
 
+        if ((float) $sale->remaining_amount > 0) {
+            $customer = Customer::find($sale->customer_id);
+            if ($customer && $customer->name === 'عميل نقدي') {
+                return back()->with('error', 'لا يمكن ترحيل بيع آجل لـ "عميل نقدي". يرجى تعديل الفاتورة واختيار عميل مسجل.');
+            }
+            if ($customer && (float) $customer->credit_limit > 0 && ((float) $customer->current_balance + (float) $sale->remaining_amount) > (float) $customer->credit_limit) {
+                $exceeded = round(((float) $customer->current_balance + (float) $sale->remaining_amount) - (float) $customer->credit_limit, 2);
+
+                return back()->with('error', "لا يمكن ترحيل الفاتورة: تم تجاوز الحد الائتماني للعميل بمقدار {$exceeded} ج.م (الحد: {$customer->credit_limit} ج.م).");
+            }
+        }
+
         try {
             DB::transaction(function () use ($sale, $inventoryService) {
                 $this->executePosting($sale, $inventoryService);
@@ -688,11 +766,11 @@ class SalesInvoiceController extends Controller
                     ? CashierShift::find($sale->cashier_shift_id)
                     : CashierShift::open()->where('warehouse_id', $sale->warehouse_id)->latest('id')->first();
 
-                if ($shift && $shift->status === CashierShift::STATUS_OPEN) {
+                if ($shift && $shift->status === CashierShift::STATUS_OPEN && (float) $sale->paid_amount > 0) {
                     if (! $sale->cashier_shift_id) {
                         $sale->update(['cashier_shift_id' => $shift->id]);
                     }
-                    $shift->recordCashSale($sale->total_amount, $sale->id);
+                    $shift->recordCashSale((float) $sale->paid_amount, $sale->id);
                 }
             });
         } catch (\Throwable $e) {
@@ -721,14 +799,25 @@ class SalesInvoiceController extends Controller
             return back()->with('error', 'يمكن فقط إلغاء الفواتير التي في حالة مرحلة.');
         }
 
-        $inventoryService->voidSalesInvoice($sale, auth()->id(), $validated['void_reason']);
+        DB::transaction(function () use ($sale, $inventoryService, $validated) {
+            $inventoryService->voidSalesInvoice($sale, auth()->id(), $validated['void_reason']);
 
-        if ($sale->cashier_shift_id) {
-            $shift = CashierShift::find($sale->cashier_shift_id);
-            if ($shift && $shift->status === CashierShift::STATUS_OPEN) {
-                $shift->recordCashReturn($sale->total_amount, $sale->id);
+            // Revert customer credit balance if debt was added
+            if ((float) $sale->remaining_amount > 0 && $sale->customer_id) {
+                $customer = Customer::lockForUpdate()->find($sale->customer_id);
+                if ($customer) {
+                    $customer->decrement('current_balance', (float) $sale->remaining_amount);
+                }
             }
-        }
+
+            // Reverse shift cash if cash was received
+            if ($sale->cashier_shift_id && (float) $sale->paid_amount > 0) {
+                $shift = CashierShift::find($sale->cashier_shift_id);
+                if ($shift && $shift->status === CashierShift::STATUS_OPEN) {
+                    $shift->recordCashReturn((float) $sale->paid_amount, $sale->id);
+                }
+            }
+        });
 
         return redirect()->route('sales.show', $sale)
             ->with('status', 'success')
@@ -843,5 +932,12 @@ class SalesInvoiceController extends Controller
             'total_cogs' => round($totalInvoiceCogs, 2),
             'total_profit' => round($totalInvoiceProfit - (float) $invoice->discount_amount, 2),
         ]);
+
+        if ((float) $invoice->remaining_amount > 0 && $invoice->customer_id) {
+            $customer = Customer::lockForUpdate()->find($invoice->customer_id);
+            if ($customer) {
+                $customer->increment('current_balance', (float) $invoice->remaining_amount);
+            }
+        }
     }
 }
