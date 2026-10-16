@@ -727,10 +727,38 @@ body[data-format="a4"] {
     page: a4_sheet;
 }
 
-/* ==========================================================================
-   Enterprise Dispatch Invoice Layout (Matched exactly to Physical Invoice)
-   High-contrast, crisp 1px solid black grid, 3-column header, stamp box, bottom bar
-   ========================================================================== */
+/* Company Branding Strip */
+.dispatch-company-branding {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 8px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.preview-logo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.doc-mockup-logo-sm { height: 35px; max-width: 100px; }
+.doc-mockup-logo-md { height: 50px; max-width: 145px; }
+.doc-mockup-logo-lg { height: 70px; max-width: 200px; }
+
+.preview-logo-img {
+    max-height: 100%;
+    max-width: 100%;
+    object-fit: contain;
+}
+
+.preview-company-details {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
 
 .dispatch-header {
     display: flex;

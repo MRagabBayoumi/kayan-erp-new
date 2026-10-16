@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\CompanySetting;
 use App\Models\PrintTemplate;
 use InvalidArgumentException;
 
@@ -41,6 +42,7 @@ class PrintTemplateService
         $general = [
             'show_logo' => true,
             'logo_size' => ($isThermal || $isA5) ? 'sm' : 'md',
+            'custom_logo' => null,
             'show_company_name' => true,
             'show_company_phone' => true,
             'show_company_address' => ! $isThermal,
@@ -145,6 +147,7 @@ class PrintTemplateService
             'logo_size' => in_array($input['general']['logo_size'] ?? '', ['sm', 'md', 'lg'], true)
                 ? $input['general']['logo_size']
                 : $defaults['general']['logo_size'],
+            'custom_logo' => ! empty($input['general']['custom_logo']) ? (string) $input['general']['custom_logo'] : null,
             'show_company_name' => (bool) ($input['general']['show_company_name'] ?? $defaults['general']['show_company_name']),
             'show_company_phone' => (bool) ($input['general']['show_company_phone'] ?? $defaults['general']['show_company_phone']),
             'show_company_address' => (bool) ($input['general']['show_company_address'] ?? $defaults['general']['show_company_address']),
@@ -316,13 +319,14 @@ class PrintTemplateService
     {
         $this->assertSupported($documentType, $paperFormat);
 
+        $companySetting = class_exists(CompanySetting::class) ? CompanySetting::first() : null;
         $commonCompany = [
-            'name' => 'شركة كيان للتجارة والتوزيع',
-            'phone' => '01012345678',
+            'name' => $companySetting?->company_name ?: 'شركة كيان للتجارة والتوزيع',
+            'phone' => $companySetting?->company_phone ?: '01012345678',
             'address' => 'شارع الجمهورية، المنصورة، مصر',
             'tax_number' => '123-456-789',
             'commercial_reg' => '54321',
-            'logo_url' => null, // Blade layout will fallback to default badge/icon
+            'logo_url' => $companySetting?->logo_url ?: null,
         ];
 
         switch ($documentType) {

@@ -1,7 +1,7 @@
 /**
  * BayoSoft ERP — Print Template Designer Engine
  * Real-time DOM-reactive preview, paper format switching (A4, A5, Thermal 80mm),
- * and AJAX configuration persistence.
+ * instant logo upload/change, color palette sync, and AJAX configuration persistence.
  */
 
 export function initPrintTemplatesPage() {
@@ -11,8 +11,14 @@ export function initPrintTemplatesPage() {
     const form = page.querySelector('#printTemplateForm');
     const paperSheet = page.querySelector('#paperMockupSheet');
     const resetBtn = page.querySelector('#btnResetTemplate');
-    const duplicateBtn = page.querySelector('#btnDuplicateTemplate');
     const templateSelect = page.querySelector('#templateSelector');
+
+    // Logo & Color controls
+    const logoInput = form?.querySelector('#template_logo_upload');
+    const customLogoHidden = form?.querySelector('#input_custom_logo');
+    const removeLogoBtn = form?.querySelector('#btn_remove_logo');
+    const colorPicker = form?.querySelector('#template_color_picker');
+    const primaryColorInput = form?.querySelector('#template_primary_color_input');
 
     // Parse initial data stored in data attributes
     let templateData = null;
@@ -59,14 +65,15 @@ export function initPrintTemplatesPage() {
         // General
         settings.general = settings.general || {};
         settings.general.show_logo = form.querySelector('[name="settings[general][show_logo]"]')?.checked ?? true;
+        settings.general.custom_logo = customLogoHidden?.value || settings.general.custom_logo || null;
         settings.general.logo_size = form.querySelector('[name="settings[general][logo_size]"]')?.value ?? 'md';
+        settings.general.font_size = form.querySelector('[name="settings[general][font_size]"]')?.value ?? 'md';
         settings.general.show_company_name = form.querySelector('[name="settings[general][show_company_name]"]')?.checked ?? true;
         settings.general.show_company_phone = form.querySelector('[name="settings[general][show_company_phone]"]')?.checked ?? true;
         settings.general.show_company_address = form.querySelector('[name="settings[general][show_company_address]"]')?.checked ?? true;
         settings.general.custom_title = form.querySelector('[name="settings[general][custom_title]"]')?.value ?? '';
         settings.general.custom_subtitle = form.querySelector('[name="settings[general][custom_subtitle]"]')?.value ?? '';
-        settings.general.primary_color = form.querySelector('[name="settings[general][primary_color]"]')?.value ?? '#1e293b';
-        settings.general.font_size = form.querySelector('[name="settings[general][font_size]"]')?.value ?? 'md';
+        settings.general.primary_color = primaryColorInput?.value || colorPicker?.value || '#1e293b';
 
         // Document Meta
         settings.document_meta = settings.document_meta || {};
@@ -88,6 +95,7 @@ export function initPrintTemplatesPage() {
 
         // Table Columns
         settings.table_columns = settings.table_columns || {};
+        settings.table_columns.density = form.querySelector('[name="settings[table_columns][density]"]')?.value ?? 'comfortable';
         settings.table_columns.show_index = form.querySelector('[name="settings[table_columns][show_index]"]')?.checked ?? true;
         settings.table_columns.show_sku = form.querySelector('[name="settings[table_columns][show_sku]"]')?.checked ?? true;
         settings.table_columns.show_barcode = form.querySelector('[name="settings[table_columns][show_barcode]"]')?.checked ?? false;
@@ -98,7 +106,6 @@ export function initPrintTemplatesPage() {
         settings.table_columns.show_tax = form.querySelector('[name="settings[table_columns][show_tax]"]')?.checked ?? false;
         settings.table_columns.show_total = form.querySelector('[name="settings[table_columns][show_total]"]')?.checked ?? true;
         settings.table_columns.show_notes = form.querySelector('[name="settings[table_columns][show_notes]"]')?.checked ?? true;
-        settings.table_columns.density = form.querySelector('[name="settings[table_columns][density]"]')?.value ?? 'comfortable';
 
         // Financial Summary
         settings.financial_summary = settings.financial_summary || {};
@@ -110,14 +117,6 @@ export function initPrintTemplatesPage() {
         settings.financial_summary.show_net_total = form.querySelector('[name="settings[financial_summary][show_net_total]"]')?.checked ?? true;
         settings.financial_summary.show_paid = form.querySelector('[name="settings[financial_summary][show_paid]"]')?.checked ?? true;
         settings.financial_summary.show_remaining = form.querySelector('[name="settings[financial_summary][show_remaining]"]')?.checked ?? true;
-
-        // Statement Options
-        settings.statement_options = settings.statement_options || {};
-        settings.statement_options.show_date_range = form.querySelector('[name="settings[statement_options][show_date_range]"]')?.checked ?? true;
-        settings.statement_options.show_opening_balance = form.querySelector('[name="settings[statement_options][show_opening_balance]"]')?.checked ?? true;
-        settings.statement_options.show_debit_credit = form.querySelector('[name="settings[statement_options][show_debit_credit]"]')?.checked ?? true;
-        settings.statement_options.show_running_balance = form.querySelector('[name="settings[statement_options][show_running_balance]"]')?.checked ?? true;
-        settings.statement_options.show_summary_cards = form.querySelector('[name="settings[statement_options][show_summary_cards]"]')?.checked ?? true;
 
         // Notes and Terms
         settings.notes_and_terms = settings.notes_and_terms || {};
@@ -143,102 +142,143 @@ export function initPrintTemplatesPage() {
         const paperFormat = templateData.paper_format || 'a4';
         paperSheet.setAttribute('data-format', paperFormat);
 
+        // Font size scaling
+        const fontSize = settings.general?.font_size || 'md';
+        paperSheet.setAttribute('data-font-size', fontSize);
+
         // Primary color
         const primaryColor = settings.general?.primary_color || '#1e293b';
         paperSheet.style.setProperty('--mockup-primary', primaryColor);
 
-        // General
-        const logoEl = paperSheet.querySelector('.preview-logo');
-        if (logoEl) {
-            logoEl.style.display = settings.general?.show_logo ? 'block' : 'none';
-            logoEl.className = `preview-logo doc-mockup-logo-${settings.general?.logo_size || 'md'}`;
-        }
+        // Active Logo (custom uploaded logo or company setting logo)
+        const activeLogo = settings.general?.custom_logo || sampleData.company?.logo_url || null;
+        const logoSize = settings.general?.logo_size || 'md';
 
-        const compNameEl = paperSheet.querySelector('.preview-company-name');
-        if (compNameEl) compNameEl.style.display = settings.general?.show_company_name ? 'block' : 'none';
+        paperSheet.querySelectorAll('.preview-logo').forEach(logoEl => {
+            logoEl.style.display = settings.general?.show_logo ? 'inline-flex' : 'none';
+            logoEl.className = `preview-logo doc-mockup-logo-${logoSize}`;
+            if (settings.general?.show_logo) {
+                if (activeLogo) {
+                    logoEl.innerHTML = `<img src="${activeLogo}" alt="Logo" class="preview-logo-img" />`;
+                } else {
+                    logoEl.innerHTML = `<div class="preview-logo-placeholder">LOGO</div>`;
+                }
+            }
+        });
 
-        const compPhoneEl = paperSheet.querySelector('.preview-company-phone');
-        if (compPhoneEl) compPhoneEl.style.display = settings.general?.show_company_phone ? 'block' : 'none';
+        // Company Details
+        paperSheet.querySelectorAll('.preview-company-name').forEach(el => {
+            el.style.display = settings.general?.show_company_name ? 'block' : 'none';
+        });
 
-        const compAddrEl = paperSheet.querySelector('.preview-company-address');
-        if (compAddrEl) compAddrEl.style.display = settings.general?.show_company_address ? 'block' : 'none';
+        paperSheet.querySelectorAll('.preview-company-phone').forEach(el => {
+            el.style.display = settings.general?.show_company_phone ? 'block' : 'none';
+        });
 
-        const titleEl = paperSheet.querySelector('.preview-doc-title');
-        if (titleEl) titleEl.textContent = settings.general?.custom_title || sampleData.document?.type_label || '';
+        paperSheet.querySelectorAll('.preview-company-address').forEach(el => {
+            el.style.display = settings.general?.show_company_address ? 'block' : 'none';
+        });
 
-        const subtitleEl = paperSheet.querySelector('.preview-doc-subtitle');
-        if (subtitleEl) {
+        // Document Titles
+        paperSheet.querySelectorAll('.preview-doc-title').forEach(titleEl => {
+            titleEl.textContent = settings.general?.custom_title || sampleData.document?.type_label || 'فاتورة';
+        });
+
+        paperSheet.querySelectorAll('.preview-doc-subtitle').forEach(subtitleEl => {
             subtitleEl.textContent = settings.general?.custom_subtitle || '';
             subtitleEl.style.display = settings.general?.custom_subtitle ? 'block' : 'none';
-        }
+        });
 
-        // Meta
-        const docNumEl = paperSheet.querySelector('.preview-doc-number');
-        if (docNumEl) docNumEl.style.display = settings.document_meta?.show_doc_number ? 'inline-block' : 'none';
-        const docNumRow = paperSheet.querySelector('.preview-doc-number-row');
-        if (docNumRow) docNumRow.style.display = settings.document_meta?.show_doc_number ? 'flex' : 'none';
+        // Document Meta
+        paperSheet.querySelectorAll('.preview-doc-number').forEach(el => {
+            el.style.display = settings.document_meta?.show_doc_number ? 'inline-block' : 'none';
+        });
+        paperSheet.querySelectorAll('.preview-doc-number-row').forEach(el => {
+            el.style.display = settings.document_meta?.show_doc_number ? 'flex' : 'none';
+        });
 
-        const docDateEl = paperSheet.querySelector('.preview-doc-date');
-        if (docDateEl) docDateEl.style.display = settings.document_meta?.show_doc_date ? 'inline-block' : 'none';
-        const docDateRow = paperSheet.querySelector('.preview-doc-date-row');
-        if (docDateRow) docDateRow.style.display = settings.document_meta?.show_doc_date ? 'flex' : 'none';
+        paperSheet.querySelectorAll('.preview-doc-date').forEach(el => {
+            el.style.display = settings.document_meta?.show_doc_date ? 'inline-block' : 'none';
+        });
+        paperSheet.querySelectorAll('.preview-doc-date-row').forEach(el => {
+            el.style.display = settings.document_meta?.show_doc_date ? 'flex' : 'none';
+        });
 
-        const docDueDateEl = paperSheet.querySelector('.preview-doc-due-date');
-        if (docDueDateEl) docDueDateEl.style.display = settings.document_meta?.show_due_date ? 'inline-block' : 'none';
+        paperSheet.querySelectorAll('.preview-doc-due-date').forEach(el => {
+            el.style.display = settings.document_meta?.show_due_date ? 'inline-block' : 'none';
+        });
+        paperSheet.querySelectorAll('.preview-doc-due-date-row').forEach(el => {
+            el.style.display = settings.document_meta?.show_due_date ? 'flex' : 'none';
+        });
 
-        const docWhEl = paperSheet.querySelector('.preview-doc-warehouse');
-        if (docWhEl) docWhEl.style.display = settings.document_meta?.show_warehouse ? 'inline-block' : 'none';
+        paperSheet.querySelectorAll('.preview-doc-warehouse').forEach(el => {
+            el.style.display = settings.document_meta?.show_warehouse ? 'inline-block' : 'none';
+        });
+        paperSheet.querySelectorAll('.preview-doc-warehouse-row').forEach(el => {
+            el.style.display = settings.document_meta?.show_warehouse ? 'flex' : 'none';
+        });
 
-        const docBadgeEl = paperSheet.querySelector('.preview-doc-badge');
-        if (docBadgeEl) docBadgeEl.style.display = settings.document_meta?.show_status_badge ? 'inline-block' : 'none';
+        paperSheet.querySelectorAll('.preview-doc-badge').forEach(el => {
+            el.style.display = settings.document_meta?.show_status_badge ? 'inline-block' : 'none';
+        });
 
-        const docBarcodeEl = paperSheet.querySelector('.preview-doc-barcode');
-        if (docBarcodeEl) docBarcodeEl.style.display = settings.document_meta?.show_barcode ? 'block' : 'none';
+        paperSheet.querySelectorAll('.preview-doc-barcode').forEach(el => {
+            el.style.display = settings.document_meta?.show_barcode ? 'block' : 'none';
+        });
 
-        const docQrEl = paperSheet.querySelector('.preview-doc-qr');
-        if (docQrEl) docQrEl.style.display = settings.document_meta?.show_qr_code ? 'block' : 'none';
+        paperSheet.querySelectorAll('.preview-doc-qr').forEach(el => {
+            el.style.display = settings.document_meta?.show_qr_code ? 'block' : 'none';
+        });
 
-        // Party
-        const partyLabelEl = paperSheet.querySelector('.preview-party-label');
-        if (partyLabelEl) {
+        // Party Meta
+        paperSheet.querySelectorAll('.preview-party-label').forEach(partyLabelEl => {
             const rawLabel = settings.party_meta?.party_type_label || 'الطرف المقابل';
             partyLabelEl.textContent = partyLabelEl.textContent.includes(':') ? `${rawLabel} :` : rawLabel;
-        }
+        });
 
-        const partyNameEl = paperSheet.querySelector('.preview-party-name');
-        if (partyNameEl) partyNameEl.style.display = settings.party_meta?.show_party_name ? 'block' : 'none';
-        const partyNameRow = paperSheet.querySelector('.preview-party-name-row');
-        if (partyNameRow) partyNameRow.style.display = settings.party_meta?.show_party_name ? 'flex' : 'none';
+        paperSheet.querySelectorAll('.preview-party-name').forEach(el => {
+            el.style.display = settings.party_meta?.show_party_name ? 'block' : 'none';
+        });
+        paperSheet.querySelectorAll('.preview-party-name-row').forEach(el => {
+            el.style.display = settings.party_meta?.show_party_name ? 'flex' : 'none';
+        });
 
-        const partyPhoneEl = paperSheet.querySelector('.preview-party-phone');
-        if (partyPhoneEl) partyPhoneEl.style.display = settings.party_meta?.show_party_phone ? 'block' : 'none';
-        const partyPhoneRow = paperSheet.querySelector('.preview-party-phone-row');
-        if (partyPhoneRow) partyPhoneRow.style.display = settings.party_meta?.show_party_phone ? 'flex' : 'none';
+        paperSheet.querySelectorAll('.preview-party-phone').forEach(el => {
+            el.style.display = settings.party_meta?.show_party_phone ? 'block' : 'none';
+        });
+        paperSheet.querySelectorAll('.preview-party-phone-row').forEach(el => {
+            el.style.display = settings.party_meta?.show_party_phone ? 'flex' : 'none';
+        });
 
-        const partyAddrEl = paperSheet.querySelector('.preview-party-address');
-        if (partyAddrEl) partyAddrEl.style.display = settings.party_meta?.show_party_address ? 'block' : 'none';
-        const partyAddrRow = paperSheet.querySelector('.preview-party-address-row');
-        if (partyAddrRow) partyAddrRow.style.display = settings.party_meta?.show_party_address ? 'flex' : 'none';
+        paperSheet.querySelectorAll('.preview-party-address').forEach(el => {
+            el.style.display = settings.party_meta?.show_party_address ? 'block' : 'none';
+        });
+        paperSheet.querySelectorAll('.preview-party-address-row').forEach(el => {
+            el.style.display = settings.party_meta?.show_party_address ? 'flex' : 'none';
+        });
 
-        const partyTaxEl = paperSheet.querySelector('.preview-party-tax-no');
-        if (partyTaxEl) partyTaxEl.style.display = settings.party_meta?.show_party_tax_no ? 'block' : 'none';
+        paperSheet.querySelectorAll('.preview-party-tax-no').forEach(el => {
+            el.style.display = settings.party_meta?.show_party_tax_no ? 'block' : 'none';
+        });
+        paperSheet.querySelectorAll('.preview-party-tax-row').forEach(el => {
+            el.style.display = settings.party_meta?.show_party_tax_no ? 'flex' : 'none';
+        });
 
-        // Table Columns
-        const table = paperSheet.querySelector('.doc-mockup-table');
-        if (table) {
-            table.classList.toggle('density-compact', settings.table_columns?.density === 'compact');
-            
-            paperSheet.querySelectorAll('.col-index').forEach(el => el.style.display = settings.table_columns?.show_index ? '' : 'none');
-            paperSheet.querySelectorAll('.col-sku').forEach(el => el.style.display = settings.table_columns?.show_sku ? '' : 'none');
-            paperSheet.querySelectorAll('.col-barcode').forEach(el => el.style.display = settings.table_columns?.show_barcode ? '' : 'none');
-            paperSheet.querySelectorAll('.col-unit').forEach(el => el.style.display = settings.table_columns?.show_unit ? '' : 'none');
-            paperSheet.querySelectorAll('.col-warehouse, .col-wh').forEach(el => el.style.display = settings.table_columns?.show_warehouse ? '' : 'none');
-            paperSheet.querySelectorAll('.col-price').forEach(el => el.style.display = settings.table_columns?.show_price ? '' : 'none');
-            paperSheet.querySelectorAll('.col-discount').forEach(el => el.style.display = settings.table_columns?.show_discount ? '' : 'none');
-            paperSheet.querySelectorAll('.col-tax').forEach(el => el.style.display = settings.table_columns?.show_tax ? '' : 'none');
-            paperSheet.querySelectorAll('.col-total').forEach(el => el.style.display = settings.table_columns?.show_total ? '' : 'none');
-            paperSheet.querySelectorAll('.col-notes').forEach(el => el.style.display = settings.table_columns?.show_notes ? '' : 'none');
-        }
+        // Table Columns & Density
+        paperSheet.querySelectorAll('.doc-mockup-table').forEach(tbl => {
+            tbl.classList.toggle('density-compact', settings.table_columns?.density === 'compact');
+        });
+
+        paperSheet.querySelectorAll('.col-index').forEach(el => el.style.display = settings.table_columns?.show_index ? '' : 'none');
+        paperSheet.querySelectorAll('.col-sku').forEach(el => el.style.display = settings.table_columns?.show_sku ? '' : 'none');
+        paperSheet.querySelectorAll('.col-barcode').forEach(el => el.style.display = settings.table_columns?.show_barcode ? '' : 'none');
+        paperSheet.querySelectorAll('.col-unit').forEach(el => el.style.display = settings.table_columns?.show_unit ? '' : 'none');
+        paperSheet.querySelectorAll('.col-warehouse, .col-wh').forEach(el => el.style.display = settings.table_columns?.show_warehouse ? '' : 'none');
+        paperSheet.querySelectorAll('.col-price').forEach(el => el.style.display = settings.table_columns?.show_price ? '' : 'none');
+        paperSheet.querySelectorAll('.col-discount').forEach(el => el.style.display = settings.table_columns?.show_discount ? '' : 'none');
+        paperSheet.querySelectorAll('.col-tax').forEach(el => el.style.display = settings.table_columns?.show_tax ? '' : 'none');
+        paperSheet.querySelectorAll('.col-total').forEach(el => el.style.display = settings.table_columns?.show_total ? '' : 'none');
+        paperSheet.querySelectorAll('.col-notes').forEach(el => el.style.display = settings.table_columns?.show_notes ? '' : 'none');
 
         // Financial Summary
         paperSheet.querySelectorAll('.row-subtotal').forEach(el => el.style.display = settings.financial_summary?.show_subtotal ? '' : 'none');
@@ -251,45 +291,99 @@ export function initPrintTemplatesPage() {
         paperSheet.querySelectorAll('.row-remaining').forEach(el => el.style.display = settings.financial_summary?.show_remaining ? '' : 'none');
 
         // Notes and Terms
-        const notesBox = paperSheet.querySelector('.preview-notes-box');
-        if (notesBox) {
+        paperSheet.querySelectorAll('.preview-notes-box').forEach(notesBox => {
             notesBox.style.display = settings.notes_and_terms?.show_notes ? 'block' : 'none';
             const notesTextEl = notesBox.querySelector('.notes-content');
             if (notesTextEl) notesTextEl.textContent = settings.notes_and_terms?.notes_text || '';
-        }
+        });
 
-        const termsBox = paperSheet.querySelector('.preview-terms-box');
-        if (termsBox) {
+        paperSheet.querySelectorAll('.preview-terms-box').forEach(termsBox => {
             termsBox.style.display = settings.notes_and_terms?.show_terms ? 'block' : 'none';
             const termsTextEl = termsBox.querySelector('.terms-content');
             if (termsTextEl) termsTextEl.textContent = settings.notes_and_terms?.terms_text || '';
-        }
+        });
 
-        // Signatures
-        const sigContainer = paperSheet.querySelector('.doc-mockup-signatures');
-        if (sigContainer) {
+        // Signatures & Stamp
+        paperSheet.querySelectorAll('.doc-mockup-signatures').forEach(sigContainer => {
             sigContainer.style.display = settings.signatures?.show_signatures ? 'flex' : 'none';
             const firstPartyLabel = sigContainer.querySelector('.first-party-title');
             if (firstPartyLabel) firstPartyLabel.textContent = settings.signatures?.first_party_title || 'الطرف الأول';
 
             const secondPartyLabel = sigContainer.querySelector('.second-party-title');
             if (secondPartyLabel) secondPartyLabel.textContent = settings.signatures?.second_party_title || 'المسؤول';
+        });
 
-            const stampBox = sigContainer.querySelector('.doc-mockup-stamp-box');
-            if (stampBox) stampBox.style.display = settings.signatures?.show_stamp_box ? 'flex' : 'none';
-        }
+        paperSheet.querySelectorAll('.preview-stamp-box, .doc-mockup-stamp-box').forEach(stampBox => {
+            stampBox.style.display = settings.signatures?.show_stamp_box ? '' : 'none';
+        });
+    }
+
+    // Logo upload interaction
+    if (logoInput) {
+        logoInput.addEventListener('change', (e) => {
+            const file = e.target.files?.[0];
+            if (file) {
+                if (!file.type.startsWith('image/')) {
+                    showToast('يرجى اختيار ملف صورة صالح (PNG, JPG, SVG, WebP)', 'error');
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = (loadEvent) => {
+                    const dataUrl = loadEvent.target?.result;
+                    if (dataUrl) {
+                        if (customLogoHidden) customLogoHidden.value = dataUrl;
+                        settings.general.custom_logo = dataUrl;
+                        if (removeLogoBtn) removeLogoBtn.classList.remove('hidden');
+                        renderMockup();
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+
+    if (removeLogoBtn) {
+        removeLogoBtn.addEventListener('click', () => {
+            if (logoInput) logoInput.value = '';
+            if (customLogoHidden) customLogoHidden.value = '';
+            settings.general.custom_logo = null;
+            removeLogoBtn.classList.add('hidden');
+            renderMockup();
+        });
+    }
+
+    // Color picker sync
+    if (colorPicker && primaryColorInput) {
+        colorPicker.addEventListener('input', () => {
+            primaryColorInput.value = colorPicker.value;
+            settings.general.primary_color = colorPicker.value;
+            renderMockup();
+        });
+
+        primaryColorInput.addEventListener('input', () => {
+            const val = primaryColorInput.value.trim();
+            if (/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(val)) {
+                colorPicker.value = val;
+                settings.general.primary_color = val;
+            }
+            renderMockup();
+        });
     }
 
     // Attach listener to all inputs in the form
     if (form) {
-        form.addEventListener('input', () => {
-            syncFormToSettings();
-            renderMockup();
+        form.addEventListener('input', (e) => {
+            if (e.target !== logoInput) {
+                syncFormToSettings();
+                renderMockup();
+            }
         });
 
-        form.addEventListener('change', () => {
-            syncFormToSettings();
-            renderMockup();
+        form.addEventListener('change', (e) => {
+            if (e.target !== logoInput) {
+                syncFormToSettings();
+                renderMockup();
+            }
         });
 
         // Form submit via AJAX
@@ -381,6 +475,7 @@ export function initPrintTemplatesPage() {
     }
 
     // Initial render
+    syncFormToSettings();
     renderMockup();
 }
 

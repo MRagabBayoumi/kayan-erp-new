@@ -145,3 +145,31 @@ test('print template duplicate endpoint clones template as custom copy', functio
 
     expect(PrintTemplate::where('name', 'قالب مشتريات A5 مخصص فرع العتبة')->exists())->toBeTrue();
 });
+
+test('settings print_templates supports custom logo and live preview branding options', function () {
+    $template = PrintTemplate::forDocument(PrintTemplate::DOC_SALES_INVOICE)
+        ->forFormat(PrintTemplate::FORMAT_A4)
+        ->firstOrFail();
+
+    $settings = $template->settings;
+    $settings['general']['show_logo'] = true;
+    $settings['general']['custom_logo'] = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+    $settings['general']['logo_size'] = 'lg';
+    $settings['general']['primary_color'] = '#714B67';
+
+    $response = $this->putJson(route('settings.print-templates.update', $template->id), [
+        'name' => $template->name,
+        'settings' => $settings,
+    ]);
+
+    $response->assertOk()
+        ->assertJsonPath('success', true)
+        ->assertJsonPath('template.settings.general.custom_logo', $settings['general']['custom_logo'])
+        ->assertJsonPath('template.settings.general.logo_size', 'lg')
+        ->assertJsonPath('template.settings.general.primary_color', '#714b67');
+
+    $template->refresh();
+    expect($template->getSetting('general.custom_logo'))->toBe($settings['general']['custom_logo'])
+        ->and($template->getSetting('general.logo_size'))->toBe('lg')
+        ->and($template->getSetting('general.primary_color'))->toBe('#714b67');
+});

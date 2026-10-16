@@ -64,11 +64,35 @@
             data-density="{{ $template->getSetting('table_columns.density', 'comfortable') }}"
             data-font-size="{{ $template->getSetting('general.font_size', 'md') }}"
         >
+        @php
+            $companyLogo = $template->getSetting('general.custom_logo') ?: ($company?->logo_url ?? null);
+        @endphp
+
         @if($format !== 'thermal_80mm')
             <!-- =================================================================
                  A4 / A5 Enterprise Dispatch Invoice Layout (مطابق لصورة الفاتورة الفعلية)
                  ================================================================= -->
             
+            @if($template->getSetting('general.show_logo') || $template->getSetting('general.show_company_name'))
+                <div class="dispatch-company-branding preview-header-brand">
+                    <div class="flex items-center gap-3">
+                        @if($template->getSetting('general.show_logo') && $companyLogo)
+                            <div class="preview-logo doc-mockup-logo-{{ $template->getSetting('general.logo_size', 'md') }}">
+                                <img src="{{ $companyLogo }}" alt="Logo" class="preview-logo-img" />
+                            </div>
+                        @endif
+                        <div class="preview-company-details">
+                            @if($template->getSetting('general.show_company_name'))
+                                <div class="preview-company-name font-bold text-sm">{{ $company?->company_name ?? 'شركة كيان للتجارة والتوزيع' }}</div>
+                            @endif
+                            @if($template->getSetting('general.show_company_phone') && !empty($company?->company_phone))
+                                <div class="preview-company-phone text-xs text-slate-600">هاتف: {{ $company->company_phone }}</div>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            @endif
+
             <!-- 1. Header: 3 Columns (Document & Client Info, Stamp Box, Date & Shipping) -->
             <header class="dispatch-header">
                 <!-- Right Column: Document Number & Client Info -->
@@ -210,6 +234,11 @@
                  ================================================================= -->
             <header class="doc-header">
                 <div class="doc-brand">
+                    @if($template->getSetting('general.show_logo') && $companyLogo)
+                        <div class="preview-logo doc-mockup-logo-{{ $template->getSetting('general.logo_size', 'sm') }} mb-1">
+                            <img src="{{ $companyLogo }}" alt="Logo" class="preview-logo-img" />
+                        </div>
+                    @endif
                     <div>
                         <h1 class="doc-company-title">{{ $company?->company_name ?: 'شركة كيان التجارية' }}</h1>
                         <div class="doc-company-meta font-numeric">
