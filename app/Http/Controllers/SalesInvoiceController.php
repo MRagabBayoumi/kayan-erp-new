@@ -224,6 +224,9 @@ class SalesInvoiceController extends Controller
         if (! $activeShift) {
             $activeShift = CashierShift::open()->where('warehouse_id', (int) $validated['warehouse_id'])->latest('id')->first();
         }
+        if (! $activeShift && $user && $user->isAdmin()) {
+            $activeShift = CashierShift::open()->latest('id')->first();
+        }
 
         if ($user && $user->isCashier() && ! $activeShift) {
             return back()->withInput()->withErrors([
@@ -526,6 +529,9 @@ class SalesInvoiceController extends Controller
         }
         if (! $activeShift) {
             $activeShift = CashierShift::open()->where('warehouse_id', (int) $validated['warehouse_id'])->latest('id')->first();
+        }
+        if (! $activeShift && $user && $user->isAdmin()) {
+            $activeShift = CashierShift::open()->latest('id')->first();
         }
 
         if ($user && $user->isCashier() && ! $activeShift) {

@@ -12,7 +12,16 @@
                 <span>طباعة التقرير</span>
             </a>
             @if($shift->status === 'open' && (auth()->id() === $shift->user_id || auth()->user()->isAdmin()))
-                <button type="button" id="closeThisShiftBtn" class="erp-btn erp-btn-danger">
+                <button type="button" id="closeThisShiftBtn" class="erp-btn erp-btn-danger close-shift-trigger-btn"
+                    data-shift-id="{{ $shift->id }}"
+                    data-shift-number="{{ $shift->shift_number }}"
+                    data-expected="{{ $shift->expected_closing_balance }}"
+                    data-opening="{{ $shift->opening_balance }}"
+                    data-sales="{{ $shift->cash_sales_amount }}"
+                    data-additions="{{ $shift->cash_additions }}"
+                    data-expenses="{{ $shift->cash_expenses }}"
+                    data-cashier="{{ $shift->user?->name }}"
+                    data-warehouse="{{ $shift->warehouse?->name }}">
                     <x-icon name="lock" size="16" />
                     <span>إغلاق الوردية وجرد الدرج</span>
                 </button>
@@ -370,6 +379,106 @@
                         @endforelse
                     </tbody>
                 </table>
+            </div>
+        </div>
+
+        <!-- Close Shift Modal -->
+        <div id="closeShiftModal" class="erp-modal-overlay hidden" role="dialog" aria-modal="true">
+            <div class="erp-modal-container">
+                <div class="erp-modal-header">
+                    <div class="erp-modal-title">
+                        <x-icon name="lock" size="18" class="text-[var(--danger)]" />
+                        <span>إغلاق وردية الكاشير وجرد الدرج</span>
+                    </div>
+                    <button type="button" class="erp-modal-close close-modal-btn" aria-label="إغلاق">
+                        <x-icon name="x" size="16" />
+                    </button>
+                </div>
+                <form id="closeShiftForm" method="POST" action="{{ route('shifts.close', $shift) }}">
+                    @csrf
+                    <div class="erp-modal-body">
+                        <div class="text-xs text-[var(--text-muted)] mb-3">
+                            رقم الوردية: <strong id="closeShiftNumberSpan" class="text-[var(--text-main)] font-numeric">{{ $shift->shift_number }}</strong>
+                        </div>
+
+                        <div class="shift-calc-box mt-0 mb-3">
+                            <div class="shift-calc-row">
+                                <span>كاشير الوردية:</span>
+                                <strong id="closeShiftCashierSpan" class="text-[var(--text-main)]">{{ $shift->user?->name }}</strong>
+                            </div>
+                            <div class="shift-calc-row">
+                                <span>المستودع / الفرع:</span>
+                                <strong id="closeShiftWarehouseSpan" class="text-[var(--text-main)]">{{ $shift->warehouse?->name }}</strong>
+                            </div>
+                            <div class="shift-calc-row text-xs text-[var(--text-muted)]">
+                                <span>(+) رصيد بداية العهدة:</span>
+                                <span id="closeShiftOpeningSpan" class="font-numeric">{{ number_format($shift->opening_balance, 2) }} ج.م</span>
+                            </div>
+                            <div class="shift-calc-row text-xs text-emerald-600">
+                                <span>(+) إجمالي المبيعات النقدية:</span>
+                                <span id="closeShiftSalesSpan" class="font-numeric">{{ number_format($shift->cash_sales_amount, 2) }} ج.م</span>
+                            </div>
+                            <div class="shift-calc-row text-xs text-blue-600">
+                                <span>(+) إيداعات نقدية إضافية:</span>
+                                <span id="closeShiftAdditionsSpan" class="font-numeric">{{ number_format($shift->cash_additions, 2) }} ج.م</span>
+                            </div>
+                            <div class="shift-calc-row text-xs text-amber-600">
+                                <span>(-) سحوبات ومصروفات:</span>
+                                <span id="closeShiftExpensesSpan" class="font-numeric">{{ number_format($shift->cash_expenses, 2) }} ج.م</span>
+                            </div>
+                            <div class="shift-calc-row pt-2 border-t border-[var(--border-color)]">
+                                <span class="font-bold text-sm">الرصيد الدفتري المتوقع بالدرج:</span>
+                                <strong id="closeShiftExpectedSpan" class="font-numeric text-base text-emerald-500">{{ number_format($shift->expected_closing_balance, 2) }} ج.م</strong>
+                            </div>
+                        </div>
+
+                        <div class="erp-form-group mb-3">
+                            <label for="closeShiftActualBalance" class="erp-form-label text-xs">
+                                الجرد النقدي الفعلي في الدرج (ج.م) <span class="text-[var(--danger)]">*</span>
+                            </label>
+                            <input type="number" step="0.01" min="0" id="closeShiftActualBalance" name="actual_closing_balance" class="erp-input font-numeric text-base font-bold" placeholder="0.00" required>
+                            <span class="text-[11px] text-[var(--text-muted)]">قم بعد النقدية الموجودة في الدرج بالكامل وإدخالها هنا.</span>
+                        </div>
+
+                        <div id="shiftDiffResultBox" class="erp-alert erp-alert-info mb-3 hidden">
+                            <x-icon name="info" size="16" />
+                            <span id="shiftDiffResultText"></span>
+                        </div>
+
+                        @cannot('close-shifts')
+                            <div class="erp-alert erp-alert-warning mb-3">
+                                <x-icon name="shield-alert" size="16" />
+                                <span class="text-xs">إغلاق الوردية يتطلب اعتماد مدير النظام أو المشرف المباشر.</span>
+                            </div>
+
+                            <div class="erp-form-group mb-3">
+                                <label for="closeSupervisorEmail" class="erp-form-label text-xs">
+                                    بريد المشرف / المدير <span class="text-[var(--danger)]">*</span>
+                                </label>
+                                <input type="email" id="closeSupervisorEmail" name="supervisor_email" class="erp-input text-xs" placeholder="supervisor@example.com" required>
+                            </div>
+
+                            <div class="erp-form-group mb-3">
+                                <label for="closeSupervisorPassword" class="erp-form-label text-xs">
+                                    كلمة مرور المشرف / المدير <span class="text-[var(--danger)]">*</span>
+                                </label>
+                                <input type="password" id="closeSupervisorPassword" name="supervisor_password" class="erp-input text-xs" placeholder="••••••••" required>
+                            </div>
+                        @endcannot
+
+                        <div class="erp-form-group mb-0">
+                            <label for="closeShiftNotes" class="erp-form-label text-xs">ملاحظات الإغلاق والجرد</label>
+                            <textarea id="closeShiftNotes" name="closing_notes" rows="2" class="erp-input text-xs" placeholder="سبب العجز أو الزيادة إن وجد، أو أي ملاحظات تسليم..."></textarea>
+                        </div>
+                    </div>
+                    <div class="erp-modal-footer">
+                        <button type="button" class="erp-btn erp-btn-secondary close-modal-btn">إلغاء</button>
+                        <button type="submit" class="erp-btn erp-btn-danger">
+                            <x-icon name="lock" size="16" />
+                            <span>تأكيد الإغلاق النهائي</span>
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>

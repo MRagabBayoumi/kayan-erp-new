@@ -3,7 +3,7 @@ export function initShifts() {
 }
 
 function initShiftsIndex() {
-    const pageContainer = document.querySelector('[data-page="shifts-index"]');
+    const pageContainer = document.querySelector('[data-page="shifts-index"], [data-page="shift-show"]');
     if (!pageContainer) return;
 
     // 1. Open Shift Modal
@@ -35,6 +35,20 @@ function initShiftsIndex() {
             const shiftId = btn.dataset.shiftId;
             const shiftNum = btn.dataset.shiftNumber || '';
             currentExpectedBalance = parseFloat(btn.dataset.expected) || 0;
+
+            const cashierSpan = document.getElementById('closeShiftCashierSpan');
+            const warehouseSpan = document.getElementById('closeShiftWarehouseSpan');
+            const openingSpan = document.getElementById('closeShiftOpeningSpan');
+            const salesSpan = document.getElementById('closeShiftSalesSpan');
+            const additionsSpan = document.getElementById('closeShiftAdditionsSpan');
+            const expensesSpan = document.getElementById('closeShiftExpensesSpan');
+
+            if (cashierSpan && btn.dataset.cashier) cashierSpan.textContent = btn.dataset.cashier;
+            if (warehouseSpan && btn.dataset.warehouse) warehouseSpan.textContent = btn.dataset.warehouse;
+            if (openingSpan) openingSpan.textContent = `${parseFloat(btn.dataset.opening || 0).toFixed(2)} ج.م`;
+            if (salesSpan) salesSpan.textContent = `${parseFloat(btn.dataset.sales || 0).toFixed(2)} ج.م`;
+            if (additionsSpan) additionsSpan.textContent = `${parseFloat(btn.dataset.additions || 0).toFixed(2)} ج.م`;
+            if (expensesSpan) expensesSpan.textContent = `${parseFloat(btn.dataset.expenses || 0).toFixed(2)} ج.م`;
 
             if (closeShiftForm) {
                 closeShiftForm.action = `/shifts/${shiftId}/close`;
