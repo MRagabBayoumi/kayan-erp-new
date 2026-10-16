@@ -14,5 +14,9 @@ echo.
 echo  [2] جاري تشغيل سيرفر التطبيق...
 echo  أغلق هذه النافذة أو اضغط Ctrl+C لإيقاف السيرفر.
 echo ================================================================
-"C:\Users\PC\.config\herd-lite\bin\php.exe" artisan serve --host=0.0.0.0 --port=8001
+where php >nul 2>nul
+if %errorlevel% neq 0 (
+    if exist "C:\xampp\php\php.exe" set "PATH=C:\xampp\php;%PATH%"
+)
+php artisan serve --host=0.0.0.0 --port=8000
 pause
