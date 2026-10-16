@@ -126,15 +126,15 @@
                 </header>
 
                 <!-- 2. Financial Summary Table Grid (1px Solid Black Borders) -->
-                <div style="margin-top: 10px;">
-                    <div style="font-weight: 700; font-size: 13px; margin-bottom: 4px;">أولاً: كشف التسوية وحركة الخزينة بالوردية</div>
+                <div class="shift-a4-section">
+                    <div class="shift-a4-table-header">أولاً: كشف التسوية وحركة الخزينة بالوردية</div>
                     <table class="dispatch-table">
                         <thead>
                             <tr>
-                                <th style="width: 5%; text-align: center;">م</th>
-                                <th style="width: 45%; text-align: right;">بيان الحركة المالية بالدرج</th>
-                                <th style="width: 25%; text-align: center;">المبلغ الدفتري (ج.م)</th>
-                                <th style="width: 25%; text-align: center;">ملاحظات التدقيق</th>
+                                <th class="col-w-5 text-center">م</th>
+                                <th class="col-w-45 text-right">بيان الحركة المالية بالدرج</th>
+                                <th class="col-w-25 text-center">المبلغ الدفتري (ج.م)</th>
+                                <th class="col-w-25 text-center">ملاحظات التدقيق</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -147,44 +147,44 @@
                             <tr>
                                 <td class="text-center font-numeric">2</td>
                                 <td>(+) مبيعات نقدية ({{ $shift->salesInvoices->count() }} فاتورة بيع)</td>
-                                <td class="text-center font-numeric font-bold" style="color: #16a34a;">+{{ number_format((float)$shift->cash_sales_amount, 2) }}</td>
+                                <td class="text-center font-numeric font-bold text-positive">+{{ number_format((float)$shift->cash_sales_amount, 2) }}</td>
                                 <td class="text-center">إجمالي المتحصلات النقدية</td>
                             </tr>
                             <tr>
                                 <td class="text-center font-numeric">3</td>
                                 <td>(+) إيداعات إضافية بالدرج</td>
-                                <td class="text-center font-numeric font-bold" style="color: #16a34a;">+{{ number_format((float)$shift->cash_additions, 2) }}</td>
+                                <td class="text-center font-numeric font-bold text-positive">+{{ number_format((float)$shift->cash_additions, 2) }}</td>
                                 <td class="text-center">وارد نقدي إضافي</td>
                             </tr>
                             <tr>
                                 <td class="text-center font-numeric">4</td>
                                 <td>(−) مسحوبات ومصروفات نقدية</td>
-                                <td class="text-center font-numeric font-bold" style="color: #dc2626;">−{{ number_format((float)$shift->cash_expenses, 2) }}</td>
+                                <td class="text-center font-numeric font-bold text-negative">−{{ number_format((float)$shift->cash_expenses, 2) }}</td>
                                 <td class="text-center">مصروفات موثقة بسندات</td>
                             </tr>
                             <tr>
                                 <td class="text-center font-numeric">5</td>
                                 <td>(−) مرتجعات نقدية للعملاء</td>
-                                <td class="text-center font-numeric font-bold" style="color: #dc2626;">−{{ number_format((float)$shift->cash_returns_amount, 2) }}</td>
+                                <td class="text-center font-numeric font-bold text-negative">−{{ number_format((float)$shift->cash_returns_amount, 2) }}</td>
                                 <td class="text-center">مبالغ مستردة نقدياً</td>
                             </tr>
-                            <tr style="background: #f8fafc; font-weight: 800;">
+                            <tr class="shift-row-expected">
                                 <td class="text-center font-numeric">6</td>
                                 <td>(=) الرصيد الدفتري المتوقع بالدرج</td>
                                 <td class="text-center font-numeric font-bold">{{ number_format((float)$shift->expected_closing_balance, 2) }}</td>
                                 <td class="text-center">إجمالي المتوقع دفترياً</td>
                             </tr>
                             @if($shift->actual_closing_balance !== null)
-                                <tr style="background: #f1f5f9; font-weight: 800;">
+                                <tr class="shift-row-actual">
                                     <td class="text-center font-numeric">7</td>
                                     <td>الجرد الفعلي للنقدية المستلمة</td>
                                     <td class="text-center font-numeric font-bold">{{ number_format((float)$shift->actual_closing_balance, 2) }}</td>
                                     <td class="text-center">المبلغ المستلم فعلياً</td>
                                 </tr>
-                                <tr style="font-weight: 800;">
+                                <tr class="shift-row-bold">
                                     <td class="text-center font-numeric">8</td>
                                     <td>فارق الدرج النهائي</td>
-                                    <td class="text-center font-numeric font-bold" style="color: {{ $shift->difference < 0 ? '#dc2626' : ($shift->difference > 0 ? '#16a34a' : '#000000') }};">
+                                    <td class="text-center font-numeric font-bold {{ $shift->difference < 0 ? 'text-negative' : ($shift->difference > 0 ? 'text-positive' : '') }}">
                                         {{ $shift->difference > 0 ? '+' : '' }}{{ number_format((float)$shift->difference, 2) }}
                                     </td>
                                     <td class="text-center">
@@ -198,17 +198,17 @@
 
                 <!-- 3. Sold Items Breakdown Table Grid (1px Solid Black Borders) -->
                 @if(isset($soldItems) && count($soldItems) > 0)
-                    <div style="margin-top: 14px;">
-                        <div style="font-weight: 700; font-size: 13px; margin-bottom: 4px;">ثانياً: تفاصيل الأصناف المباعة بالوردية ({{ count($soldItems) }} صنف)</div>
+                    <div class="shift-a4-section-lg">
+                        <div class="shift-a4-table-header">ثانياً: تفاصيل الأصناف المباعة بالوردية ({{ count($soldItems) }} صنف)</div>
                         <table class="dispatch-table">
                             <thead>
                                 <tr>
-                                    <th style="width: 5%; text-align: center;">م</th>
-                                    <th style="width: 15%; text-align: center;">كود الصنف</th>
-                                    <th style="width: 40%; text-align: right;">اسم الصنف والبيان</th>
-                                    <th style="width: 12%; text-align: center;">الكمية</th>
-                                    <th style="width: 13%; text-align: center;">وحده القياس</th>
-                                    <th style="width: 15%; text-align: center;">الإجمالي (ج.م)</th>
+                                    <th class="col-w-5 text-center">م</th>
+                                    <th class="col-w-15 text-center">كود الصنف</th>
+                                    <th class="col-w-40 text-right">اسم الصنف والبيان</th>
+                                    <th class="col-w-12 text-center">الكمية</th>
+                                    <th class="col-w-13 text-center">وحده القياس</th>
+                                    <th class="col-w-15 text-center">الإجمالي (ج.م)</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -228,7 +228,7 @@
                 @endif
 
                 <!-- 4. Notes & Signatures Section -->
-                <div class="dispatch-bottom-section" style="margin-top: 14px;">
+                <div class="dispatch-bottom-section shift-a4-section-lg">
                     <div class="dispatch-notes-box">
                         <div class="dispatch-notes-title">ملاحظات واعتماد الوردية</div>
                         <div class="dispatch-notes-content">

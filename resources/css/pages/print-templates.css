@@ -798,3 +798,7 @@
     padding: 3px 8px;
 }
 
+.template-hidden {
+    display: none;
+}
+

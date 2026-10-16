@@ -281,6 +281,50 @@ body[data-format="a4"] .shift-receipt-container {
     text-align: right;
 }
 
+.shift-a4-section {
+    margin-top: 10px;
+}
+
+.shift-a4-section-lg {
+    margin-top: 14px;
+}
+
+.shift-a4-table-header {
+    font-weight: 700;
+    font-size: 13px;
+    margin-bottom: 4px;
+}
+
+.col-w-5 { width: 5%; }
+.col-w-12 { width: 12%; }
+.col-w-13 { width: 13%; }
+.col-w-15 { width: 15%; }
+.col-w-25 { width: 25%; }
+.col-w-40 { width: 40%; }
+.col-w-45 { width: 45%; }
+
+.shift-row-expected {
+    background: #f8fafc;
+    font-weight: 800;
+}
+
+.shift-row-actual {
+    background: #f1f5f9;
+    font-weight: 800;
+}
+
+.shift-row-bold {
+    font-weight: 800;
+}
+
+.text-positive {
+    color: #16a34a !important;
+}
+
+.text-negative {
+    color: #dc2626 !important;
+}
+
 
 /* Print Media Rules */
 @media print {
