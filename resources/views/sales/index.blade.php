@@ -240,6 +240,18 @@
                                             <a href="{{ route('sales.show', $inv) }}" class="erp-btn erp-btn-ghost erp-btn-sm" title="عرض التفاصيل">
                                                 <x-icon name="eye" size="14" />
                                             </a>
+                                            @if($inv->status === 'draft')
+                                                <a href="{{ route('sales.edit', $inv) }}" class="erp-btn erp-btn-ghost erp-btn-sm text-amber-600" title="تعديل الفاتورة">
+                                                    <x-icon name="edit-3" size="14" />
+                                                </a>
+                                            @elseif($inv->status === 'posted')
+                                                <form action="{{ route('sales.unpost-and-edit', $inv) }}" method="POST" class="inline" data-confirm="سيتم فك ترحيل الفاتورة واسترجاع أرصدة المخزون للتعديل. هل تريد المتابعة؟">
+                                                    @csrf
+                                                    <button type="submit" class="erp-btn erp-btn-ghost erp-btn-sm text-amber-600" title="تعديل الفاتورة (إرجاع للرصيد)">
+                                                        <x-icon name="edit-3" size="14" />
+                                                    </button>
+                                                </form>
+                                            @endif
                                             <button type="button" data-action="python-direct-print" data-url="{{ route('sales.direct-print', $inv) }}" class="erp-btn erp-btn-ghost erp-btn-sm text-[var(--primary)]" title="طباعة فورية بايثون">
                                                 <x-icon name="printer" size="14" />
                                             </button>

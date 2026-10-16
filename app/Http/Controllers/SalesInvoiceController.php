@@ -81,6 +81,7 @@ class SalesInvoiceController extends Controller
             'currentWarehouseId' => $request->input('warehouse_id'),
             'currentCustomerId' => $request->input('customer_id'),
             'currentPriceTier' => $request->input('price_tier'),
+            'canViewCogs' => auth()->user()?->isAdmin() || Gate::allows('view-cogs'),
         ]);
     }
 
@@ -340,6 +341,300 @@ class SalesInvoiceController extends Controller
             : 'تم حفظ مسودة فاتورة المبيعات بنجاح دون أي تأثير على رصيد المخزن.';
 
         return redirect()->route('sales.show', $invoice)
+            ->with('status', 'success')
+            ->with('message', $message);
+    }
+
+    /**
+     * Unpost a posted sales invoice, reverse stock/shift, and redirect to edit page.
+     */
+    public function unpostAndEdit(SalesInvoice $sale, InventoryService $inventoryService): RedirectResponse
+    {
+        $user = auth()->user();
+        if ($user && ! $user->canAccessWarehouse($sale->warehouse_id)) {
+            return back()->with('error', 'غير مصرح لك بإجراء تعديلات على فواتير هذا المستودع.');
+        }
+
+        if ($sale->status === SalesInvoice::STATUS_POSTED) {
+            try {
+                $inventoryService->unpostSalesInvoice($sale, auth()->id(), 'فك ترحيل للتعديل');
+            } catch (\Throwable $e) {
+                Log::error('Unpost sales invoice error: '.$e->getMessage());
+
+                return back()->with('error', 'تعذر فك ترحيل الفاتورة للتعديل: '.$e->getMessage());
+            }
+
+            return redirect()->route('sales.edit', $sale)
+                ->with('status', 'success')
+                ->with('message', 'تم فك ترحيل الفاتورة واسترجاع أرصدة المخزن بنجاح. البنود جاهزة الآن للتعديل في الجدول.');
+        }
+
+        if ($sale->status === SalesInvoice::STATUS_DRAFT) {
+            return redirect()->route('sales.edit', $sale);
+        }
+
+        return back()->with('error', 'لا يمكن تعديل هذه الفاتورة لأنها في حالة: '.$sale->status_label);
+    }
+
+    /**
+     * Show the form for editing the specified sales invoice.
+     */
+    public function edit(SalesInvoice $sale, InventoryService $inventoryService): View|RedirectResponse
+    {
+        $user = auth()->user();
+        if ($user && ! $user->canAccessWarehouse($sale->warehouse_id)) {
+            return redirect()->route('sales.show', $sale)->with('error', 'غير مصرح لك بتعديل فواتير هذا المستودع.');
+        }
+
+        // If the invoice is posted, unpost it first so stock is returned
+        if ($sale->status === SalesInvoice::STATUS_POSTED) {
+            try {
+                $inventoryService->unpostSalesInvoice($sale, auth()->id(), 'فك ترحيل تلقائي لبدء التعديل');
+            } catch (\Throwable $e) {
+                return redirect()->route('sales.show', $sale)->with('error', 'تعذر فك ترحيل الفاتورة للتعديل: '.$e->getMessage());
+            }
+        }
+
+        if ($sale->status !== SalesInvoice::STATUS_DRAFT) {
+            return redirect()->route('sales.show', $sale)->with('error', 'لا يمكن تعديل هذه الفاتورة لأنها في حالة: '.$sale->status_label);
+        }
+
+        $sale->loadMissing(['customer', 'warehouse', 'items.product', 'items.unit']);
+
+        $customers = Customer::active()->orderBy('name')->get();
+        $warehouses = $user?->getAllowedWarehouses() ?? Warehouse::active()->orderBy('name')->get();
+        if ($warehouses->isEmpty()) {
+            $warehouses = Warehouse::active()->orderBy('name')->get();
+        }
+
+        $products = Product::with('stockBalances')->active()->orderBy('name')->get();
+        $units = class_exists(Unit::class) ? Unit::active()->orderBy('is_default', 'desc')->orderBy('name')->get() : collect();
+        $canEditPrice = auth()->user()?->isAdmin() || Gate::allows('edit-product-prices');
+
+        $productsJson = $products->map(fn ($p) => [
+            'id' => $p->id,
+            'name' => $p->name,
+            'sku' => $p->sku,
+            'barcode' => (string) ($p->barcode ?? ''),
+            'retail_price' => (float) $p->retail_price,
+            'wholesale_price' => (float) $p->wholesale_price,
+            'distributor_price' => (float) ($p->distributor_price ?? $p->wholesale_price),
+            'cost_price' => (float) $p->cost_price,
+            'unit' => $p->unit ?? 'قطعة',
+            'unit_factor' => (float) $p->unit_factor,
+            'pieces_per_package' => (int) ($p->pieces_per_package ?? round($p->unit_factor)),
+            'stocks' => $p->stockBalances->pluck('quantity', 'warehouse_id')->map(fn ($q) => (float) $q)->toArray(),
+            'total_stock' => (float) $p->total_stock,
+            'formatted_stock' => $p->formatStockBreakdown(),
+        ])->values();
+
+        $unitsJson = $units->map(fn ($u) => [
+            'id' => $u->id,
+            'name' => $u->name,
+            'code' => $u->code,
+            'factor' => (float) ($u->conversion_factor ?? 1.0),
+            'is_default' => (bool) ($u->is_default ?? false),
+        ])->values();
+
+        $customersJson = $customers->map(fn ($c) => [
+            'id' => $c->id,
+            'name' => $c->name,
+            'pricing_tier' => $c->pricing_tier ?: 'retail',
+            'phone' => $c->phone ?? '',
+        ])->values();
+
+        $activeShift = $user ? CashierShift::getActiveShift($user->id, (int) $sale->warehouse_id) : null;
+        if (! $activeShift && $user && $user->isAdmin()) {
+            $activeShift = CashierShift::open()
+                ->where('warehouse_id', $sale->warehouse_id)
+                ->latest('id')
+                ->first();
+        }
+
+        return view('sales.edit', [
+            'title' => 'تعديل فاتورة مبيعات: '.$sale->invoice_number,
+            'moduleName' => 'المبيعات والعملاء',
+            'invoice' => $sale,
+            'customers' => $customers,
+            'warehouses' => $warehouses,
+            'products' => $products,
+            'units' => $units,
+            'productsJson' => $productsJson,
+            'unitsJson' => $unitsJson,
+            'customersJson' => $customersJson,
+            'canEditPrice' => $canEditPrice,
+            'activeShift' => $activeShift,
+        ]);
+    }
+
+    /**
+     * Update the specified sales invoice in storage.
+     */
+    public function update(Request $request, SalesInvoice $sale, InventoryService $inventoryService): RedirectResponse
+    {
+        $user = auth()->user();
+        if ($user && ! $user->canAccessWarehouse($sale->warehouse_id)) {
+            return back()->withInput()->withErrors([
+                'warehouse_id' => 'غير مصرح لك بإجراء تعديلات في هذا المستودع.',
+            ]);
+        }
+
+        if ($sale->status === SalesInvoice::STATUS_POSTED) {
+            try {
+                $inventoryService->unpostSalesInvoice($sale, auth()->id(), 'فك ترحيل قبل حفظ التعديل');
+            } catch (\Throwable $e) {
+                return back()->withInput()->withErrors(['error' => 'تعذر فك ترحيل الفاتورة: '.$e->getMessage()]);
+            }
+        }
+
+        if ($sale->status !== SalesInvoice::STATUS_DRAFT) {
+            return redirect()->route('sales.show', $sale)->with('error', 'لا يمكن تعديل هذه الفاتورة.');
+        }
+
+        $validated = $request->validate([
+            'customer_id' => ['required', 'exists:customers,id'],
+            'warehouse_id' => ['required', 'exists:warehouses,id'],
+            'invoice_date' => ['required', 'date'],
+            'price_tier' => ['required', 'string', 'in:retail,wholesale,distributor'],
+            'shipping_cost' => ['nullable', 'numeric', 'min:0'],
+            'discount_type' => ['nullable', 'string', 'in:fixed,percentage'],
+            'discount_value' => ['nullable', 'numeric', 'min:0'],
+            'notes' => ['nullable', 'string', 'max:1000'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.product_id' => ['required', 'exists:products,id'],
+            'items.*.unit_id' => ['nullable', 'exists:units,id'],
+            'items.*.conversion_factor' => ['nullable', 'numeric', 'min:0.0001'],
+            'items.*.quantity' => ['required', 'numeric', 'min:0.0001'],
+            'items.*.unit_price' => ['required', 'numeric', 'min:0'],
+            'items.*.line_discount' => ['nullable', 'numeric', 'min:0'],
+            'items.*.notes' => ['nullable', 'string', 'max:255'],
+        ], [
+            'customer_id.required' => 'يرجى اختيار العميل.',
+            'warehouse_id.required' => 'يرجى تحديد مستودع الصرف.',
+            'invoice_date.required' => 'تاريخ الفاتورة مطلوب.',
+            'price_tier.required' => 'يرجى تحديد فئة السعر.',
+            'items.required' => 'يجب إضافة صنف واحد على الأقل في الفاتورة.',
+            'items.min' => 'يجب إضافة صنف واحد على الأقل في الفاتورة.',
+            'items.*.product_id.required' => 'يرجى اختيار الصنف.',
+            'items.*.quantity.required' => 'الكمية مطلوبة.',
+            'items.*.unit_price.required' => 'سعر الوحدة مطلوب.',
+        ]);
+
+        $activeShift = $user ? CashierShift::getActiveShift($user->id, (int) $validated['warehouse_id']) : null;
+        if (! $activeShift && $user) {
+            $activeShift = CashierShift::getActiveShift($user->id);
+        }
+        if (! $activeShift) {
+            $activeShift = CashierShift::open()->where('warehouse_id', (int) $validated['warehouse_id'])->latest('id')->first();
+        }
+
+        if ($user && $user->isCashier() && ! $activeShift) {
+            return back()->withInput()->withErrors([
+                'shift' => 'لا يمكن إتمام البيع بدون وجود وردية كاشير مفتوحة.',
+            ]);
+        }
+
+        $shippingCost = (float) ($validated['shipping_cost'] ?? 0.00);
+        $discountType = $validated['discount_type'] ?? 'fixed';
+        $discountValue = (float) ($validated['discount_value'] ?? 0.00);
+
+        try {
+            DB::transaction(function () use ($sale, $validated, $shippingCost, $discountType, $discountValue, $request, $inventoryService, $activeShift) {
+                $subtotal = 0.00;
+                $itemsData = [];
+                $productIds = collect($validated['items'])->pluck('product_id')->unique()->toArray();
+                $productsMap = Product::whereIn('id', $productIds)->get()->keyBy('id');
+
+                foreach ($validated['items'] as $itemInput) {
+                    $prodId = (int) $itemInput['product_id'];
+                    $product = $productsMap->get($prodId);
+                    $productFactor = (float) ($product?->unit_factor ?? 1.0);
+                    if ($productFactor <= 0) {
+                        $productFactor = 1.0;
+                    }
+
+                    $qty = (float) $itemInput['quantity'];
+                    $price = (float) $itemInput['unit_price'];
+                    $lineDiscount = (float) ($itemInput['line_discount'] ?? 0.00);
+                    $selectedFactor = (float) ($itemInput['conversion_factor'] ?? 1.0000);
+                    if ($selectedFactor <= 0) {
+                        $selectedFactor = 1.0;
+                    }
+
+                    $effectiveFactor = $selectedFactor / $productFactor;
+                    $baseQty = round($qty * $effectiveFactor, 4);
+
+                    $lineSubtotal = max(0.00, round(($qty * $price) - $lineDiscount, 2));
+                    $subtotal += $lineSubtotal;
+
+                    $itemsData[] = [
+                        'sales_invoice_id' => $sale->id,
+                        'product_id' => $prodId,
+                        'unit_id' => ! empty($itemInput['unit_id']) ? (int) $itemInput['unit_id'] : null,
+                        'conversion_factor' => $selectedFactor,
+                        'quantity' => $qty,
+                        'base_quantity' => $baseQty,
+                        'unit_price' => $price,
+                        'line_discount' => $lineDiscount,
+                        'subtotal' => $lineSubtotal,
+                        'total_cogs' => 0.00,
+                        'total_profit' => 0.00,
+                        'notes' => $itemInput['notes'] ?? null,
+                    ];
+                }
+
+                $discountAmount = 0.00;
+                if ($discountValue > 0) {
+                    if ($discountType === 'percentage') {
+                        $discountAmount = round(($subtotal * min(100, $discountValue)) / 100, 2);
+                    } else {
+                        $discountAmount = min($subtotal, $discountValue);
+                    }
+                }
+
+                $totalAmount = max(0, round($subtotal - $discountAmount + $shippingCost, 2));
+
+                // 1. Update invoice header
+                $sale->update([
+                    'customer_id' => (int) $validated['customer_id'],
+                    'warehouse_id' => (int) $validated['warehouse_id'],
+                    'cashier_shift_id' => $activeShift?->id ?? $sale->cashier_shift_id,
+                    'invoice_date' => $validated['invoice_date'],
+                    'price_tier' => $validated['price_tier'],
+                    'subtotal' => $subtotal,
+                    'discount_type' => $discountType,
+                    'discount_value' => $discountValue,
+                    'discount_amount' => $discountAmount,
+                    'shipping_cost' => $shippingCost,
+                    'total_amount' => $totalAmount,
+                    'notes' => $validated['notes'] ?? null,
+                ]);
+
+                // 2. Replace items atomically
+                $sale->items()->delete();
+                foreach ($itemsData as $row) {
+                    SalesInvoiceItem::create($row);
+                }
+
+                // 3. Post if requested
+                if ($request->input('action') === 'post') {
+                    $this->executePosting($sale, $inventoryService);
+                    if ($activeShift) {
+                        $activeShift->recordCashSale($sale->total_amount, $sale->id);
+                    }
+                }
+            });
+        } catch (\Throwable $e) {
+            Log::error('SalesInvoice update error: '.$e->getMessage(), ['exception' => $e]);
+
+            return back()->withInput()->withErrors(['error' => $e->getMessage()])->with('error', $e->getMessage());
+        }
+
+        $message = $sale->fresh()->status === SalesInvoice::STATUS_POSTED
+            ? 'تم حفظ وتحديث فاتورة المبيعات وترحيلها وخصم الكميات بنجاح.'
+            : 'تم حفظ تعديلات فاتورة المبيعات كمسودة بنجاح دون أي تأثير على رصيد المخزن.';
+
+        return redirect()->route('sales.show', $sale)
             ->with('status', 'success')
             ->with('message', $message);
     }

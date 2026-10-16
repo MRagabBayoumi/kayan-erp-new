@@ -4,9 +4,9 @@
  */
 
 export function initSales() {
-    const createPage = document.querySelector('[data-page="sales-create"]');
-    if (createPage) {
-        initSalesPOS();
+    const posPage = document.querySelector('[data-page="sales-create"], [data-page="sales-edit"]');
+    if (posPage) {
+        initSalesPOS(posPage);
     }
 
     const showPage = document.querySelector('[data-page="sales-show"]');
@@ -15,8 +15,8 @@ export function initSales() {
     }
 }
 
-function initSalesPOS() {
-    const createPage = document.querySelector('[data-page="sales-create"]');
+function initSalesPOS(posPage = null) {
+    const createPage = posPage || document.querySelector('[data-page="sales-create"], [data-page="sales-edit"]');
     if (!createPage) return;
 
     // Elements

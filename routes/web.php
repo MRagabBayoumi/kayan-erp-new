@@ -125,6 +125,18 @@ Route::middleware('auth')->group(function () {
             ->middleware('can:void-sales-invoice')
             ->name('sales.void');
 
+        Route::post('/sales/{sale}/unpost-and-edit', [SalesInvoiceController::class, 'unpostAndEdit'])
+            ->middleware('can:manage-sales')
+            ->name('sales.unpost-and-edit');
+
+        Route::get('/sales/{sale}/edit', [SalesInvoiceController::class, 'edit'])
+            ->middleware('can:manage-sales')
+            ->name('sales.edit');
+
+        Route::put('/sales/{sale}', [SalesInvoiceController::class, 'update'])
+            ->middleware('can:manage-sales')
+            ->name('sales.update');
+
         Route::get('/sales/{sale}/print', [SalesInvoiceController::class, 'print'])->name('sales.print');
         Route::post('/sales/{sale}/direct-print', [SalesInvoiceController::class, 'directPrint'])->name('sales.direct-print');
         Route::resource('sales', SalesInvoiceController::class)->except(['edit', 'update', 'destroy']);

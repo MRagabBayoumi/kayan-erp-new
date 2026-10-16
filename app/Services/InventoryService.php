@@ -783,6 +783,115 @@ class InventoryService
     }
 
     /**
+     * Unpost a posted sales invoice back to draft mode.
+     * Reverses stock allocations and cashier shift receipts so the invoice can be edited in the table and re-saved.
+     */
+    public function unpostSalesInvoice(SalesInvoice $invoice, ?int $userId = null, ?string $reason = null): void
+    {
+        if ($invoice->status !== SalesInvoice::STATUS_POSTED) {
+            throw new InvalidArgumentException('يمكن فقط فك ترحيل الفواتير التي في حالة مرحلة (posted).');
+        }
+
+        $userId = $userId ?? auth()->id();
+
+        DB::transaction(function () use ($invoice, $userId, $reason) {
+            $invoice->loadMissing(['items.batchAllocations.batch', 'warehouse']);
+
+            foreach ($invoice->items as $item) {
+                foreach ($item->batchAllocations as $allocation) {
+                    if ($allocation->is_reversed) {
+                        continue;
+                    }
+
+                    $batch = $allocation->batch;
+                    $restoredQty = (float) $allocation->quantity_base;
+                    $restoredCogs = (float) $allocation->total_cogs;
+
+                    // 1. Restore batch remaining quantity and accumulated COGS
+                    $batch->remaining_quantity = round((float) $batch->remaining_quantity + $restoredQty, 4);
+                    $batch->accumulated_cogs_deducted = max(0.00, round((float) $batch->accumulated_cogs_deducted - $restoredCogs, 2));
+                    $batch->is_exhausted = false;
+                    $batch->save();
+
+                    // 2. Restore Warehouse Stock Balance
+                    $balance = StockBalance::where('product_id', $item->product_id)
+                        ->where('warehouse_id', $invoice->warehouse_id)
+                        ->lockForUpdate()
+                        ->first();
+
+                    if ($balance) {
+                        $balance->increment('quantity', $restoredQty);
+                    }
+
+                    $runningBalance = (float) StockBalance::where('product_id', $item->product_id)->sum('quantity');
+
+                    // 3. Compensating Stock Movement (Inward)
+                    StockMovement::create([
+                        'movement_number' => StockMovement::generateMovementNumber(),
+                        'type' => StockMovement::TYPE_IN,
+                        'product_id' => $item->product_id,
+                        'from_warehouse_id' => null,
+                        'to_warehouse_id' => $invoice->warehouse_id,
+                        'batch_id' => $batch->id,
+                        'quantity' => $restoredQty,
+                        'running_balance' => $runningBalance,
+                        'unit_cost' => (float) $allocation->unit_cost_base,
+                        'reference_type' => 'sales_invoice_unpost',
+                        'reference_id' => $invoice->id,
+                        'user_id' => $userId,
+                        'customer_id' => $invoice->customer_id,
+                        'notes' => 'تسوية فك ترحيل للتعديل للفاتورة: '.$invoice->invoice_number,
+                    ]);
+
+                    // 4. Compensating Batch Cost Movement Ledger Entry
+                    $runningCostBalance = max(0.00, round((float) $batch->total_initial_cost - (float) $batch->accumulated_cogs_deducted, 2));
+
+                    BatchCostMovement::create([
+                        'batch_id' => $batch->id,
+                        'product_id' => $item->product_id,
+                        'warehouse_id' => $invoice->warehouse_id,
+                        'movement_type' => 'sale_cancellation_reversal',
+                        'reference_type' => 'sales_invoice',
+                        'reference_id' => $invoice->id,
+                        'quantity_base' => $restoredQty,
+                        'unit_cost_base' => (float) $allocation->unit_cost_base,
+                        'total_cost' => $restoredCogs,
+                        'running_batch_quantity' => $batch->remaining_quantity,
+                        'running_batch_cost_balance' => $runningCostBalance,
+                        'user_id' => $userId,
+                        'notes' => 'فك ترحيل فاتورة البيع للتعديل: '.$invoice->invoice_number.($reason ? ' | '.$reason : ''),
+                    ]);
+
+                    // 5. Delete allocation so clean slate for re-posting
+                    $allocation->delete();
+                }
+
+                $item->update([
+                    'total_cogs' => 0.00,
+                    'total_profit' => 0.00,
+                ]);
+            }
+
+            // 6. Reverse cashier shift cash receipt if shift is open
+            if ($invoice->cashier_shift_id) {
+                $shift = CashierShift::find($invoice->cashier_shift_id);
+                if ($shift && $shift->status === CashierShift::STATUS_OPEN) {
+                    $shift->recordCashReturn($invoice->total_amount, $invoice->id);
+                }
+            }
+
+            // 7. Mark invoice as DRAFT
+            $invoice->update([
+                'status' => SalesInvoice::STATUS_DRAFT,
+                'posted_at' => null,
+                'posted_by' => null,
+                'total_cogs' => 0.00,
+                'total_profit' => 0.00,
+            ]);
+        });
+    }
+
+    /**
      * Reconcile warehouse stock balance with batch remaining quantities.
      * Generates a detailed audit of matching vs discrepant products.
      *

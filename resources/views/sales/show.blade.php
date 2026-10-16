@@ -4,6 +4,10 @@
     <x-control-panel title="فاتورة مبيعات: {{ $invoice->invoice_number }}" :breadcrumbs="['المبيعات والعملاء' => route('sales.index'), $invoice->invoice_number => '#']">
         <x-slot:actions>
             @if($invoice->status === 'draft')
+                <a href="{{ route('sales.edit', $invoice) }}" class="erp-btn erp-btn-warning">
+                    <x-icon name="edit-3" size="16" />
+                    <span>تعديل الفاتورة</span>
+                </a>
                 @can('post-sales-invoice')
                 <form action="{{ route('sales.post', $invoice) }}" method="POST" data-confirm="هل تريد ترحيل هذه الفاتورة وصرف الكميات بنظام FIFO آلياً؟">
                     @csrf
@@ -16,6 +20,14 @@
             @endif
 
             @if($invoice->status === 'posted')
+                <form action="{{ route('sales.unpost-and-edit', $invoice) }}" method="POST" data-confirm="سيتم فك ترحيل الفاتورة واسترجاع أرصدة المخزون مؤقتاً لتعديل بنودها في جدول البيع. هل تريد المتابعة؟">
+                    @csrf
+                    <button type="submit" class="erp-btn erp-btn-warning">
+                        <x-icon name="edit-3" size="16" />
+                        <span>تعديل الفاتورة (إرجاع للرصيد)</span>
+                    </button>
+                </form>
+
                 @can('void-sales-invoice')
                 <form action="{{ route('sales.void', $invoice) }}" method="POST" data-confirm="تحذير محاسبي: هل أنت متأكد من إلغاء هذه الفاتورة وإعادة الكميات المسحوبة للدفعات المخزنية؟">
                     @csrf

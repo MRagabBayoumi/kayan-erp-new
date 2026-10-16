@@ -53,6 +53,18 @@
     border-color: var(--danger);
 }
 
+.erp-btn-warning {
+    background-color: var(--warning-soft);
+    color: var(--warning-text);
+    border-color: var(--warning-border);
+}
+
+.erp-btn-warning:hover {
+    background-color: var(--warning);
+    color: #FFFFFF;
+    border-color: var(--warning);
+}
+
 .erp-btn-ghost {
     background-color: transparent;
     color: var(--text-secondary);
