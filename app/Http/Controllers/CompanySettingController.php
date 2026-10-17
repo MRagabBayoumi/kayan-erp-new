@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\Response;
 
 class CompanySettingController extends Controller
 {
@@ -66,13 +67,20 @@ class CompanySettingController extends Controller
             ];
         }
 
+        $backupsData = [];
+        if ($activeTab === 'backups') {
+            $backupsData = [
+                'backupsList' => app(BackupController::class)->getBackupsList(),
+            ];
+        }
+
         return view('settings.index', array_merge([
             'title' => 'إعدادات الشركة والنظام',
             'moduleName' => 'الإعدادات',
             'settings' => $settings,
             'barcodeSettings' => $barcodeSettings,
             'activeTab' => $activeTab,
-        ], $printTemplateData, $departmentsData));
+        ], $printTemplateData, $departmentsData, $backupsData));
     }
 
     /**
@@ -175,7 +183,7 @@ class CompanySettingController extends Controller
     /**
      * Download the standard CSV template for Department / Category import.
      */
-    public function downloadDepartmentTemplate(CategoryImportService $importService): \Symfony\Component\HttpFoundation\Response
+    public function downloadDepartmentTemplate(CategoryImportService $importService): Response
     {
         $csvContent = $importService->generateTemplateCsv();
 
@@ -206,7 +214,7 @@ class CompanySettingController extends Controller
                 ->with('department_import_preview', $preview);
         } catch (\Throwable $e) {
             return redirect()->route('settings.index', ['tab' => 'departments'])
-                ->with('error', 'حدث خطأ أثناء قراءة الملف: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء قراءة الملف: '.$e->getMessage());
         }
     }
 
@@ -232,7 +240,7 @@ class CompanySettingController extends Controller
                 ->with('success', $result['message']);
         } catch (\Throwable $e) {
             return redirect()->route('settings.index', ['tab' => 'departments'])
-                ->with('error', 'فشلت عملية حفظ الأقسام: ' . $e->getMessage());
+                ->with('error', 'فشلت عملية حفظ الأقسام: '.$e->getMessage());
         }
     }
 }

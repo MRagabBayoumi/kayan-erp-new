@@ -284,6 +284,28 @@
             </div>
             @endcan
 
+            <!-- Sales Representative Field Mobile Portal -->
+            @can('access-sales-portal')
+            <div class="app-card app-card-sky">
+                <div class="app-card-header">
+                    <div class="app-icon-box bg-sky-500/10 text-sky-600">
+                        <x-icon name="smartphone" size="28" />
+                    </div>
+                    <span class="app-badge badge-sky">موبايل وتطبيق مناديب</span>
+                </div>
+                <div class="app-card-body">
+                    <h3 class="app-title">بوابة المندوب والمبيعات الميدانية</h3>
+                    <p class="app-desc">واجهة سريعة للموبايل والتابلت لتسجيل العملاء الجدد ومواقعهم (GPS)، تصفح الكتالوج، إصدار الطلبات، ومتابعة العمولات.</p>
+                </div>
+                <div class="app-card-footer">
+                    <a href="{{ route('portal.index') }}" class="erp-btn erp-btn-primary w-full justify-center">
+                        <x-icon name="external-link" size="16" />
+                        <span>فتح بوابة المندوب</span>
+                    </a>
+                </div>
+            </div>
+            @endcan
+
             <!-- 10. Users & Employees Management -->
             @can('manage-users')
             <div class="app-card app-card-slate">

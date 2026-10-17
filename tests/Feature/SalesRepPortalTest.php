@@ -1,0 +1,241 @@
+<?php
+
+use App\Models\Category;
+use App\Models\Customer;
+use App\Models\Permission;
+use App\Models\Product;
+use App\Models\Role;
+use App\Models\SalesCommission;
+use App\Models\SalesInvoice;
+use App\Models\Unit;
+use App\Models\User;
+use App\Models\Warehouse;
+use App\Services\InventoryService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+
+uses(RefreshDatabase::class);
+
+beforeEach(function () {
+    // Seed role & permission
+    $portalPerm = Permission::firstOrCreate(
+        ['slug' => 'access-sales-portal'],
+        ['name' => 'الوصول لبوابة المندوب', 'module' => 'مندوبي المبيعات']
+    );
+
+    $this->salesRepRole = Role::firstOrCreate(
+        ['slug' => 'sales_rep'],
+        [
+            'name' => 'مندوب مبيعات خارجي / بياع',
+            'description' => 'الوصول لبوابة المندوب من الموبايل',
+            'is_system' => true,
+        ]
+    );
+    $this->salesRepRole->permissions()->sync([$portalPerm->id]);
+
+    $this->salesRep = User::factory()->create([
+        'name' => 'محمد مندوب المبيعات',
+        'email' => 'rep@kayan.com',
+        'role' => User::ROLE_SALES_REP,
+        'role_id' => $this->salesRepRole->id,
+        'commission_rate' => 10.00, // 10%
+        'commission_type' => 'percentage',
+        'is_active' => true,
+    ]);
+
+    $this->warehouse = Warehouse::create([
+        'code' => 'WH-PORTAL',
+        'name' => 'مستودع المعرض الرئيسي',
+        'is_active' => true,
+        'is_default' => true,
+    ]);
+
+    $this->category = Category::create([
+        'name' => 'إكسسوارات حريمي',
+        'code' => 'ACC',
+        'is_active' => true,
+    ]);
+
+    $this->unitPiece = Unit::create([
+        'name' => 'قطعة',
+        'code' => 'PCS',
+        'operator' => '*',
+        'conversion_factor' => 1.0000,
+        'is_active' => true,
+        'is_default' => true,
+    ]);
+
+    $this->product = Product::create([
+        'category_id' => $this->category->id,
+        'sku' => 'HAIR-CLIP-01',
+        'barcode' => '6228899001122',
+        'name' => 'توكة شعر لؤلؤ فاخرة',
+        'cost_price' => 20.00,
+        'retail_price' => 50.00,
+        'wholesale_price' => 40.00,
+        'distributor_price' => 35.00,
+        'unit' => 'قطعة',
+        'unit_factor' => 1.0,
+        'pieces_per_package' => 1,
+        'is_active' => true,
+    ]);
+
+    // Initial stock
+    app(InventoryService::class)->addStock(
+        productId: $this->product->id,
+        warehouseId: $this->warehouse->id,
+        quantity: 100.0,
+        costPrice: 20.00,
+        referenceType: 'opening_balance'
+    );
+});
+
+test('unauthenticated users are redirected to login when accessing portal', function () {
+    auth()->logout();
+    $response = $this->get(route('portal.index'));
+    $response->assertRedirect(route('login'));
+});
+
+test('users without access-sales-portal permission are forbidden', function () {
+    $regularUser = User::factory()->create([
+        'name' => 'مستخدم عادي',
+        'role' => 'user',
+        'is_active' => true,
+    ]);
+
+    $response = $this->actingAs($regularUser)->get(route('portal.index'));
+    $response->assertForbidden();
+});
+
+test('sales rep can view mobile dashboard with accurate stats', function () {
+    $response = $this->actingAs($this->salesRep)->get(route('portal.index'));
+
+    $response->assertOk();
+    $response->assertSee('بوابة المندوب الميداني');
+    $response->assertSee('محمد مندوب المبيعات');
+    $response->assertSee('نسبة العمولة: 10%');
+});
+
+test('sales rep can browse mobile catalog with pricing and stock', function () {
+    $response = $this->actingAs($this->salesRep)->get(route('portal.catalog'));
+
+    $response->assertOk();
+    $response->assertSee('توكة شعر لؤلؤ فاخرة');
+    $response->assertSee('50.00'); // retail
+    $response->assertSee('40.00'); // wholesale
+    $response->assertSee('35.00'); // distributor
+    $response->assertSee('متاح 100');
+});
+
+test('sales rep can register new field customer with GPS location', function () {
+    $response = $this->actingAs($this->salesRep)->post(route('portal.customers.store'), [
+        'name' => 'سنتر الأمل للإكسسوارات',
+        'company_name' => 'شركة الأمل للتجارة',
+        'phone' => '01099887766',
+        'phone_alt' => '01122334455',
+        'customer_type' => 'wholesale',
+        'pricing_tier' => 'wholesale',
+        'city' => 'طنطا',
+        'address' => 'شارع البحر، بجوار المحطة',
+        'latitude' => 30.7865,
+        'longitude' => 31.0004,
+        'credit_limit' => 15000,
+        'notes' => 'عميل جملة ممتاز',
+    ]);
+
+    $response->assertRedirect();
+    $this->assertDatabaseHas('customers', [
+        'name' => 'سنتر الأمل للإكسسوارات',
+        'phone' => '01099887766',
+        'sales_rep_id' => $this->salesRep->id,
+        'pricing_tier' => 'wholesale',
+        'latitude' => 30.7865,
+        'longitude' => 31.0004,
+    ]);
+});
+
+test('sales rep can submit a field order as draft', function () {
+    $customer = Customer::create([
+        'name' => 'معرض السعادة',
+        'phone' => '01000000001',
+        'pricing_tier' => 'wholesale',
+        'sales_rep_id' => $this->salesRep->id,
+        'is_active' => true,
+    ]);
+
+    $response = $this->actingAs($this->salesRep)->post(route('portal.orders.store'), [
+        'customer_id' => $customer->id,
+        'warehouse_id' => $this->warehouse->id,
+        'invoice_date' => now()->format('Y-m-d'),
+        'price_tier' => 'wholesale',
+        'payment_type' => 'credit',
+        'action' => 'draft',
+        'notes' => 'طلب مسودة للتوصيل غداً',
+        'items' => [
+            [
+                'product_id' => $this->product->id,
+                'quantity' => 10,
+                'unit_price' => 40.00,
+                'line_discount' => 0,
+            ],
+        ],
+    ]);
+
+    $invoice = SalesInvoice::latest('id')->first();
+    expect($invoice)->not->toBeNull();
+    expect($invoice->status)->toBe(SalesInvoice::STATUS_DRAFT);
+    expect((float) $invoice->total_amount)->toBe(400.00);
+    expect((int) $invoice->sales_rep_id)->toBe($this->salesRep->id);
+
+    $response->assertRedirect(route('portal.orders.show', $invoice));
+
+    // View order on mobile
+    $showResponse = $this->actingAs($this->salesRep)->get(route('portal.orders.show', $invoice));
+    $showResponse->assertOk();
+    $showResponse->assertSee($invoice->invoice_number);
+    $showResponse->assertSee('مسودة طلب معلقة');
+});
+
+test('sales rep can submit and post order directly, generating commission', function () {
+    $customer = Customer::create([
+        'name' => 'محل ريتاج',
+        'phone' => '01000000002',
+        'pricing_tier' => 'retail',
+        'sales_rep_id' => $this->salesRep->id,
+        'is_active' => true,
+    ]);
+
+    $response = $this->actingAs($this->salesRep)->post(route('portal.orders.store'), [
+        'customer_id' => $customer->id,
+        'warehouse_id' => $this->warehouse->id,
+        'invoice_date' => now()->format('Y-m-d'),
+        'price_tier' => 'retail',
+        'payment_type' => 'cash',
+        'action' => 'post',
+        'notes' => 'طلب نقدي تم تسليمه مباشرة',
+        'items' => [
+            [
+                'product_id' => $this->product->id,
+                'quantity' => 5,
+                'unit_price' => 50.00,
+                'line_discount' => 0,
+            ],
+        ],
+    ]);
+
+    $invoice = SalesInvoice::latest('id')->first();
+    expect($invoice)->not->toBeNull();
+    expect($invoice->status)->toBe(SalesInvoice::STATUS_POSTED);
+    expect((float) $invoice->total_amount)->toBe(250.00);
+
+    // 10% commission on 250.00 = 25.00 EGP
+    $commission = SalesCommission::where('sales_invoice_id', $invoice->id)->first();
+    expect($commission)->not->toBeNull();
+    expect((float) $commission->commission_amount)->toBe(25.00);
+    expect($commission->sales_rep_id)->toBe($this->salesRep->id);
+
+    // Rep Commissions statement view
+    $commResponse = $this->actingAs($this->salesRep)->get(route('portal.commissions'));
+    $commResponse->assertOk();
+    $commResponse->assertSee('25.00');
+    $commResponse->assertSee($invoice->invoice_number);
+});

@@ -55,6 +55,11 @@ class RolePermissionSeeder extends Seeder
             ['name' => 'إدارة المستخدمين وصلاحيات الدخول', 'slug' => 'manage-users', 'module' => 'الإدارة والنظام', 'description' => 'إضافة المستخدمين وتعيين كلمات المرور وتحديد أدوارهم'],
             ['name' => 'إدارة الأدوار ومصفوفة الصلاحيات', 'slug' => 'manage-roles', 'module' => 'الإدارة والنظام', 'description' => 'إنشاء وتعديل الأدوار الديناميكية وتخصيص صلاحيات كل دور'],
             ['name' => 'إدارة وتخصيص وحدات القياس', 'slug' => 'manage-units', 'module' => 'الإدارة والنظام', 'description' => 'إنشاء وحدات القياس وضبط معاملات التحويل وكميات التعبئة'],
+
+            // Sales Representatives & Field Agents
+            ['name' => 'الوصول لبوابة المندوب والمبيعات الميدانية', 'slug' => 'access-sales-portal', 'module' => 'مندوبي المبيعات', 'description' => 'تصفح كتالوج المنتجات وتسجيل طلبات وفواتير العملاء من الموبايل'],
+            ['name' => 'الاطلاع على العمولات الشخصية', 'slug' => 'view-own-commissions', 'module' => 'مندوبي المبيعات', 'description' => 'استعراض تقرير العمولات والأرباح المحققة الخاصة بالمندوب'],
+            ['name' => 'إدارة واعتماد عمولات المناديب', 'slug' => 'manage-commissions', 'module' => 'مندوبي المبيعات', 'description' => 'تحديد نسب العمولات واعتمادها وصرفها للمناديب'],
         ];
 
         foreach ($permissions as $p) {
@@ -113,6 +118,23 @@ class RolePermissionSeeder extends Seeder
             'create-customers-pos',
         ])->pluck('id')->toArray();
         $cashierRole->permissions()->sync($cashierPerms);
+
+        // 4. Sales Representative Role (Field Agent / Delegate)
+        $salesRepRole = Role::firstOrCreate(
+            ['slug' => 'sales_rep'],
+            [
+                'name' => 'مندوب مبيعات خارجي / بياع',
+                'description' => 'الوصول لبوابة المندوب من الموبايل لتسجيل العملاء وتصفح المنتجات وإصدار الطلبات ومتابعة العمولات',
+                'is_system' => true,
+            ]
+        );
+        $salesRepPerms = Permission::whereIn('slug', [
+            'view-products',
+            'create-customers-pos',
+            'access-sales-portal',
+            'view-own-commissions',
+        ])->pluck('id')->toArray();
+        $salesRepRole->permissions()->sync($salesRepPerms);
 
         // Sync all permissions to any company manager role
         $companyManagerRoles = Role::where('slug', 'مدير_للشركه')

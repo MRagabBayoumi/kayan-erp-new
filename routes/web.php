@@ -1,12 +1,16 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BackupController;
 use App\Http\Controllers\CashierShiftController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CompanySettingController;
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\CustomerPaymentController;
+use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\InventoryController;
+use App\Http\Controllers\PortalController;
 use App\Http\Controllers\PrintTemplateController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductImportController;
@@ -15,6 +19,8 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SalesInvoiceController;
 use App\Http\Controllers\ShippingOfficeController;
 use App\Http\Controllers\SupplierController;
+use App\Http\Controllers\SupplierPaymentController;
+use App\Http\Controllers\TreasuryController;
 use App\Http\Controllers\UnitController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WarehouseController;
@@ -59,6 +65,12 @@ Route::middleware('auth')->group(function () {
             Route::post('/{template}/reset', [PrintTemplateController::class, 'reset'])->name('reset');
             Route::post('/{template}/duplicate', [PrintTemplateController::class, 'duplicate'])->name('duplicate');
         });
+
+        // Backups Management (Spatie Backup)
+        Route::post('/settings/backups', [BackupController::class, 'create'])->name('settings.backups.create');
+        Route::put('/settings/backups/custom-path', [BackupController::class, 'updateCustomPath'])->name('settings.backups.custom-path');
+        Route::get('/settings/backups/download/{filename}', [BackupController::class, 'download'])->name('settings.backups.download');
+        Route::delete('/settings/backups/{filename}', [BackupController::class, 'destroy'])->name('settings.backups.destroy');
     });
 
     // Users & Roles Management
@@ -157,6 +169,12 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/sales/{sale}/print', [SalesInvoiceController::class, 'print'])->name('sales.print');
         Route::post('/sales/{sale}/direct-print', [SalesInvoiceController::class, 'directPrint'])->name('sales.direct-print');
+
+        // Sales Payments & Installments (سندات القبض والدفعات)
+        Route::post('/sales/{sale}/payments', [CustomerPaymentController::class, 'storeForInvoice'])->name('sales.payments.store');
+        Route::get('/sales/payments/{payment}/receipt', [CustomerPaymentController::class, 'receipt'])->name('sales.payments.receipt');
+        Route::delete('/sales/payments/{payment}', [CustomerPaymentController::class, 'destroy'])->name('sales.payments.destroy');
+
         Route::resource('sales', SalesInvoiceController::class)->except(['edit', 'update', 'destroy']);
 
         // Cashier Shifts & Cash Drawer
@@ -203,6 +221,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/customers/{customer}/purchased-items', [CustomerController::class, 'purchasedItems'])->name('customers.purchased-items');
         Route::get('/customers/{customer}/purchased-items/print', [CustomerController::class, 'printPurchasedItems'])->name('customers.purchased-items.print');
         Route::get('/customers/{customer}/whatsapp', [CustomerController::class, 'whatsappShare'])->name('customers.whatsapp');
+        Route::post('/customers/{customer}/payments', [CustomerPaymentController::class, 'storeForCustomer'])->name('customers.payments.store');
         Route::resource('customers', CustomerController::class)->except(['store']);
     });
 
@@ -216,5 +235,52 @@ Route::middleware('auth')->group(function () {
         Route::resource('suppliers', SupplierController::class);
 
         Route::resource('shipping-offices', ShippingOfficeController::class)->except(['create', 'show', 'edit']);
+        Route::post('/purchases/{purchase}/payments', [SupplierPaymentController::class, 'storeForInvoice'])->name('purchases.payments.store');
+        Route::post('/suppliers/{supplier}/payments', [SupplierPaymentController::class, 'storeForSupplier'])->name('suppliers.payments.store');
+    });
+
+    // Finance, Treasuries & Accounting (المرحلة الأولى: دورة النقدية والصرف)
+    Route::middleware('can:manage-company-settings')->group(function () {
+        // Treasuries & Bank Accounts
+        Route::get('/treasuries', [TreasuryController::class, 'index'])->name('treasuries.index');
+        Route::post('/treasuries', [TreasuryController::class, 'store'])->name('treasuries.store');
+        Route::get('/treasuries/{treasury}', [TreasuryController::class, 'show'])->name('treasuries.show');
+        Route::post('/treasuries/transfer', [TreasuryController::class, 'transfer'])->name('treasuries.transfer');
+        Route::post('/treasuries/{treasury}/manual-transaction', [TreasuryController::class, 'manualTransaction'])->name('treasuries.manual-transaction');
+
+        // Customer Payments Index
+        Route::get('/sales-payments', [CustomerPaymentController::class, 'index'])->name('sales.payments.index');
+
+        // Supplier Payments Registry & Vouchers
+        Route::get('/supplier-payments', [SupplierPaymentController::class, 'index'])->name('supplier-payments.index');
+        Route::get('/supplier-payments/{payment}/receipt', [SupplierPaymentController::class, 'receipt'])->name('supplier-payments.receipt');
+        Route::delete('/supplier-payments/{payment}', [SupplierPaymentController::class, 'destroy'])->name('supplier-payments.destroy');
+
+        // Expenses & Categories
+        Route::get('/expenses', [ExpenseController::class, 'index'])->name('expenses.index');
+        Route::post('/expenses', [ExpenseController::class, 'store'])->name('expenses.store');
+        Route::get('/expenses/{expense}/voucher', [ExpenseController::class, 'voucher'])->name('expenses.voucher');
+        Route::delete('/expenses/{expense}', [ExpenseController::class, 'destroy'])->name('expenses.destroy');
+        Route::post('/expense-categories', [ExpenseController::class, 'storeCategory'])->name('expense-categories.store');
+    });
+
+    // Sales Representative & Field Agent Mobile Portal
+    Route::middleware('can:access-sales-portal')->prefix('portal')->name('portal.')->group(function () {
+        Route::get('/', [PortalController::class, 'index'])->name('index');
+        Route::get('/catalog', [PortalController::class, 'catalog'])->name('catalog');
+
+        // Customer field registration & directory
+        Route::get('/customers', [PortalController::class, 'customers'])->name('customers.index');
+        Route::get('/customers/create', [PortalController::class, 'createCustomer'])->name('customers.create');
+        Route::post('/customers', [PortalController::class, 'storeCustomer'])->name('customers.store');
+
+        // Mobile Orders & Invoicing
+        Route::get('/orders', [PortalController::class, 'orders'])->name('orders.index');
+        Route::get('/orders/create', [PortalController::class, 'createOrder'])->name('orders.create');
+        Route::post('/orders', [PortalController::class, 'storeOrder'])->name('orders.store');
+        Route::get('/orders/{invoice}', [PortalController::class, 'showOrder'])->name('orders.show');
+
+        // Commissions Statement
+        Route::get('/commissions', [PortalController::class, 'commissions'])->name('commissions');
     });
 });

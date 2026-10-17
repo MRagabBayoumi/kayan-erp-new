@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\CompanySetting;
+use App\Models\PurchaseInvoice;
 use App\Models\Supplier;
+use App\Models\Treasury;
 use App\Services\StatementService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -15,6 +17,7 @@ class SupplierController extends Controller
     public function __construct(
         protected StatementService $statementService
     ) {}
+
     public function index(Request $request): View
     {
         $query = Supplier::query();
@@ -71,6 +74,7 @@ class SupplierController extends Controller
             'city' => ['nullable', 'string', 'max:100'],
             'address' => ['nullable', 'string', 'max:255'],
             'currency' => ['required', 'in:CNY,EGP,USD'],
+            'opening_balance' => ['nullable', 'numeric'],
             'current_balance' => ['nullable', 'numeric'],
             'notes' => ['nullable', 'string', 'max:1000'],
             'is_active' => ['nullable', 'boolean'],
@@ -79,6 +83,8 @@ class SupplierController extends Controller
             'supplier_type.required' => 'نوع المورد مطلوب.',
             'currency.required' => 'عملة التعامل مطلوبة.',
         ]);
+
+        $openingBal = (float) ($validated['opening_balance'] ?? $validated['current_balance'] ?? 0.00);
 
         Supplier::create([
             'name' => trim($validated['name']),
@@ -91,7 +97,8 @@ class SupplierController extends Controller
             'city' => filled($validated['city'] ?? null) ? trim($validated['city']) : null,
             'address' => filled($validated['address'] ?? null) ? trim($validated['address']) : null,
             'currency' => $validated['currency'],
-            'current_balance' => (float) ($validated['current_balance'] ?? 0.00),
+            'opening_balance' => $openingBal,
+            'current_balance' => $openingBal,
             'notes' => filled($validated['notes'] ?? null) ? trim($validated['notes']) : null,
             'is_active' => $request->has('is_active') ? $request->boolean('is_active') : true,
         ]);
@@ -114,11 +121,21 @@ class SupplierController extends Controller
 
         $statement = $this->statementService->getSupplierStatement($supplier);
 
+        $unpaidInvoices = PurchaseInvoice::where('supplier_id', $supplier->id)
+            ->where('status', PurchaseInvoice::STATUS_POSTED)
+            ->where('remaining_amount', '>', 0)
+            ->orderBy('invoice_date')
+            ->get();
+
+        $treasuries = Treasury::where('is_active', true)->orderBy('name')->get();
+
         return view('suppliers.show', [
             'title' => $supplier->name,
             'supplier' => $supplier,
             'purchaseInvoices' => $supplier->purchaseInvoices,
             'statement' => $statement,
+            'unpaidInvoices' => $unpaidInvoices,
+            'treasuries' => $treasuries,
         ]);
     }
 
@@ -133,7 +150,7 @@ class SupplierController extends Controller
         $statement = $this->statementService->getSupplierStatement($supplier, $fromDate, $toDate);
 
         return view('suppliers.statement', [
-            'title' => 'كشف حساب المورد: ' . $supplier->name,
+            'title' => 'كشف حساب المورد: '.$supplier->name,
             'supplier' => $supplier,
             'statement' => $statement,
             'fromDate' => $fromDate,
@@ -157,7 +174,7 @@ class SupplierController extends Controller
         $company = CompanySetting::getSettings();
 
         return view('suppliers.statement-print', [
-            'title' => 'كشف حساب مورد: ' . $supplier->name,
+            'title' => 'كشف حساب مورد: '.$supplier->name,
             'supplier' => $supplier,
             'statement' => $statement,
             'format' => $format,
@@ -226,6 +243,7 @@ class SupplierController extends Controller
             'city' => ['nullable', 'string', 'max:100'],
             'address' => ['nullable', 'string', 'max:255'],
             'currency' => ['required', 'in:CNY,EGP,USD'],
+            'opening_balance' => ['nullable', 'numeric'],
             'current_balance' => ['nullable', 'numeric'],
             'notes' => ['nullable', 'string', 'max:1000'],
             'is_active' => ['nullable', 'boolean'],
@@ -234,6 +252,32 @@ class SupplierController extends Controller
             'supplier_type.required' => 'نوع المورد مطلوب.',
             'currency.required' => 'عملة التعامل مطلوبة.',
         ]);
+
+        $hasTransactions = $supplier->purchaseInvoices()->exists();
+        $openingBalance = $supplier->opening_balance !== null ? (float) $supplier->opening_balance : 0.00;
+        $currentBalance = (float) $supplier->current_balance;
+
+        if (array_key_exists('opening_balance', $validated) && $validated['opening_balance'] !== null) {
+            $newOpening = (float) $validated['opening_balance'];
+            if (! $hasTransactions) {
+                $openingBalance = $newOpening;
+                $currentBalance = array_key_exists('current_balance', $validated) && $validated['current_balance'] !== null
+                    ? (float) $validated['current_balance']
+                    : $newOpening;
+            } else {
+                $diff = $newOpening - $openingBalance;
+                $openingBalance = $newOpening;
+                $currentBalance = round($currentBalance + $diff, 2);
+            }
+        } elseif (array_key_exists('current_balance', $validated) && $validated['current_balance'] !== null) {
+            $newCurrent = (float) $validated['current_balance'];
+            if (! $hasTransactions) {
+                $openingBalance = $newCurrent;
+                $currentBalance = $newCurrent;
+            } else {
+                $currentBalance = $newCurrent;
+            }
+        }
 
         $supplier->update([
             'name' => trim($validated['name']),
@@ -246,7 +290,8 @@ class SupplierController extends Controller
             'city' => filled($validated['city'] ?? null) ? trim($validated['city']) : null,
             'address' => filled($validated['address'] ?? null) ? trim($validated['address']) : null,
             'currency' => $validated['currency'],
-            'current_balance' => (float) ($validated['current_balance'] ?? 0.00),
+            'opening_balance' => $openingBalance,
+            'current_balance' => $currentBalance,
             'notes' => filled($validated['notes'] ?? null) ? trim($validated['notes']) : null,
             'is_active' => $request->has('is_active') ? $request->boolean('is_active') : $supplier->is_active,
         ]);
@@ -274,7 +319,7 @@ class SupplierController extends Controller
             ->active()
             ->search($term)
             ->limit(20)
-            ->get(['id', 'name', 'supplier_type', 'contact_person', 'phone', 'wechat_id', 'country', 'currency', 'current_balance']);
+            ->get(['id', 'name', 'supplier_type', 'contact_person', 'phone', 'wechat_id', 'country', 'currency', 'opening_balance', 'current_balance']);
 
         return response()->json([
             'success' => true,

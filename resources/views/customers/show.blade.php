@@ -11,6 +11,10 @@
                 <x-icon name="file-text" size="16" />
                 <span>كشف الحساب المالي</span>
             </a>
+            <button type="button" class="erp-btn erp-btn-success" data-action="open-customer-payment-modal" title="تسجيل دفعة نقدية أو سند قبض للعميل">
+                <x-icon name="dollar-sign" size="16" />
+                <span>تسجيل دفعة / سند قبض</span>
+            </button>
             <a href="{{ route('customers.purchased-items', $customer) }}" class="erp-btn erp-btn-secondary">
                 <x-icon name="shopping-bag" size="16" />
                 <span>مسحوبات الأصناف</span>
@@ -141,7 +145,7 @@
                 <div class="customer-detail-item">
                     <div class="customer-detail-label">فئة التسعير</div>
                     <div class="customer-detail-val">
-                        {{ $customer->pricing_tier === 'wholesale' ? 'سعر الجملة' : 'سعر القطاعي' }}
+                        {{ $customer->getPricingTierLabel() }}
                     </div>
                 </div>
 
@@ -328,4 +332,176 @@
             </div>
         </div>
     </div>
+
+    <!-- Record Customer Payment Modal -->
+    <div id="recordCustomerPaymentModal" class="erp-modal-overlay hidden" role="dialog" aria-modal="true">
+        <div class="erp-modal-container max-w-lg">
+            <form action="{{ route('customers.payments.store', $customer) }}" method="POST" id="recordCustomerPaymentForm">
+                @csrf
+                <div class="erp-modal-header">
+                    <div class="erp-modal-title flex items-center gap-2">
+                        <x-icon name="dollar-sign" size="18" class="text-emerald-600" />
+                        <span>تسجيل دفعة سداد / سند قبض للعميل</span>
+                    </div>
+                    <button type="button" class="erp-modal-close" data-action="close-customer-payment-modal" aria-label="إغلاق">✕</button>
+                </div>
+                <div class="erp-modal-body p-5 flex flex-col gap-4 text-xs">
+                    <div class="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-center justify-between">
+                        <div>
+                            <span class="text-[var(--text-muted)] block text-[11px]">العميل:</span>
+                            <strong class="text-sm text-[var(--text-main)]">{{ $customer->name }}</strong>
+                            @if($customer->company_name)
+                                <span class="text-[10px] text-[var(--text-muted)] block">({{ $customer->company_name }})</span>
+                            @endif
+                        </div>
+                        <div class="text-left">
+                            <span class="text-[var(--text-muted)] block text-[11px]">الرصيد المالي الحالي:</span>
+                            <strong class="font-numeric font-black text-base {{ (float)$customer->current_balance > 0 ? 'text-rose-600' : 'text-emerald-600' }}">
+                                {{ number_format((float)$customer->current_balance, 2) }} ج.م
+                            </strong>
+                        </div>
+                    </div>
+
+                    <div class="erp-form-group">
+                        <label for="custPaymentInvoiceSelect" class="erp-form-label">
+                            تخصيص الدفعة لفاتورة معينة (اختياري)
+                        </label>
+                        <select id="custPaymentInvoiceSelect" name="sales_invoice_id" class="erp-input">
+                            <option value="" data-max="">-- سداد عام على الحساب الجاري للعميل --</option>
+                            @foreach($unpaidInvoices ?? [] as $uInv)
+                                <option value="{{ $uInv->id }}" data-max="{{ (float)$uInv->remaining_amount }}">
+                                    فاتورة #{{ $uInv->invoice_number }} (تاريخ: {{ $uInv->invoice_date?->format('Y-m-d') }} — متبقي: {{ number_format((float)$uInv->remaining_amount, 2) }} ج.م)
+                                </option>
+                            @endforeach
+                        </select>
+                        <small class="text-[10px] text-[var(--text-muted)]">اتركه فارغاً إذا كانت دفعة عامة تُخصم من إجمالي مديونية الحساب</small>
+                    </div>
+
+                    <div class="erp-form-group">
+                        <label for="custPaymentAmount" class="erp-form-label font-bold">
+                            مبلغ الدفعة المسدد (ج.م) <span class="text-[var(--danger)]">*</span>
+                        </label>
+                        <input 
+                            type="number" 
+                            id="custPaymentAmount" 
+                            name="amount" 
+                            step="0.01" 
+                            min="0.01" 
+                            placeholder="0.00" 
+                            class="erp-input font-numeric font-bold text-base" 
+                            required
+                        >
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="erp-form-group">
+                            <label for="custPaymentDate" class="erp-form-label">
+                                تاريخ الدفعة <span class="text-[var(--danger)]">*</span>
+                            </label>
+                            <input 
+                                type="date" 
+                                id="custPaymentDate" 
+                                name="payment_date" 
+                                value="{{ date('Y-m-d') }}" 
+                                class="erp-input font-numeric" 
+                                required
+                            >
+                        </div>
+
+                        <div class="erp-form-group">
+                            <label for="custPaymentMethod" class="erp-form-label">
+                                طريقة السداد <span class="text-[var(--danger)]">*</span>
+                            </label>
+                            <select id="custPaymentMethod" name="payment_method" class="erp-input" required>
+                                <option value="cash" selected>نقدي (بالدرج / الخزينة)</option>
+                                <option value="bank_transfer">تحويل بنكي / فودافون كاش</option>
+                                <option value="cheque">شيك بنكي</option>
+                                <option value="card">شبكة / بطاقة دفع (POS)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="erp-form-group">
+                        <label for="custPaymentRef" class="erp-form-label">
+                            رقم المرجع / رقم الشيك (اختياري)
+                        </label>
+                        <input 
+                            type="text" 
+                            id="custPaymentRef" 
+                            name="reference_number" 
+                            class="erp-input" 
+                            placeholder="مثال: رقم التحويل البنكي أو رقم الشيك"
+                        >
+                    </div>
+
+                    <div class="erp-form-group">
+                        <label for="custPaymentNotes" class="erp-form-label">
+                            ملاحظات الدفعة
+                        </label>
+                        <textarea 
+                            id="custPaymentNotes" 
+                            name="notes" 
+                            rows="2" 
+                            class="erp-input" 
+                            placeholder="أي تفاصيل أو ملاحظات تخص هذا السند..."
+                        ></textarea>
+                    </div>
+                </div>
+                <div class="erp-modal-footer p-4 flex justify-end gap-2 bg-[var(--surface-muted)] border-t border-[var(--border-color)]">
+                    <button type="button" class="erp-btn erp-btn-secondary" data-action="close-customer-payment-modal">إلغاء</button>
+                    <button type="submit" class="erp-btn erp-btn-success">
+                        <x-icon name="check" size="16" />
+                        <span>تأكيد السداد وحفظ سند القبض</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const modal = document.getElementById('recordCustomerPaymentModal');
+            if (!modal) return;
+
+            const openBtns = document.querySelectorAll('[data-action="open-customer-payment-modal"]');
+            const closeBtns = modal.querySelectorAll('[data-action="close-customer-payment-modal"]');
+            const invoiceSelect = document.getElementById('custPaymentInvoiceSelect');
+            const amountInput = document.getElementById('custPaymentAmount');
+
+            openBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    modal.classList.remove('hidden');
+                    modal.classList.add('open');
+                    if (amountInput) setTimeout(() => amountInput.focus(), 100);
+                });
+            });
+
+            closeBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('open');
+                });
+            });
+
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('open');
+                }
+            });
+
+            if (invoiceSelect && amountInput) {
+                invoiceSelect.addEventListener('change', () => {
+                    const selectedOpt = invoiceSelect.options[invoiceSelect.selectedIndex];
+                    const maxVal = selectedOpt ? selectedOpt.getAttribute('data-max') : null;
+                    if (maxVal && parseFloat(maxVal) > 0) {
+                        amountInput.max = maxVal;
+                        amountInput.value = parseFloat(maxVal).toFixed(2);
+                    } else {
+                        amountInput.removeAttribute('max');
+                    }
+                });
+            }
+        });
+    </script>
 @endsection

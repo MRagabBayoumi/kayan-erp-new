@@ -3,10 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\BarcodeSetting;
+use App\Models\BatchCostMovement;
 use App\Models\Category;
 use App\Models\CompanySetting;
+use App\Models\InventoryBatch;
 use App\Models\PrintTemplate;
 use App\Models\Product;
+use App\Models\StockBalance;
 use App\Models\StockMovement;
 use App\Models\Unit;
 use App\Models\Warehouse;
@@ -23,6 +26,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class ProductController extends Controller
@@ -297,6 +301,7 @@ class ProductController extends Controller
             'product' => $product,
             'categories' => $categories,
             'units' => Unit::active()->orderBy('id')->get(),
+            'warehouses' => Warehouse::active()->orderBy('name')->get(),
             'barcodeSettings' => BarcodeSetting::getSettings(),
         ]);
     }
@@ -304,7 +309,7 @@ class ProductController extends Controller
     /**
      * Update the specified product in storage.
      */
-    public function update(Request $request, Product $product): RedirectResponse
+    public function update(Request $request, Product $product, InventoryService $inventoryService): RedirectResponse
     {
         $validated = $request->validate([
             'sku' => ['required', 'string', 'max:80', Rule::unique('products', 'sku')->ignore($product->id)],
@@ -366,13 +371,48 @@ class ProductController extends Controller
             }
         }
 
-        // Disallow modifying opening balance values via product update
-        unset(
-            $validated['opening_quantity'],
-            $validated['opening_cost'],
-            $validated['opening_warehouse_id'],
-            $validated['opening_balance_date']
-        );
+        $openingQty = null;
+        $openingCost = null;
+        $openingWarehouseId = null;
+        $openingDate = null;
+
+        // Admin-only opening balance modification
+        if ($request->user()?->isAdmin() && $request->has('opening_quantity')) {
+            $openingValidated = $request->validate([
+                'opening_quantity' => ['required', 'numeric', 'min:0'],
+                'opening_cost' => ['nullable', 'numeric', 'min:0'],
+                'opening_warehouse_id' => ['nullable', 'exists:warehouses,id'],
+                'opening_balance_date' => ['nullable', 'date'],
+            ], [
+                'opening_quantity.required' => 'الكمية الافتتاحية مطلوبة.',
+                'opening_quantity.numeric' => 'الكمية الافتتاحية يجب أن تكون قيمة رقمية.',
+                'opening_quantity.min' => 'الكمية الافتتاحية لا يمكن أن تكون سالبة.',
+                'opening_cost.numeric' => 'تكلفة الرصيد الافتتاحي يجب أن تكون قيمة رقمية.',
+                'opening_cost.min' => 'تكلفة الرصيد الافتتاحي لا يمكن أن تكون سالبة.',
+                'opening_warehouse_id.exists' => 'المستودع المختار للرصيد الافتتاحي غير موجود.',
+            ]);
+
+            $openingQty = (float) $openingValidated['opening_quantity'];
+            $openingWarehouseId = ! empty($openingValidated['opening_warehouse_id'])
+                ? (int) $openingValidated['opening_warehouse_id']
+                : ($product->opening_warehouse_id ? (int) $product->opening_warehouse_id : null);
+
+            if ($openingQty > 0 && empty($openingWarehouseId)) {
+                return back()->withInput()->withErrors(['opening_warehouse_id' => 'يرجى تحديد المستودع المستلم للرصيد الافتتاحي.']);
+            }
+
+            $openingCost = (! empty($openingValidated['opening_cost']) && $openingValidated['opening_cost'] !== '')
+                ? (float) $openingValidated['opening_cost']
+                : (float) $validated['cost_price'];
+
+            $openingDate = ! empty($openingValidated['opening_balance_date'])
+                ? Carbon::parse($openingValidated['opening_balance_date'])
+                : now();
+
+            if ($openingDate->year < 2000) {
+                $openingDate = $product->created_at ? $product->created_at->copy() : now();
+            }
+        }
 
         // Normalize empty barcode string to null
         if (empty($validated['barcode'])) {
@@ -393,7 +433,141 @@ class ProductController extends Controller
             $validated['image_path'] = $newPath;
         }
 
-        $product->update($validated);
+        DB::transaction(function () use (
+            $product,
+            $validated,
+            $request,
+            $inventoryService,
+            $openingQty,
+            $openingCost,
+            $openingWarehouseId,
+            $openingDate
+        ) {
+            if ($request->user()?->isAdmin() && $openingQty !== null) {
+                $oldWarehouseId = (int) ($product->opening_warehouse_id ?? 0);
+
+                // Find existing opening stock movement & batch
+                $openingMovement = StockMovement::where('product_id', $product->id)
+                    ->where('reference_type', 'opening_balance')
+                    ->where('reference_id', $product->id)
+                    ->first();
+
+                $openingBatch = null;
+                if ($openingMovement && $openingMovement->batch_id) {
+                    $openingBatch = InventoryBatch::find($openingMovement->batch_id);
+                }
+                if (! $openingBatch) {
+                    $openingBatch = InventoryBatch::where('product_id', $product->id)
+                        ->where(function ($q) use ($product) {
+                            $q->where(fn ($sq) => $sq->where('source_type', 'opening_balance')->where('source_id', $product->id))
+                                ->orWhere('notes', 'like', '%رصيد افتتاحي%');
+                        })->first();
+                }
+
+                if ($openingBatch) {
+                    $consumedQty = (float) $openingBatch->initial_quantity - (float) $openingBatch->remaining_quantity;
+                    if ($openingQty < $consumedQty) {
+                        throw ValidationException::withMessages([
+                            'opening_quantity' => "لا يمكن تقليل الكمية الافتتاحية إلى {$openingQty} لأن هناك {$consumedQty} تم صرفها أو بيعها بالفعل من هذا الرصيد.",
+                        ]);
+                    }
+
+                    $qtyDiff = $openingQty - (float) $openingBatch->initial_quantity;
+                    $newRemaining = (float) $openingBatch->remaining_quantity + $qtyDiff;
+                    $targetWarehouseId = $openingWarehouseId ?: $openingBatch->warehouse_id;
+
+                    // 1. Update batch
+                    $openingBatch->initial_quantity = $openingQty;
+                    $openingBatch->remaining_quantity = $newRemaining;
+                    $openingBatch->cost_price = $openingCost;
+                    $openingBatch->total_initial_cost = round($openingQty * $openingCost, 2);
+                    $openingBatch->warehouse_id = $targetWarehouseId;
+                    $openingBatch->received_at = $openingDate;
+                    $openingBatch->is_exhausted = ($newRemaining <= 0);
+                    $openingBatch->save();
+
+                    // 2. Update stock balance in warehouse(s)
+                    $currentBatchWarehouseId = (int) ($oldWarehouseId ?: $openingBatch->warehouse_id);
+                    if ($currentBatchWarehouseId && $targetWarehouseId && $currentBatchWarehouseId !== $targetWarehouseId) {
+                        $oldBalance = StockBalance::where('product_id', $product->id)
+                            ->where('warehouse_id', $currentBatchWarehouseId)
+                            ->first();
+                        if ($oldBalance) {
+                            $oldBalance->decrement('quantity', min((float) $oldBalance->quantity, (float) $openingBatch->initial_quantity));
+                        }
+
+                        $newBalance = StockBalance::firstOrCreate(
+                            ['product_id' => $product->id, 'warehouse_id' => $targetWarehouseId],
+                            ['quantity' => 0.00, 'reserved_quantity' => 0.00]
+                        );
+                        $newBalance->increment('quantity', $openingQty);
+                    } elseif ($qtyDiff != 0) {
+                        $balance = StockBalance::firstOrCreate(
+                            ['product_id' => $product->id, 'warehouse_id' => $targetWarehouseId],
+                            ['quantity' => 0.00, 'reserved_quantity' => 0.00]
+                        );
+                        if ($qtyDiff > 0) {
+                            $balance->increment('quantity', $qtyDiff);
+                        } else {
+                            $balance->decrement('quantity', abs($qtyDiff));
+                        }
+                    }
+
+                    // 3. Update stock movement
+                    if ($openingMovement) {
+                        $openingMovement->quantity = $openingQty;
+                        $openingMovement->unit_cost = $openingCost;
+                        $openingMovement->to_warehouse_id = $targetWarehouseId;
+                        $openingMovement->notes = 'رصيد افتتاحي (معدل بواسطة مدير النظام): '.$product->name;
+                        $openingMovement->save();
+                    }
+
+                    // 4. Update BatchCostMovement if present
+                    BatchCostMovement::where('batch_id', $openingBatch->id)
+                        ->where('movement_type', 'opening_in')
+                        ->update([
+                            'quantity_base' => $openingQty,
+                            'unit_cost_base' => $openingCost,
+                            'total_cost' => round($openingQty * $openingCost, 2),
+                            'warehouse_id' => $targetWarehouseId,
+                            'running_batch_quantity' => $newRemaining,
+                        ]);
+                } elseif ($openingQty > 0) {
+                    // Previously had no opening batch, add new opening stock via inventory service
+                    $inventoryService->addStock(
+                        productId: $product->id,
+                        warehouseId: $openingWarehouseId,
+                        quantity: $openingQty,
+                        costPrice: $openingCost,
+                        notes: 'رصيد افتتاحي (مضاف بواسطة مدير النظام): '.$product->name,
+                        referenceType: 'opening_balance',
+                        referenceId: $product->id,
+                        userId: auth()->id(),
+                        receivedAt: $openingDate,
+                        retailPrice: ! is_null($product->retail_price) ? (float) $product->retail_price : null,
+                        wholesalePrice: ! is_null($product->wholesale_price) ? (float) $product->wholesale_price : null,
+                        distributorPrice: ! is_null($product->distributor_price) ? (float) $product->distributor_price : (! is_null($product->wholesale_price) ? (float) $product->wholesale_price : null),
+                        totalInitialCost: round($openingQty * $openingCost, 2),
+                        sourceType: 'opening_balance',
+                        sourceId: $product->id
+                    );
+                }
+
+                $validated['opening_quantity'] = $openingQty;
+                $validated['opening_cost'] = $openingCost;
+                $validated['opening_warehouse_id'] = $openingWarehouseId;
+                $validated['opening_balance_date'] = $openingDate?->toDateString();
+            } else {
+                unset(
+                    $validated['opening_quantity'],
+                    $validated['opening_cost'],
+                    $validated['opening_warehouse_id'],
+                    $validated['opening_balance_date']
+                );
+            }
+
+            $product->update($validated);
+        });
 
         return redirect()->route('products.index')
             ->with('status', 'success')

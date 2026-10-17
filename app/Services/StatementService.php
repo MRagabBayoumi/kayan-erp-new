@@ -3,14 +3,15 @@
 namespace App\Services;
 
 use App\Models\Customer;
+use App\Models\CustomerPayment;
 use App\Models\PurchaseInvoice;
 use App\Models\SalesInvoice;
 use App\Models\SalesInvoiceItem;
 use App\Models\SalesReturn;
 use App\Models\Supplier;
+use App\Models\SupplierPayment;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 
 class StatementService
 {
@@ -25,13 +26,28 @@ class StatementService
         $invoicesQuery = SalesInvoice::query()
             ->where('customer_id', $customer->id)
             ->where('status', SalesInvoice::STATUS_POSTED)
-            ->with(['warehouse']);
+            ->with(['warehouse', 'payments']);
 
         // Fetch all posted sales returns
         $returnsQuery = SalesReturn::query()
             ->where('customer_id', $customer->id)
             ->where('status', 'posted')
             ->with(['warehouse']);
+
+        // Fetch all customer payments (receipt vouchers / installments)
+        $paymentsQuery = CustomerPayment::query()
+            ->where('customer_id', $customer->id)
+            ->with(['salesInvoice.warehouse', 'creator']);
+
+        // Fallback for customers where opening_balance was not stored but current_balance was set initially
+        if ($openingBalance == 0.00 && (float) ($customer->current_balance ?? 0.00) != 0.00) {
+            $hasInvoices = (clone $invoicesQuery)->exists();
+            $hasReturns = (clone $returnsQuery)->exists();
+            $hasPayments = (clone $paymentsQuery)->exists();
+            if (! $hasInvoices && ! $hasReturns && ! $hasPayments) {
+                $openingBalance = (float) $customer->current_balance;
+            }
+        }
 
         // Compute pre-period balance if fromDate is provided
         $prePeriodBalance = $openingBalance;
@@ -40,12 +56,19 @@ class StatementService
 
             $priorInvoices = (clone $invoicesQuery)->where('invoice_date', '<', $from)->get();
             foreach ($priorInvoices as $inv) {
-                $prePeriodBalance += ((float) $inv->total_amount - (float) $inv->paid_amount);
+                $subsequentPaymentsSum = (float) $inv->payments->where('payment_date', '<', $from)->sum('amount');
+                $initialDownpayment = max(0.00, (float) $inv->paid_amount - $subsequentPaymentsSum);
+                $prePeriodBalance += ((float) $inv->total_amount - $initialDownpayment);
             }
 
             $priorReturns = (clone $returnsQuery)->where('return_date', '<', $from)->get();
             foreach ($priorReturns as $ret) {
                 $prePeriodBalance -= (float) $ret->total_amount;
+            }
+
+            $priorPayments = (clone $paymentsQuery)->where('payment_date', '<', $from)->get();
+            foreach ($priorPayments as $pay) {
+                $prePeriodBalance -= (float) $pay->amount;
             }
         }
 
@@ -53,17 +76,20 @@ class StatementService
         if ($fromDate) {
             $invoicesQuery->where('invoice_date', '>=', Carbon::parse($fromDate)->startOfDay());
             $returnsQuery->where('return_date', '>=', Carbon::parse($fromDate)->startOfDay());
+            $paymentsQuery->where('payment_date', '>=', Carbon::parse($fromDate)->startOfDay());
         }
         if ($toDate) {
             $invoicesQuery->where('invoice_date', '<=', Carbon::parse($toDate)->endOfDay());
             $returnsQuery->where('return_date', '<=', Carbon::parse($toDate)->endOfDay());
+            $paymentsQuery->where('payment_date', '<=', Carbon::parse($toDate)->endOfDay());
         }
 
         $invoices = $invoicesQuery->orderBy('invoice_date')->orderBy('id')->get();
         $returns = $returnsQuery->orderBy('return_date')->orderBy('id')->get();
+        $payments = $paymentsQuery->orderBy('payment_date')->orderBy('id')->get();
 
         // Merge and sort transactions chronologically
-        $rows = new Collection();
+        $rows = new Collection;
 
         foreach ($invoices as $inv) {
             $date = $inv->invoice_date ? Carbon::parse($inv->invoice_date) : $inv->created_at;
@@ -74,11 +100,13 @@ class StatementService
                 default => 'نقدي',
             };
 
-            // If invoice has a paid portion, we can represent it cleanly:
-            // Debit: full invoice value
-            // Credit: paid portion
+            // Invoice line credits only the initial downpayment made at creation time.
+            // Subsequent installments appear as distinct receipt voucher lines.
+            $subsequentPaymentsSum = (float) $inv->payments->sum('amount');
+            $initialDownpayment = max(0.00, (float) $inv->paid_amount - $subsequentPaymentsSum);
+
             $rows->push([
-                'id' => 'inv-' . $inv->id,
+                'id' => 'inv-'.$inv->id,
                 'raw_date' => $date->toIso8601String(),
                 'date' => $date->format('Y-m-d'),
                 'time' => $date->format('H:i'),
@@ -88,7 +116,7 @@ class StatementService
                 'warehouse_name' => $inv->warehouse?->name ?? '—',
                 'description' => "فاتورة مبيعات ({$paymentLabel}) رقم {$inv->invoice_number}",
                 'debit' => (float) $inv->total_amount,
-                'credit' => (float) $inv->paid_amount,
+                'credit' => $initialDownpayment,
                 'remaining' => (float) $inv->remaining_amount,
                 'due_date' => $inv->due_date ? Carbon::parse($inv->due_date)->format('Y-m-d') : null,
                 'url' => route('sales.show', $inv),
@@ -98,7 +126,7 @@ class StatementService
         foreach ($returns as $ret) {
             $date = $ret->return_date ? Carbon::parse($ret->return_date) : $ret->created_at;
             $rows->push([
-                'id' => 'ret-' . $ret->id,
+                'id' => 'ret-'.$ret->id,
                 'raw_date' => $date->toIso8601String(),
                 'date' => $date->format('Y-m-d'),
                 'time' => $date->format('H:i'),
@@ -112,6 +140,38 @@ class StatementService
                 'remaining' => 0.00,
                 'due_date' => null,
                 'url' => '#',
+            ]);
+        }
+
+        foreach ($payments as $pay) {
+            $date = $pay->payment_date ? Carbon::parse($pay->payment_date) : $pay->created_at;
+            $methodLabel = $pay->payment_method_label;
+            $desc = $pay->sales_invoice_id && $pay->salesInvoice
+                ? "سند قبض / سداد دفعة ({$methodLabel}) على فاتورة رقم {$pay->salesInvoice->invoice_number}"
+                : "سند قبض / تحصيل دفعة ({$methodLabel}) لحساب العميل";
+
+            if ($pay->reference_number) {
+                $desc .= " — مرجع: {$pay->reference_number}";
+            }
+            if ($pay->notes) {
+                $desc .= " ({$pay->notes})";
+            }
+
+            $rows->push([
+                'id' => 'pay-'.$pay->id,
+                'raw_date' => $date->toIso8601String(),
+                'date' => $date->format('Y-m-d'),
+                'time' => $pay->created_at ? $pay->created_at->format('H:i') : '00:00',
+                'type' => 'payment',
+                'type_label' => 'سند قبض / دفعة',
+                'doc_number' => $pay->payment_number,
+                'warehouse_name' => $pay->salesInvoice?->warehouse?->name ?? '—',
+                'description' => $desc,
+                'debit' => 0.00,
+                'credit' => (float) $pay->amount,
+                'remaining' => 0.00,
+                'due_date' => null,
+                'url' => route('sales.payments.receipt', $pay),
             ]);
         }
 
@@ -219,9 +279,11 @@ class StatementService
 
             // Tier comparison
             $customerTier = $customer->pricing_tier;
-            $tierBenchmark = $customerTier === 'wholesale'
-                ? (float) ($item->standard_wholesale_price ?? 0)
-                : (float) ($item->standard_retail_price ?? 0);
+            $tierBenchmark = match ($customerTier) {
+                'wholesale' => (float) ($item->standard_wholesale_price ?? 0),
+                'distributor' => (float) ($item->standard_distributor_price ?? 0),
+                default => (float) ($item->standard_retail_price ?? 0),
+            };
 
             $diffVsTier = $tierBenchmark > 0 ? ($unitPrice - $tierBenchmark) : 0;
 
@@ -269,7 +331,7 @@ class StatementService
     {
         $phone = preg_replace('/\D+/', '', $customer->phone ?? '');
         if (str_starts_with($phone, '01')) {
-            $phone = '2' . $phone; // Egyptian national format
+            $phone = '2'.$phone; // Egyptian national format
         }
 
         $lastInvoice = SalesInvoice::where('customer_id', $customer->id)
@@ -284,26 +346,26 @@ class StatementService
 
         $statusText = (float) $customer->current_balance > 0
             ? "مستحق عليكم: {$balance} ج.م"
-            : ((float) $customer->current_balance < 0 ? "رصيد دائن لصالحكم: {$balance} ج.م" : "الرصيد: 0.00 ج.م (حساب متزن)");
+            : ((float) $customer->current_balance < 0 ? "رصيد دائن لصالحكم: {$balance} ج.م" : 'الرصيد: 0.00 ج.م (حساب متزن)');
 
         $lines = [
-            "السلام عليكم ورحمة الله وبركاته 🌹",
+            'السلام عليكم ورحمة الله وبركاته 🌹',
             "السيد العميل المحترم: *{$customer->name}*",
-            "مرفق ملخص كشف حسابكم التجاري لدى *مؤسسة كيان*:",
-            "───────────────────",
+            'مرفق ملخص كشف حسابكم التجاري لدى *مؤسسة كيان*:',
+            '───────────────────',
             "💰 *{$statusText}*",
             "📋 *عدد الفواتير المسجلة:* {$invoicesCount}",
             "📅 *تاريخ آخر حركة:* {$lastDate}",
-            "───────────────────",
-            "🔗 *رابط كشف الحساب والطباعة المباشرة:*",
+            '───────────────────',
+            '🔗 *رابط كشف الحساب والطباعة المباشرة:*',
             $url,
-            "───────────────────",
-            "نشكركم لثقتكم الغالية ونسعد دائماً بخدمتكم.",
+            '───────────────────',
+            'نشكركم لثقتكم الغالية ونسعد دائماً بخدمتكم.',
         ];
 
         $message = implode("\n", $lines);
 
-        return 'https://api.whatsapp.com/send?phone=' . $phone . '&text=' . rawurlencode($message);
+        return 'https://api.whatsapp.com/send?phone='.$phone.'&text='.rawurlencode($message);
     }
 
     /**
@@ -318,40 +380,55 @@ class StatementService
             ->where('status', PurchaseInvoice::STATUS_POSTED)
             ->with(['warehouse']);
 
+        // Fallback for suppliers where opening_balance was not stored but current_balance was set initially
+        if ($openingBalance == 0.00 && (float) ($supplier->current_balance ?? 0.00) != 0.00) {
+            $hasPurchases = (clone $purchasesQuery)->exists();
+            if (! $hasPurchases) {
+                $openingBalance = (float) $supplier->current_balance;
+            }
+        }
+
         $prePeriodBalance = $openingBalance;
+        $paymentsQuery = SupplierPayment::query()
+            ->where('supplier_id', $supplier->id)
+            ->with(['purchaseInvoice']);
+
         if ($fromDate) {
             $from = Carbon::parse($fromDate)->startOfDay();
             $priorPurchases = (clone $purchasesQuery)->where('invoice_date', '<', $from)->get();
             foreach ($priorPurchases as $p) {
-                // Supplier normal balance is credit: purchases increase debt to supplier (+), payments reduce (-)
-                $prePeriodBalance += ((float) $p->total_amount - (float) $p->paid_amount);
+                // Supplier normal balance is credit: purchases increase debt to supplier (+)
+                // Check if this prior purchase had subsequent payments
+                $priorSubsequentPayments = SupplierPayment::where('purchase_invoice_id', $p->id)
+                    ->where('payment_date', '<', $from)
+                    ->sum('amount');
+                $initialDownpayment = max(0.00, (float) $p->total_amount - (float) $p->remaining_amount - (float) $priorSubsequentPayments);
+                $prePeriodBalance += ((float) $p->total_amount - $initialDownpayment);
+            }
+
+            $priorDirectPayments = (clone $paymentsQuery)->where('payment_date', '<', $from)->get();
+            foreach ($priorDirectPayments as $dp) {
+                // Payment reduces supplier balance
+                $prePeriodBalance -= (float) $dp->amount;
             }
         }
 
         if ($fromDate) {
             $purchasesQuery->where('invoice_date', '>=', Carbon::parse($fromDate)->startOfDay());
+            $paymentsQuery->where('payment_date', '>=', Carbon::parse($fromDate)->startOfDay());
         }
         if ($toDate) {
             $purchasesQuery->where('invoice_date', '<=', Carbon::parse($toDate)->endOfDay());
+            $paymentsQuery->where('payment_date', '<=', Carbon::parse($toDate)->endOfDay());
         }
 
         $purchases = $purchasesQuery->orderBy('invoice_date')->orderBy('id')->get();
+        $payments = $paymentsQuery->orderBy('payment_date')->orderBy('id')->get();
 
-        $statementRows = [];
-        $runningBalance = $prePeriodBalance;
-        $totalCredits = 0.00;
-        $totalDebits = 0.00;
+        $rows = collect();
 
         foreach ($purchases as $p) {
             $date = $p->invoice_date ? Carbon::parse($p->invoice_date) : $p->created_at;
-            $credit = (float) $p->total_amount; // goods received increases payable to supplier
-            $debit = (float) $p->paid_amount;   // paid amount reduces payable
-
-            $totalCredits += $credit;
-            $totalDebits += $debit;
-
-            $runningBalance += ($credit - $debit);
-
             $paymentLabel = match ($p->payment_type) {
                 PurchaseInvoice::PAYMENT_CASH => 'نقدي',
                 PurchaseInvoice::PAYMENT_CREDIT => 'آجل بالكامل',
@@ -359,8 +436,11 @@ class StatementService
                 default => 'نقدي',
             };
 
-            $statementRows[] = [
-                'id' => 'pur-' . $p->id,
+            $subsequentPaymentsForInvoice = (float) SupplierPayment::where('purchase_invoice_id', $p->id)->sum('amount');
+            $initialDownpayment = max(0.00, (float) $p->total_amount - (float) $p->remaining_amount - $subsequentPaymentsForInvoice);
+
+            $rows->push([
+                'id' => 'pur-'.$p->id,
                 'raw_date' => $date->toIso8601String(),
                 'date' => $date->format('Y-m-d'),
                 'time' => $date->format('H:i'),
@@ -369,13 +449,67 @@ class StatementService
                 'doc_number' => $p->invoice_number,
                 'warehouse_name' => $p->warehouse?->name ?? '—',
                 'description' => "فاتورة توريد مشتريات ({$paymentLabel}) رقم {$p->invoice_number}",
-                'credit' => $credit,
-                'debit' => $debit,
+                'credit' => (float) $p->total_amount,
+                'debit' => $initialDownpayment,
                 'remaining' => (float) $p->remaining_amount,
                 'due_date' => $p->due_date ? Carbon::parse($p->due_date)->format('Y-m-d') : null,
-                'running_balance' => round($runningBalance, 2),
                 'url' => route('purchases.show', $p),
-            ];
+            ]);
+        }
+
+        foreach ($payments as $pay) {
+            $date = $pay->payment_date ? Carbon::parse($pay->payment_date) : $pay->created_at;
+            $methodLabel = $pay->payment_method_label;
+            $desc = $pay->purchase_invoice_id && $pay->purchaseInvoice
+                ? "سند صرف دفعة ({$methodLabel}) على فاتورة رقم {$pay->purchaseInvoice->invoice_number}"
+                : "سند صرف دفعة ({$methodLabel}) لحساب المورد";
+
+            if ($pay->reference_number) {
+                $desc .= " — مرجع: {$pay->reference_number}";
+            }
+            if ($pay->notes) {
+                $desc .= " ({$pay->notes})";
+            }
+
+            $rows->push([
+                'id' => 'spay-'.$pay->id,
+                'raw_date' => $date->toIso8601String(),
+                'date' => $date->format('Y-m-d'),
+                'time' => $pay->created_at ? $pay->created_at->format('H:i') : '00:00',
+                'type' => 'payment',
+                'type_label' => 'سند صرف / دفعة مورد',
+                'doc_number' => $pay->payment_number,
+                'warehouse_name' => '—',
+                'description' => $desc,
+                'credit' => 0.00,
+                'debit' => (float) $pay->amount,
+                'remaining' => 0.00,
+                'due_date' => null,
+                'url' => route('supplier-payments.receipt', $pay),
+            ]);
+        }
+
+        $sortedRows = $rows->sortBy([
+            ['raw_date', 'asc'],
+            ['id', 'asc'],
+        ])->values();
+
+        $statementRows = [];
+        $runningBalance = $prePeriodBalance;
+        $totalCredits = 0.00;
+        $totalDebits = 0.00;
+
+        foreach ($sortedRows as $row) {
+            $credit = (float) $row['credit'];
+            $debit = (float) $row['debit'];
+
+            $totalCredits += $credit;
+            $totalDebits += $debit;
+
+            $runningBalance += ($credit - $debit);
+
+            $row['running_balance'] = round($runningBalance, 2);
+            $statementRows[] = $row;
         }
 
         $finalBalance = round($runningBalance, 2);

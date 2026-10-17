@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use App\Models\CompanySetting;
 use App\Models\Customer;
+use App\Models\SalesInvoice;
 use App\Services\StatementService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -16,6 +17,7 @@ class CustomerController extends Controller
     public function __construct(
         protected StatementService $statementService
     ) {}
+
     public function index(Request $request): View
     {
         $query = Customer::query();
@@ -50,11 +52,14 @@ class CustomerController extends Controller
             ->sort()
             ->values();
 
+        $salesReps = User::salesReps()->where('is_active', true)->orderBy('name')->get();
+
         return view('customers.index', [
             'title' => 'دليل العملاء وتجار الجملة',
             'customers' => $customers,
             'metrics' => $metrics,
             'cities' => $cities,
+            'salesReps' => $salesReps,
         ]);
     }
 
@@ -68,17 +73,24 @@ class CustomerController extends Controller
             'city' => ['nullable', 'string', 'max:100'],
             'address' => ['nullable', 'string', 'max:255'],
             'customer_type' => ['required', 'in:wholesale,retail,distributor'],
-            'pricing_tier' => ['required', 'in:wholesale,retail'],
+            'pricing_tier' => ['required', 'in:wholesale,retail,distributor'],
             'credit_limit' => ['nullable', 'numeric', 'min:0'],
+            'opening_balance' => ['nullable', 'numeric'],
             'current_balance' => ['nullable', 'numeric'],
             'notes' => ['nullable', 'string', 'max:1000'],
             'is_active' => ['nullable', 'boolean'],
+            'sales_rep_id' => ['nullable', 'exists:users,id'],
+            'latitude' => ['nullable', 'numeric'],
+            'longitude' => ['nullable', 'numeric'],
         ], [
             'name.required' => 'اسم العميل مطلوب.',
             'phone.required' => 'رقم الهاتف مطلوب للتواصل.',
             'customer_type.required' => 'نوع العميل مطلوب.',
             'pricing_tier.required' => 'فئة التسعير مطلوبة.',
         ]);
+
+        $openingBal = (float) ($validated['opening_balance'] ?? $validated['current_balance'] ?? 0.00);
+        $salesRepId = $validated['sales_rep_id'] ?? (auth()->user()?->isSalesRep() ? auth()->id() : null);
 
         $customer = Customer::create([
             'name' => trim($validated['name']),
@@ -87,10 +99,14 @@ class CustomerController extends Controller
             'phone_alt' => filled($validated['phone_alt'] ?? null) ? trim($validated['phone_alt']) : null,
             'city' => filled($validated['city'] ?? null) ? trim($validated['city']) : null,
             'address' => filled($validated['address'] ?? null) ? trim($validated['address']) : null,
+            'latitude' => $validated['latitude'] ?? null,
+            'longitude' => $validated['longitude'] ?? null,
+            'sales_rep_id' => $salesRepId,
             'customer_type' => $validated['customer_type'],
             'pricing_tier' => $validated['pricing_tier'],
             'credit_limit' => (float) ($validated['credit_limit'] ?? 0.00),
-            'current_balance' => (float) ($validated['current_balance'] ?? 0.00),
+            'opening_balance' => $openingBal,
+            'current_balance' => $openingBal,
             'notes' => filled($validated['notes'] ?? null) ? trim($validated['notes']) : null,
             'is_active' => $request->has('is_active') ? $request->boolean('is_active') : true,
         ]);
@@ -125,6 +141,12 @@ class CustomerController extends Controller
             $q->with('warehouse')->latest('invoice_date')->latest('id');
         }]);
 
+        $unpaidInvoices = SalesInvoice::where('customer_id', $customer->id)
+            ->where('status', SalesInvoice::STATUS_POSTED)
+            ->where('remaining_amount', '>', 0.001)
+            ->orderBy('invoice_date')
+            ->get();
+
         $statement = $this->statementService->getCustomerStatement($customer);
         $whatsAppUrl = $this->statementService->generateWhatsAppUrl($customer);
 
@@ -132,6 +154,7 @@ class CustomerController extends Controller
             'title' => $customer->name,
             'customer' => $customer,
             'salesInvoices' => $customer->salesInvoices,
+            'unpaidInvoices' => $unpaidInvoices,
             'statement' => $statement,
             'whatsAppUrl' => $whatsAppUrl,
         ]);
@@ -149,7 +172,7 @@ class CustomerController extends Controller
         $whatsAppUrl = $this->statementService->generateWhatsAppUrl($customer);
 
         return view('customers.statement', [
-            'title' => 'كشف حساب العميل: ' . $customer->name,
+            'title' => 'كشف حساب العميل: '.$customer->name,
             'customer' => $customer,
             'statement' => $statement,
             'fromDate' => $fromDate,
@@ -174,7 +197,7 @@ class CustomerController extends Controller
         $company = CompanySetting::getSettings();
 
         return view('customers.statement-print', [
-            'title' => 'كشف حساب: ' . $customer->name,
+            'title' => 'كشف حساب: '.$customer->name,
             'customer' => $customer,
             'statement' => $statement,
             'format' => $format,
@@ -199,7 +222,7 @@ class CustomerController extends Controller
         $categories = Category::active()->orderBy('name')->get();
 
         return view('customers.purchased-items', [
-            'title' => 'تقرير مسحوبات وأصناف العميل: ' . $customer->name,
+            'title' => 'تقرير مسحوبات وأصناف العميل: '.$customer->name,
             'customer' => $customer,
             'report' => $report,
             'categories' => $categories,
@@ -229,7 +252,7 @@ class CustomerController extends Controller
         $company = CompanySetting::getSettings();
 
         return view('customers.purchased-items-print', [
-            'title' => 'تقرير مسحوبات الصنف: ' . $customer->name,
+            'title' => 'تقرير مسحوبات الصنف: '.$customer->name,
             'customer' => $customer,
             'report' => $report,
             'format' => $format,
@@ -260,17 +283,47 @@ class CustomerController extends Controller
             'city' => ['nullable', 'string', 'max:100'],
             'address' => ['nullable', 'string', 'max:255'],
             'customer_type' => ['required', 'in:wholesale,retail,distributor'],
-            'pricing_tier' => ['required', 'in:wholesale,retail'],
+            'pricing_tier' => ['required', 'in:wholesale,retail,distributor'],
             'credit_limit' => ['nullable', 'numeric', 'min:0'],
+            'opening_balance' => ['nullable', 'numeric'],
             'current_balance' => ['nullable', 'numeric'],
             'notes' => ['nullable', 'string', 'max:1000'],
             'is_active' => ['nullable', 'boolean'],
+            'sales_rep_id' => ['nullable', 'exists:users,id'],
+            'latitude' => ['nullable', 'numeric'],
+            'longitude' => ['nullable', 'numeric'],
         ], [
             'name.required' => 'اسم العميل مطلوب.',
             'phone.required' => 'رقم الهاتف مطلوب للتواصل.',
             'customer_type.required' => 'نوع العميل مطلوب.',
             'pricing_tier.required' => 'فئة التسعير مطلوبة.',
         ]);
+
+        $hasTransactions = $customer->salesInvoices()->exists() || $customer->salesReturns()->exists();
+        $openingBalance = $customer->opening_balance !== null ? (float) $customer->opening_balance : 0.00;
+        $currentBalance = (float) $customer->current_balance;
+
+        if (array_key_exists('opening_balance', $validated) && $validated['opening_balance'] !== null) {
+            $newOpening = (float) $validated['opening_balance'];
+            if (! $hasTransactions) {
+                $openingBalance = $newOpening;
+                $currentBalance = array_key_exists('current_balance', $validated) && $validated['current_balance'] !== null
+                    ? (float) $validated['current_balance']
+                    : $newOpening;
+            } else {
+                $diff = $newOpening - $openingBalance;
+                $openingBalance = $newOpening;
+                $currentBalance = round($currentBalance + $diff, 2);
+            }
+        } elseif (array_key_exists('current_balance', $validated) && $validated['current_balance'] !== null) {
+            $newCurrent = (float) $validated['current_balance'];
+            if (! $hasTransactions) {
+                $openingBalance = $newCurrent;
+                $currentBalance = $newCurrent;
+            } else {
+                $currentBalance = $newCurrent;
+            }
+        }
 
         $customer->update([
             'name' => trim($validated['name']),
@@ -279,10 +332,14 @@ class CustomerController extends Controller
             'phone_alt' => filled($validated['phone_alt'] ?? null) ? trim($validated['phone_alt']) : null,
             'city' => filled($validated['city'] ?? null) ? trim($validated['city']) : null,
             'address' => filled($validated['address'] ?? null) ? trim($validated['address']) : null,
+            'latitude' => $validated['latitude'] ?? $customer->latitude,
+            'longitude' => $validated['longitude'] ?? $customer->longitude,
+            'sales_rep_id' => array_key_exists('sales_rep_id', $validated) ? $validated['sales_rep_id'] : $customer->sales_rep_id,
             'customer_type' => $validated['customer_type'],
             'pricing_tier' => $validated['pricing_tier'],
             'credit_limit' => (float) ($validated['credit_limit'] ?? 0.00),
-            'current_balance' => (float) ($validated['current_balance'] ?? 0.00),
+            'opening_balance' => $openingBalance,
+            'current_balance' => $currentBalance,
             'notes' => filled($validated['notes'] ?? null) ? trim($validated['notes']) : null,
             'is_active' => $request->has('is_active') ? $request->boolean('is_active') : $customer->is_active,
         ]);
@@ -310,7 +367,7 @@ class CustomerController extends Controller
             ->active()
             ->search($term)
             ->limit(20)
-            ->get(['id', 'name', 'company_name', 'phone', 'city', 'customer_type', 'pricing_tier', 'current_balance', 'credit_limit']);
+            ->get(['id', 'name', 'company_name', 'phone', 'city', 'customer_type', 'pricing_tier', 'opening_balance', 'current_balance', 'credit_limit']);
 
         return response()->json([
             'success' => true,

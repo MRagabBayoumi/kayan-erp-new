@@ -120,57 +120,71 @@ class Product extends Model
     }
 
     /**
-     * Conversion factor of the product's registered unit (e.g. 12 for dozen, 1 for piece).
+     * Conversion factor of the product's registered unit to base pieces.
+     * For 'قطعة' (piece), factor is ALWAYS 1.0.
      */
     public function getUnitFactorAttribute(): float
     {
-        if ($this->pieces_per_package && $this->pieces_per_package > 0) {
-            return (float) $this->pieces_per_package;
+        $cleanUnit = trim((string) ($this->unit ?? ''));
+        if (empty($cleanUnit) || in_array($cleanUnit, ['قطعة', 'قطعه', 'piece', 'PCS', 'pcs'])) {
+            return 1.0;
         }
 
-        if (! empty($this->unit)) {
-            $unitModel = Unit::where('name', $this->unit)->first();
-            if ($unitModel && (float) $unitModel->conversion_factor > 0) {
-                return (float) $unitModel->conversion_factor;
-            }
+        $unitModel = Unit::where('name', $cleanUnit)->first();
+        if ($unitModel && (float) $unitModel->conversion_factor > 0) {
+            return (float) $unitModel->conversion_factor;
         }
 
         return 1.0;
     }
 
     /**
+     * Packaging / Dozen multiplier (عدد القطع في الدستة أو الطرد).
+     * Defaults to pieces_per_package if specified (> 1), otherwise 12.0 for dozen.
+     */
+    public function getPackageFactorAttribute(): float
+    {
+        if ($this->pieces_per_package && $this->pieces_per_package > 1) {
+            return (float) $this->pieces_per_package;
+        }
+
+        return 12.0;
+    }
+
+    /**
      * Format a given stock quantity into a compound human-readable string.
-     * e.g. "54 دستة و 11 قطعة (659 قطعة)" or "55 دستة (660 قطعة)".
+     * e.g. "54 دستة و 11 قطعة (659 قطعة)" or "10 قطعة".
      */
     public function formatStockBreakdown(?float $stockQty = null): string
     {
         $qty = $stockQty !== null ? $stockQty : $this->total_stock;
-        $factor = (int) round($this->unit_factor);
         $unitName = $this->unit ?: 'قطعة';
+        $packageFactor = (int) round($this->package_factor);
 
         if ($qty <= 0) {
             return "0 {$unitName}";
         }
 
-        if ($factor <= 1) {
+        if ($packageFactor <= 1) {
             $formatted = rtrim(rtrim(number_format($qty, 2), '0'), '.');
 
             return "{$formatted} {$unitName}";
         }
 
-        $totalPieces = (int) round($qty * $factor);
-        $packages = intdiv($totalPieces, $factor);
-        $remainderPieces = $totalPieces % $factor;
-
-        if ($remainderPieces === 0) {
-            return "{$packages} {$unitName} ({$totalPieces} قطعة)";
-        }
+        $totalPieces = (int) round($qty);
+        $packages = intdiv($totalPieces, $packageFactor);
+        $remainderPieces = $totalPieces % $packageFactor;
+        $packLabel = ($packageFactor == 12 || $this->unit === 'دستة') ? 'دستة' : 'طرد';
 
         if ($packages === 0) {
             return "{$remainderPieces} قطعة";
         }
 
-        return "{$packages} {$unitName} و {$remainderPieces} قطعة ({$totalPieces} قطعة)";
+        if ($remainderPieces === 0) {
+            return "{$packages} {$packLabel} ({$totalPieces} قطعة)";
+        }
+
+        return "{$packages} {$packLabel} و {$remainderPieces} قطعة ({$totalPieces} قطعة)";
     }
 
     /**
@@ -184,16 +198,11 @@ class Product extends Model
             default => (float) ($this->retail_price ?? 0),
         };
 
-        if ($targetUnitFactor === null) {
+        if ($targetUnitFactor === null || $targetUnitFactor <= 1.0) {
             return $basePrice;
         }
 
-        $productFactor = $this->unit_factor;
-        if ($productFactor <= 0) {
-            $productFactor = 1.0;
-        }
-
-        return round($basePrice * ($targetUnitFactor / $productFactor), 2);
+        return round($basePrice * $targetUnitFactor, 2);
     }
 
     /**

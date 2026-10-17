@@ -2,13 +2,16 @@
 
 namespace App\Providers;
 
+use App\Listeners\CopyBackupToCustomDirectory;
 use App\Models\CompanySetting;
 use App\Models\User;
 use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
+use Spatie\Backup\Events\BackupZipWasCreated;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -85,5 +88,12 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('view-cogs', fn (User $user) => $user->hasPermission('view-cogs') || $user->isAdmin());
 
         Gate::define('view-products', fn (User $user) => $user->hasPermission('view-products') || $user->hasRole([User::ROLE_ADMIN, User::ROLE_WAREHOUSE, User::ROLE_CASHIER]));
+        Gate::define('access-sales-portal', fn (User $user) => $user->isSalesRep() || $user->isAdmin() || $user->hasPermission('access-sales-portal'));
+
+        // Auto copy backup zip to optional custom folder
+        Event::listen(
+            BackupZipWasCreated::class,
+            CopyBackupToCustomDirectory::class
+        );
     }
 }

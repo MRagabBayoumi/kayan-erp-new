@@ -209,6 +209,58 @@
                             <td class="tot-label">الصافي:</td>
                             <td class="tot-val">{{ number_format((float)$invoice->total_amount, 2) }} ج.م</td>
                         </tr>
+                        @php
+                            $hasCustomer = (bool) $invoice->customer;
+                            $isPosted = $invoice->status === 'posted';
+                            $invoicePaid = (float) ($invoice->paid_amount ?? 0);
+                            $invoiceRemaining = (float) ($invoice->remaining_amount ?? max(0, (float)$invoice->total_amount - $invoicePaid));
+                            
+                            if ($hasCustomer) {
+                                $customerCurrentBal = (float) $invoice->customer->current_balance;
+                                $customerPrevBal = $isPosted 
+                                    ? round($customerCurrentBal - $invoiceRemaining, 2)
+                                    : round($customerCurrentBal, 2);
+                                $customerFinalBal = $isPosted 
+                                    ? round($customerCurrentBal, 2)
+                                    : round($customerCurrentBal + $invoiceRemaining, 2);
+                            }
+                        @endphp
+                        <tr>
+                            <td class="tot-label">المدفوع:</td>
+                            <td class="tot-val">{{ number_format($invoicePaid, 2) }} ج.م</td>
+                        </tr>
+                        <tr>
+                            <td class="tot-label">المتبقي من الفاتورة:</td>
+                            <td class="tot-val {{ $invoiceRemaining > 0 ? 'text-red-700 font-bold' : '' }}">
+                                {{ number_format($invoiceRemaining, 2) }} ج.م
+                            </td>
+                        </tr>
+                        @if($hasCustomer && $invoice->customer->name !== 'عميل نقدي')
+                            <tr>
+                                <td class="tot-label">الرصيد السابق للعميل:</td>
+                                <td class="tot-val">
+                                    @if($customerPrevBal > 0)
+                                        {{ number_format($customerPrevBal, 2) }} ج.م (عليه)
+                                    @elseif($customerPrevBal < 0)
+                                        {{ number_format(abs($customerPrevBal), 2) }} ج.م (له)
+                                    @else
+                                        0.00 ج.م
+                                    @endif
+                                </td>
+                            </tr>
+                            <tr style="border-top: 1px dashed #000;">
+                                <td class="tot-label">إجمالي الحساب المتبقي:</td>
+                                <td class="tot-val font-bold">
+                                    @if($customerFinalBal > 0)
+                                        {{ number_format($customerFinalBal, 2) }} ج.م (مستحق عليه)
+                                    @elseif($customerFinalBal < 0)
+                                        {{ number_format(abs($customerFinalBal), 2) }} ج.م (رصيد دائن له)
+                                    @else
+                                        0.00 ج.م (الحساب متزن)
+                                    @endif
+                                </td>
+                            </tr>
+                        @endif
                     </table>
                 </div>
             </div>
@@ -312,6 +364,56 @@
                         <td class="doc-summary-label">الإجمالي النهائي:</td>
                         <td class="doc-summary-val">{{ number_format((float)$invoice->total_amount, 2) }} ج.م</td>
                     </tr>
+                    @php
+                        $hasCustomer = (bool) $invoice->customer;
+                        $isPosted = $invoice->status === 'posted';
+                        $invoicePaid = (float) ($invoice->paid_amount ?? 0);
+                        $invoiceRemaining = (float) ($invoice->remaining_amount ?? max(0, (float)$invoice->total_amount - $invoicePaid));
+                        
+                        if ($hasCustomer) {
+                            $customerCurrentBal = (float) $invoice->customer->current_balance;
+                            $customerPrevBal = $isPosted 
+                                ? round($customerCurrentBal - $invoiceRemaining, 2)
+                                : round($customerCurrentBal, 2);
+                            $customerFinalBal = $isPosted 
+                                ? round($customerCurrentBal, 2)
+                                : round($customerCurrentBal + $invoiceRemaining, 2);
+                        }
+                    @endphp
+                    <tr>
+                        <td class="doc-summary-label">المدفوع:</td>
+                        <td class="doc-summary-val">{{ number_format($invoicePaid, 2) }} ج.م</td>
+                    </tr>
+                    <tr>
+                        <td class="doc-summary-label">المتبقي من الفاتورة:</td>
+                        <td class="doc-summary-val font-bold">{{ number_format($invoiceRemaining, 2) }} ج.م</td>
+                    </tr>
+                    @if($hasCustomer && $invoice->customer->name !== 'عميل نقدي')
+                        <tr>
+                            <td class="doc-summary-label">الرصيد السابق:</td>
+                            <td class="doc-summary-val">
+                                @if($customerPrevBal > 0)
+                                    {{ number_format($customerPrevBal, 2) }} ج.م (عليه)
+                                @elseif($customerPrevBal < 0)
+                                    {{ number_format(abs($customerPrevBal), 2) }} ج.م (له)
+                                @else
+                                    0.00 ج.م
+                                @endif
+                            </td>
+                        </tr>
+                        <tr style="border-top: 1px dashed #000; font-weight: bold;">
+                            <td class="doc-summary-label">إجمالي الحساب المتبقي:</td>
+                            <td class="doc-summary-val">
+                                @if($customerFinalBal > 0)
+                                    {{ number_format($customerFinalBal, 2) }} ج.م (عليه)
+                                @elseif($customerFinalBal < 0)
+                                    {{ number_format(abs($customerFinalBal), 2) }} ج.م (له)
+                                @else
+                                    0.00 ج.م (متزن)
+                                @endif
+                            </td>
+                        </tr>
+                    @endif
                 </table>
             </section>
 

@@ -304,39 +304,124 @@
                 </div>
             </div>
 
-            <!-- Panel 3: Opening Stock Balance Summary (Read-Only) -->
+            <!-- Panel 3: Opening Stock Balance Summary / Edit -->
             <div class="erp-card col-span-full">
                 <div class="erp-card-header flex items-center justify-between">
                     <div class="erp-card-title">
                         <x-icon name="layers" size="18" />
-                        <span>بيانات الرصيد الافتتاحي (للقراءة فقط)</span>
+                        <span>بيانات الرصيد الافتتاحي</span>
                     </div>
-                    <span class="erp-badge erp-badge-neutral text-[11px]">مغلق ضد التعديل حفاظاً على سلامة المخزون</span>
+                    @if(auth()->user()?->isAdmin())
+                        <span class="erp-badge erp-badge-warning text-[11px] flex items-center gap-1">
+                            <x-icon name="shield-check" size="14" />
+                            <span>متاح للتعديل — صلاحية خاصة بمدير النظام</span>
+                        </span>
+                    @else
+                        <span class="erp-badge erp-badge-neutral text-[11px]">مغلق ضد التعديل حفاظاً على سلامة المخزون</span>
+                    @endif
                 </div>
                 <div class="erp-card-body">
-                    @if($product->opening_quantity > 0)
+                    @if(auth()->user()?->isAdmin())
+                        <p class="text-xs text-[var(--text-muted)] mb-4">
+                            بصفتك مدير النظام، يمكنك تعديل كمية وتكلفة ومستودع وتاريخ الرصيد الافتتاحي لهذا الصنف مباشرة. سيتم تحديث أرصدة المخزون وحركات الجرد آلياً.
+                        </p>
+
                         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                            <div class="erp-summary-item">
-                                <span class="text-xs text-[var(--text-muted)] block mb-1">الكمية الافتتاحية:</span>
-                                <span class="font-bold font-numeric text-base text-[var(--text-main)]">{{ number_format($product->opening_quantity, 2) }} {{ $product->unit }}</span>
+                            <!-- Opening Quantity -->
+                            <div class="erp-form-group">
+                                <label for="openingQuantity" class="erp-form-label">
+                                    الكمية الافتتاحية
+                                </label>
+                                <input 
+                                    type="number" 
+                                    step="0.01" 
+                                    min="0" 
+                                    id="openingQuantity" 
+                                    name="opening_quantity" 
+                                    value="{{ old('opening_quantity', $product->opening_quantity ?? '0.00') }}" 
+                                    class="erp-input font-numeric @error('opening_quantity') erp-input-error @enderror"
+                                >
+                                <small class="text-[10px] text-[var(--text-muted)]">اتركه 0 إذا لم يتوفر رصيد أولي</small>
                             </div>
-                            <div class="erp-summary-item">
-                                <span class="text-xs text-[var(--text-muted)] block mb-1">تكلفة الوحدة عند البدء:</span>
-                                <span class="font-bold font-numeric text-base text-[var(--text-main)]">{{ number_format($product->opening_cost ?? $product->cost_price, 2) }} ج.م</span>
+
+                            <!-- Opening Cost -->
+                            <div class="erp-form-group">
+                                <label for="openingCost" class="erp-form-label">
+                                    تكلفة الوحدة للرصيد الافتتاحي
+                                </label>
+                                <input 
+                                    type="number" 
+                                    step="0.01" 
+                                    min="0" 
+                                    id="openingCost" 
+                                    name="opening_cost" 
+                                    value="{{ old('opening_cost', $product->opening_cost ?? $product->cost_price) }}" 
+                                    class="erp-input font-numeric @error('opening_cost') erp-input-error @enderror" 
+                                    placeholder="فارغ = نفس سعر التكلفة"
+                                >
+                                <small class="text-[10px] text-[var(--text-muted)]">تكلفة القطعة للرصيد الأولي (ج.م)</small>
                             </div>
-                            <div class="erp-summary-item">
-                                <span class="text-xs text-[var(--text-muted)] block mb-1">مستودع الرصيد الافتتاحي:</span>
-                                <span class="font-bold text-sm text-[var(--primary)]">{{ $product->openingWarehouse->name ?? 'غير محدد' }}</span>
+
+                            <!-- Opening Warehouse -->
+                            <div class="erp-form-group">
+                                <label for="openingWarehouse" class="erp-form-label">
+                                    المستودع المستلم
+                                </label>
+                                <select 
+                                    id="openingWarehouse" 
+                                    name="opening_warehouse_id" 
+                                    class="erp-input @error('opening_warehouse_id') erp-input-error @enderror"
+                                >
+                                    <option value="">-- اختر المستودع --</option>
+                                    @foreach($warehouses as $wh)
+                                        <option value="{{ $wh->id }}" {{ (string)old('opening_warehouse_id', $product->opening_warehouse_id ?? '') === (string)$wh->id ? 'selected' : '' }}>
+                                            {{ $wh->name }} {{ $wh->is_default ? '(الافتراضي)' : '' }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <small class="text-[10px] text-[var(--text-muted)]">المستودع المودع به الرصيد الافتتاحي</small>
                             </div>
-                            <div class="erp-summary-item">
-                                <span class="text-xs text-[var(--text-muted)] block mb-1">تاريخ إثبات الرصيد:</span>
-                                <span class="font-bold font-numeric text-sm text-[var(--text-main)]">{{ $product->opening_balance_date ? $product->opening_balance_date->format('Y-m-d') : 'غير مسجل' }}</span>
+
+                            <!-- Opening Date -->
+                            <div class="erp-form-group">
+                                <label for="openingBalanceDate" class="erp-form-label">
+                                    تاريخ إثبات الرصيد
+                                </label>
+                                <input 
+                                    type="date" 
+                                    id="openingBalanceDate" 
+                                    name="opening_balance_date" 
+                                    value="{{ old('opening_balance_date', ($product->opening_balance_date && $product->opening_balance_date->year >= 2000) ? $product->opening_balance_date->format('Y-m-d') : ($product->created_at ? $product->created_at->format('Y-m-d') : date('Y-m-d'))) }}" 
+                                    class="erp-input font-numeric @error('opening_balance_date') erp-input-error @enderror"
+                                >
+                                <small class="text-[10px] text-[var(--text-muted)]">تاريخ قيد الرصيد بالدفاتر</small>
                             </div>
                         </div>
                     @else
-                        <div class="text-xs text-[var(--text-muted)] p-3 rounded bg-[var(--surface-muted)]">
-                            لم يتم تسجيل رصيد افتتاحي لهذا الصنف عند إنشائه. يتم قيد الأرصدة عبر أوامر الشراء أو التحويلات أو التسويات الجردية.
-                        </div>
+                        @if($product->opening_quantity > 0)
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <div class="erp-summary-item">
+                                    <span class="text-xs text-[var(--text-muted)] block mb-1">الكمية الافتتاحية:</span>
+                                    <span class="font-bold font-numeric text-base text-[var(--text-main)]">{{ number_format($product->opening_quantity, 2) }} {{ $product->unit }}</span>
+                                </div>
+                                <div class="erp-summary-item">
+                                    <span class="text-xs text-[var(--text-muted)] block mb-1">تكلفة الوحدة عند البدء:</span>
+                                    <span class="font-bold font-numeric text-base text-[var(--text-main)]">{{ number_format($product->opening_cost ?? $product->cost_price, 2) }} ج.م</span>
+                                </div>
+                                <div class="erp-summary-item">
+                                    <span class="text-xs text-[var(--text-muted)] block mb-1">مستودع الرصيد الافتتاحي:</span>
+                                    <span class="font-bold text-sm text-[var(--primary)]">{{ $product->openingWarehouse->name ?? 'غير محدد' }}</span>
+                                </div>
+                                <div class="erp-summary-item">
+                                    <span class="text-xs text-[var(--text-muted)] block mb-1">تاريخ إثبات الرصيد:</span>
+                                    <span class="font-bold font-numeric text-sm text-[var(--text-main)]">{{ ($product->opening_balance_date && $product->opening_balance_date->year >= 2000) ? $product->opening_balance_date->format('Y-m-d') : 'غير مسجل' }}</span>
+                                </div>
+                            </div>
+                        @else
+                            <div class="text-xs text-[var(--text-muted)] p-3 rounded bg-[var(--surface-muted)]">
+                                لم يتم تسجيل رصيد افتتاحي لهذا الصنف عند إنشائه. يتم قيد الأرصدة عبر أوامر الشراء أو التحويلات أو التسويات الجردية.
+                            </div>
+                        @endif
                     @endif
                 </div>
             </div>

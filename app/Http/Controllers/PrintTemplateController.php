@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\PrintTemplate;
 use App\Services\PrintTemplateService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 class PrintTemplateController extends Controller
@@ -52,8 +53,19 @@ class PrintTemplateController extends Controller
     /**
      * Update an existing print template configuration.
      */
-    public function update(Request $request, PrintTemplate $template): JsonResponse
+    public function update(Request $request, PrintTemplate $template): JsonResponse|RedirectResponse
     {
+        // Support both AJAX JSON payloads and standard form submissions
+        $name = $request->input('name') ?? $request->input('template_name');
+        $isDefault = $request->has('template_is_default')
+            ? $request->boolean('template_is_default')
+            : ($request->has('is_default') ? $request->boolean('is_default') : $template->is_default);
+
+        $request->merge([
+            'name' => $name,
+            'is_default' => $isDefault,
+        ]);
+
         $validatedData = $request->validate([
             'name' => ['required', 'string', 'max:100'],
             'is_default' => ['sometimes', 'boolean'],
@@ -71,8 +83,6 @@ class PrintTemplateController extends Controller
             $template->paper_format
         );
 
-        $isDefault = (bool) ($validatedData['is_default'] ?? $template->is_default);
-
         if ($isDefault && ! $template->is_default) {
             // Unmark any existing default for this combination
             PrintTemplate::forDocument($template->document_type)
@@ -87,6 +97,18 @@ class PrintTemplateController extends Controller
             'settings' => $sanitizedSettings,
             'version' => $template->version + 1,
         ]);
+
+        if (! $request->wantsJson()) {
+            return redirect()
+                ->route('settings.index', [
+                    'tab' => 'print_templates',
+                    'doc_type' => $template->document_type,
+                    'paper_format' => $template->paper_format,
+                    'template_id' => $template->id,
+                ])
+                ->with('status', 'success')
+                ->with('message', 'تم حفظ إعدادات القالب بنجاح.');
+        }
 
         return response()->json([
             'success' => true,

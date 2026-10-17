@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('control_panel')
-    <x-control-panel title="إعدادات الشركة والنظام" :breadcrumbs="['الإدارة' => '#', $activeTab === 'print_templates' ? 'قوالب الطباعة' : ($activeTab === 'barcode' ? 'إعدادات الباركود' : 'بيانات الشركة') => '#']">
+    <x-control-panel title="إعدادات الشركة والنظام" :breadcrumbs="['الإدارة' => '#', $activeTab === 'print_templates' ? 'قوالب الطباعة' : ($activeTab === 'barcode' ? 'إعدادات الباركود' : ($activeTab === 'backups' ? 'النسخ الاحتياطي' : ($activeTab === 'departments' ? 'الأقسام والتصنيفات' : 'بيانات الشركة'))) => '#']">
         <x-slot:actions>
             @if($activeTab === 'barcode')
                 <button type="submit" form="barcodeSettingsForm" class="erp-btn erp-btn-primary">
@@ -13,6 +13,8 @@
                     <x-icon name="save" size="16" />
                     <span>حفظ إعدادات القالب</span>
                 </button>
+            @elseif($activeTab === 'departments' || $activeTab === 'backups')
+                <!-- Actions handled inside tab -->
             @else
                 <button type="submit" form="settingsForm" class="erp-btn erp-btn-primary">
                     <x-icon name="save" size="16" />
@@ -96,6 +98,13 @@
                     <span>الأقسام والتصنيفات</span>
                 </a>
 
+                <!-- Tab 5: Backups Management -->
+                <a href="{{ route('settings.index', ['tab' => 'backups']) }}"
+                   class="erp-tab-link {{ $activeTab === 'backups' ? 'active' : '' }}">
+                    <x-icon name="hard-drive" size="16" />
+                    <span>النسخ الاحتياطي (Backups)</span>
+                </a>
+
                 <span class="erp-tab-link disabled" title="مرحلة قادمة في المخطط">
                     <x-icon name="printer" size="16" />
                     <span>إعدادات الفاتورة - الطابعة الثانية</span>
@@ -122,6 +131,9 @@
         @elseif($activeTab === 'departments')
             <!-- TAB 4: DEPARTMENTS & CATEGORIES IMPORT -->
             @include('settings.tabs.departments')
+        @elseif($activeTab === 'backups')
+            <!-- TAB 5: DATABASE & SYSTEM BACKUPS -->
+            @include('settings.tabs.backups')
         @elseif($activeTab === 'barcode')
             <!-- TAB 2: BARCODE PRINTER SETTINGS -->
             <div class="grid grid-cols-[minmax(400px,1fr)_340px] gap-5 items-start">

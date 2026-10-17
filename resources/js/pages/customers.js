@@ -46,7 +46,9 @@ export function initCustomersPage() {
         setVal('#edit_cust_city', customer.city);
         setVal('#edit_cust_address', customer.address);
         setVal('#edit_cust_credit_limit', customer.credit_limit || 0);
+        setVal('#edit_cust_opening_balance', customer.opening_balance ?? customer.current_balance ?? 0);
         setVal('#edit_cust_current_balance', customer.current_balance || 0);
+        setVal('#edit_cust_sales_rep_id', customer.sales_rep_id);
         setVal('#edit_cust_notes', customer.notes);
 
         const activeCb = page.querySelector('#edit_cust_is_active');

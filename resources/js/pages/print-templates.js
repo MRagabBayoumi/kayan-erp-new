@@ -20,17 +20,30 @@ export function initPrintTemplatesPage() {
     const colorPicker = form?.querySelector('#template_color_picker');
     const primaryColorInput = form?.querySelector('#template_primary_color_input');
 
-    // Parse initial data stored in data attributes
+    // Parse initial data stored in script tag or data attributes
     let templateData = null;
     let sampleData = null;
 
-    try {
-        const rawTemplate = page.getAttribute('data-initial-template');
-        const rawSample = page.getAttribute('data-initial-sample');
-        if (rawTemplate) templateData = JSON.parse(rawTemplate);
-        if (rawSample) sampleData = JSON.parse(rawSample);
-    } catch (e) {
-        console.error('Error parsing print template data:', e);
+    const dataScript = document.getElementById('printTemplateInitialData');
+    if (dataScript) {
+        try {
+            const parsed = JSON.parse(dataScript.textContent);
+            templateData = parsed.template;
+            sampleData = parsed.sample;
+        } catch (e) {
+            console.error('Error parsing print template data script:', e);
+        }
+    }
+
+    if (!templateData) {
+        try {
+            const rawTemplate = page.getAttribute('data-initial-template');
+            const rawSample = page.getAttribute('data-initial-sample');
+            if (rawTemplate) templateData = JSON.parse(rawTemplate);
+            if (rawSample) sampleData = JSON.parse(rawSample);
+        } catch (e) {
+            console.error('Error parsing print template data attributes:', e);
+        }
     }
 
     if (!templateData || !templateData.settings) {
@@ -391,12 +404,16 @@ export function initPrintTemplatesPage() {
             e.preventDefault();
             syncFormToSettings();
 
-            const submitBtn = form.querySelector('button[type="submit"]');
-            const originalText = submitBtn ? submitBtn.innerHTML : '';
-            if (submitBtn) {
-                submitBtn.disabled = true;
-                submitBtn.innerHTML = 'جاري الحفظ...';
-            }
+            const submitBtns = [
+                form.querySelector('button[type="submit"]'),
+                document.querySelector('button[form="printTemplateForm"]')
+            ].filter(Boolean);
+
+            const originalStates = submitBtns.map(btn => ({ btn, html: btn.innerHTML }));
+            submitBtns.forEach(btn => {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="inline-flex items-center gap-1.5"><span class="animate-spin inline-block w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full"></span><span>جاري الحفظ...</span></span>';
+            });
 
             try {
                 const response = await fetch(form.action, {
@@ -424,12 +441,27 @@ export function initPrintTemplatesPage() {
                 console.error(err);
                 showToast('فشل الاتصال بالخادم أثناء الحفظ', 'error');
             } finally {
-                if (submitBtn) {
-                    submitBtn.disabled = false;
-                    submitBtn.innerHTML = originalText;
-                }
+                submitBtns.forEach((btn, idx) => {
+                    btn.disabled = false;
+                    btn.innerHTML = originalStates[idx].html;
+                });
             }
         });
+
+        // Ensure external header button reliably triggers form submission
+        const externalSubmitBtn = document.querySelector('button[form="printTemplateForm"]');
+        if (externalSubmitBtn && !externalSubmitBtn.__bound) {
+            externalSubmitBtn.__bound = true;
+            externalSubmitBtn.addEventListener('click', (e) => {
+                if (e.target.closest('#printTemplateForm')) return;
+                e.preventDefault();
+                if (typeof form.requestSubmit === 'function') {
+                    form.requestSubmit();
+                } else {
+                    form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+                }
+            });
+        }
     }
 
     // Reset button handler
@@ -480,11 +512,42 @@ export function initPrintTemplatesPage() {
 }
 
 function showToast(message, type = 'info') {
+    let container = document.getElementById('erpGlobalToastContainer');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'erpGlobalToastContainer';
+        container.style.cssText = 'position:fixed;bottom:24px;left:24px;z-index:999999;display:flex;flex-direction:column;gap:10px;pointer-events:none;';
+        document.body.appendChild(container);
+    }
+
     const toast = document.createElement('div');
-    toast.className = `erp-toast erp-toast-${type}`;
-    toast.innerHTML = `<span>${message}</span>`;
-    document.body.appendChild(toast);
+    const isSuccess = type === 'success';
+    const isError = type === 'error';
+    const bg = isSuccess ? '#059669' : (isError ? '#dc2626' : '#1e293b');
+    const icon = isSuccess ? '✓' : (isError ? '✕' : 'ℹ');
+
+    toast.style.cssText = `
+        display: flex !important;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 20px;
+        border-radius: 8px;
+        background-color: ${bg};
+        color: #ffffff;
+        font-size: 13.5px;
+        font-weight: 600;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
+        animation: erpToastSlideUp 0.25s ease-out;
+        pointer-events: auto;
+        direction: rtl;
+    `;
+    toast.innerHTML = `<span style="font-size:16px;line-height:1;">${icon}</span><span>${message}</span>`;
+    container.appendChild(toast);
+
     setTimeout(() => {
-        toast.remove();
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(10px)';
+        toast.style.transition = 'all 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
     }, 3500);
 }

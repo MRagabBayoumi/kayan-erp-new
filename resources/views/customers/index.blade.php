@@ -173,6 +173,12 @@
                                             <span>{{ $customer->company_name }}</span>
                                         </div>
                                     @endif
+                                    @if($customer->salesRep)
+                                        <div class="text-[11px] text-amber-600 font-semibold flex items-center gap-1 mt-0.5" title="مندوب المبيعات المسؤول">
+                                            <x-icon name="user" size="11" />
+                                            <span>مندوب: {{ $customer->salesRep->name }}</span>
+                                        </div>
+                                    @endif
                                 </td>
                                 <td>
                                     @if($customer->customer_type === 'wholesale')
@@ -206,6 +212,8 @@
                                 <td>
                                     @if($customer->pricing_tier === 'wholesale')
                                         <span class="erp-badge erp-badge-primary text-xs">سعر الجملة</span>
+                                    @elseif($customer->pricing_tier === 'distributor')
+                                        <span class="erp-badge erp-badge-warning text-xs">سعر الموزع</span>
                                     @else
                                         <span class="erp-badge erp-badge-neutral text-xs">سعر القطاعي</span>
                                     @endif
@@ -332,6 +340,7 @@
                                 <select name="pricing_tier" class="erp-input w-full" required>
                                     <option value="wholesale">سعر الجملة</option>
                                     <option value="retail">سعر القطاعي</option>
+                                    <option value="distributor">سعر موزع</option>
                                 </select>
                             </div>
                         </div>
@@ -347,14 +356,23 @@
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5 mb-3.5">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3.5 mb-3.5">
+                            <div>
+                                <label class="erp-label block mb-1.5 text-xs font-semibold">المندوب المسؤول</label>
+                                <select name="sales_rep_id" class="erp-input w-full">
+                                    <option value="">-- بدون مندوب --</option>
+                                    @foreach($salesReps as $rep)
+                                        <option value="{{ $rep->id }}">{{ $rep->name }} ({{ (float)$rep->commission_rate }}{{ $rep->commission_type === 'percentage' ? '%' : ' ج.م' }})</option>
+                                    @endforeach
+                                </select>
+                            </div>
                             <div>
                                 <label class="erp-label block mb-1.5 text-xs font-semibold">حد الائتمان الأقصى (ج.م)</label>
                                 <input type="number" step="0.01" min="0" name="credit_limit" value="0.00" class="erp-input font-numeric w-full">
                             </div>
                             <div>
                                 <label class="erp-label block mb-1.5 text-xs font-semibold">الرصيد الافتتاحي (ج.م)</label>
-                                <input type="number" step="0.01" name="current_balance" value="0.00" class="erp-input font-numeric w-full" placeholder="موجب: عليه، سالب: له">
+                                <input type="number" step="0.01" name="opening_balance" value="0.00" class="erp-input font-numeric w-full" placeholder="موجب: عليه، سالب: له">
                             </div>
                         </div>
 
@@ -430,6 +448,7 @@
                                 <select id="edit_cust_pricing_tier" name="pricing_tier" class="erp-input w-full" required>
                                     <option value="wholesale">سعر الجملة</option>
                                     <option value="retail">سعر القطاعي</option>
+                                    <option value="distributor">سعر موزع</option>
                                 </select>
                             </div>
                         </div>
@@ -447,8 +466,24 @@
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5 mb-3.5">
                             <div>
+                                <label class="erp-label block mb-1.5 text-xs font-semibold">مندوب المبيعات المسؤول</label>
+                                <select id="edit_cust_sales_rep_id" name="sales_rep_id" class="erp-input w-full">
+                                    <option value="">-- بدون مندوب --</option>
+                                    @foreach($salesReps as $rep)
+                                        <option value="{{ $rep->id }}">{{ $rep->name }} ({{ (float)$rep->commission_rate }}{{ $rep->commission_type === 'percentage' ? '%' : ' ج.م' }})</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div>
                                 <label class="erp-label block mb-1.5 text-xs font-semibold">حد الائتمان الأقصى (ج.م)</label>
                                 <input type="number" step="0.01" min="0" id="edit_cust_credit_limit" name="credit_limit" class="erp-input font-numeric w-full">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5 mb-3.5">
+                            <div>
+                                <label class="erp-label block mb-1.5 text-xs font-semibold">الرصيد الافتتاحي (ج.م)</label>
+                                <input type="number" step="0.01" id="edit_cust_opening_balance" name="opening_balance" class="erp-input font-numeric w-full" placeholder="موجب: عليه، سالب: له">
                             </div>
                             <div>
                                 <label class="erp-label block mb-1.5 text-xs font-semibold">الرصيد المالي الحالي (ج.م)</label>

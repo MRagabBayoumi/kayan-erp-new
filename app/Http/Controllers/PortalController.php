@@ -1,0 +1,503 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Category;
+use App\Models\Customer;
+use App\Models\Product;
+use App\Models\SalesCommission;
+use App\Models\SalesInvoice;
+use App\Models\SalesInvoiceItem;
+use App\Models\Unit;
+use App\Models\Warehouse;
+use App\Services\CommissionService;
+use App\Services\InventoryService;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\View\View;
+
+class PortalController extends Controller
+{
+    /**
+     * Sales Rep Mobile Portal Dashboard.
+     */
+    public function index(): View
+    {
+        $user = auth()->user();
+        $today = now()->format('Y-m-d');
+        $startOfMonth = now()->startOfMonth();
+
+        $invoicesQuery = SalesInvoice::where(function ($q) use ($user) {
+            $q->where('sales_rep_id', $user->id)
+                ->orWhere('created_by', $user->id);
+        });
+
+        $todaySalesCount = (clone $invoicesQuery)->whereDate('invoice_date', $today)->count();
+        $todaySalesTotal = (float) (clone $invoicesQuery)->whereDate('invoice_date', $today)->sum('total_amount');
+
+        $monthCommissions = (float) SalesCommission::forSalesRep($user->id)
+            ->where('created_at', '>=', $startOfMonth)
+            ->where('status', '!=', SalesCommission::STATUS_CANCELED)
+            ->sum('commission_amount');
+
+        $pendingCommissions = (float) SalesCommission::forSalesRep($user->id)
+            ->where('status', SalesCommission::STATUS_PENDING)
+            ->sum('commission_amount');
+
+        $myCustomersCount = Customer::where('sales_rep_id', $user->id)->count();
+
+        $recentOrders = (clone $invoicesQuery)
+            ->with(['customer', 'commission'])
+            ->latest('id')
+            ->take(5)
+            ->get();
+
+        $recentCustomers = Customer::where('sales_rep_id', $user->id)
+            ->latest('id')
+            ->take(5)
+            ->get();
+
+        return view('portal.index', [
+            'user' => $user,
+            'todaySalesCount' => $todaySalesCount,
+            'todaySalesTotal' => $todaySalesTotal,
+            'monthCommissions' => $monthCommissions,
+            'pendingCommissions' => $pendingCommissions,
+            'myCustomersCount' => $myCustomersCount,
+            'recentOrders' => $recentOrders,
+            'recentCustomers' => $recentCustomers,
+        ]);
+    }
+
+    /**
+     * Mobile Showroom & Warehouse Products Catalog.
+     */
+    public function catalog(Request $request): View
+    {
+        $query = Product::active()->with(['category', 'stockBalances.warehouse']);
+
+        if ($request->filled('search')) {
+            $term = trim($request->input('search'));
+            $query->where(function ($q) use ($term) {
+                $q->where('name', 'like', "%{$term}%")
+                    ->orWhere('sku', 'like', "%{$term}%")
+                    ->orWhere('barcode', 'like', "%{$term}%");
+            });
+        }
+
+        if ($request->filled('category_id')) {
+            $query->where('category_id', (int) $request->input('category_id'));
+        }
+
+        if ($request->boolean('in_stock_only')) {
+            $query->whereHas('stockBalances', function ($q) {
+                $q->where('quantity', '>', 0);
+            });
+        }
+
+        $products = $query->orderBy('name')->paginate(20)->withQueryString();
+        $categories = Category::active()->orderBy('name')->get();
+
+        return view('portal.catalog', [
+            'products' => $products,
+            'categories' => $categories,
+            'currentSearch' => $request->input('search'),
+            'currentCategory' => $request->input('category_id'),
+            'inStockOnly' => $request->boolean('in_stock_only'),
+        ]);
+    }
+
+    /**
+     * Mobile Customers Directory for Rep.
+     */
+    public function customers(Request $request): View
+    {
+        $user = auth()->user();
+        $query = Customer::query();
+
+        // Scope to assigned customers unless search is requested
+        if (! $request->filled('search') && ! $user->isAdmin()) {
+            $query->where('sales_rep_id', $user->id);
+        }
+
+        if ($request->filled('search')) {
+            $query->search($request->input('search'));
+        }
+
+        $customers = $query->orderBy('name')->paginate(20)->withQueryString();
+
+        return view('portal.customers.index', [
+            'customers' => $customers,
+            'search' => $request->input('search'),
+            'totalMyCustomers' => Customer::where('sales_rep_id', $user->id)->count(),
+        ]);
+    }
+
+    /**
+     * Show mobile form to register a new customer in the field.
+     */
+    public function createCustomer(): View
+    {
+        return view('portal.customers.create', [
+            'pricingTiers' => [
+                'retail' => 'تجزئة (قطاعي)',
+                'wholesale' => 'جملة',
+                'distributor' => 'موزع كبير',
+            ],
+        ]);
+    }
+
+    /**
+     * Store new customer registered from field with GPS location.
+     */
+    public function storeCustomer(Request $request): RedirectResponse
+    {
+        $user = auth()->user();
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'company_name' => ['nullable', 'string', 'max:255'],
+            'phone' => ['required', 'string', 'max:50'],
+            'phone_alt' => ['nullable', 'string', 'max:50'],
+            'city' => ['nullable', 'string', 'max:100'],
+            'address' => ['nullable', 'string', 'max:255'],
+            'latitude' => ['nullable', 'numeric'],
+            'longitude' => ['nullable', 'numeric'],
+            'customer_type' => ['required', 'in:wholesale,retail,distributor'],
+            'pricing_tier' => ['required', 'in:wholesale,retail,distributor'],
+            'credit_limit' => ['nullable', 'numeric', 'min:0'],
+            'notes' => ['nullable', 'string', 'max:1000'],
+        ], [
+            'name.required' => 'اسم العميل مطلوب.',
+            'phone.required' => 'رقم هاتف العميل مطلوب.',
+            'customer_type.required' => 'نوع العميل مطلوب.',
+            'pricing_tier.required' => 'فئة السعر مطلوبة.',
+        ]);
+
+        $customer = Customer::create([
+            'name' => trim($validated['name']),
+            'company_name' => filled($validated['company_name'] ?? null) ? trim($validated['company_name']) : null,
+            'phone' => trim($validated['phone']),
+            'phone_alt' => filled($validated['phone_alt'] ?? null) ? trim($validated['phone_alt']) : null,
+            'city' => filled($validated['city'] ?? null) ? trim($validated['city']) : null,
+            'address' => filled($validated['address'] ?? null) ? trim($validated['address']) : null,
+            'latitude' => $validated['latitude'] ?? null,
+            'longitude' => $validated['longitude'] ?? null,
+            'sales_rep_id' => $user->id,
+            'customer_type' => $validated['customer_type'],
+            'pricing_tier' => $validated['pricing_tier'],
+            'credit_limit' => (float) ($validated['credit_limit'] ?? 0.00),
+            'opening_balance' => 0.00,
+            'current_balance' => 0.00,
+            'notes' => filled($validated['notes'] ?? null) ? trim($validated['notes']) : null,
+            'is_active' => true,
+        ]);
+
+        return redirect()->route('portal.orders.create', ['customer_id' => $customer->id])
+            ->with('status', 'success')
+            ->with('message', 'تم تسجيل العميل بنجاح. يمكنك الآن البدء في إنشاء طلب بيع له.');
+    }
+
+    /**
+     * Orders placed by sales representative.
+     */
+    public function orders(Request $request): View
+    {
+        $user = auth()->user();
+
+        $query = SalesInvoice::with(['customer', 'warehouse', 'commission'])
+            ->where(function ($q) use ($user) {
+                $q->where('sales_rep_id', $user->id)
+                    ->orWhere('created_by', $user->id);
+            });
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->input('status'));
+        }
+
+        $orders = $query->latest('id')->paginate(15)->withQueryString();
+
+        return view('portal.orders.index', [
+            'orders' => $orders,
+            'currentStatus' => $request->input('status'),
+        ]);
+    }
+
+    /**
+     * Mobile Order / Invoice Creation Screen.
+     */
+    public function createOrder(Request $request): View
+    {
+        $user = auth()->user();
+
+        $customers = Customer::active()
+            ->when(! $user->isAdmin(), fn ($q) => $q->where('sales_rep_id', $user->id))
+            ->orderBy('name')
+            ->get();
+
+        // If rep has no assigned customers yet, allow choosing from all active
+        if ($customers->isEmpty()) {
+            $customers = Customer::active()->orderBy('name')->take(50)->get();
+        }
+
+        $warehouses = $user->getAllowedWarehouses();
+        $selectedCustomerId = $request->input('customer_id');
+
+        $products = Product::active()
+            ->with(['category', 'stockBalances'])
+            ->orderBy('name')
+            ->get()
+            ->map(function ($p) {
+                return [
+                    'id' => $p->id,
+                    'name' => $p->name,
+                    'sku' => $p->sku,
+                    'barcode' => $p->barcode,
+                    'retail_price' => (float) $p->retail_price,
+                    'wholesale_price' => (float) $p->wholesale_price,
+                    'distributor_price' => (float) $p->distributor_price,
+                    'unit' => $p->unit ?? 'قطعة',
+                    'available_stock' => (float) $p->stockBalances->sum('quantity'),
+                ];
+            });
+
+        $units = Unit::active()->orderBy('name')->get();
+
+        return view('portal.orders.create', [
+            'customers' => $customers,
+            'selectedCustomerId' => $selectedCustomerId,
+            'warehouses' => $warehouses,
+            'productsJson' => $products->toJson(JSON_UNESCAPED_UNICODE),
+            'units' => $units,
+        ]);
+    }
+
+    /**
+     * Store order/invoice submitted from mobile portal.
+     */
+    public function storeOrder(Request $request, InventoryService $inventoryService): RedirectResponse
+    {
+        $user = auth()->user();
+
+        $validated = $request->validate([
+            'customer_id' => ['required', 'exists:customers,id'],
+            'warehouse_id' => ['required', 'exists:warehouses,id'],
+            'invoice_date' => ['required', 'date'],
+            'price_tier' => ['required', 'string', 'in:retail,wholesale,distributor'],
+            'payment_type' => ['nullable', 'string', 'in:cash,credit,partial'],
+            'paid_amount' => ['nullable', 'numeric', 'min:0'],
+            'action' => ['required', 'in:draft,post'],
+            'notes' => ['nullable', 'string', 'max:1000'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.product_id' => ['required', 'exists:products,id'],
+            'items.*.unit_id' => ['nullable', 'exists:units,id'],
+            'items.*.conversion_factor' => ['nullable', 'numeric', 'min:0.0001'],
+            'items.*.quantity' => ['required', 'numeric', 'min:0.0001'],
+            'items.*.unit_price' => ['required', 'numeric', 'min:0'],
+            'items.*.line_discount' => ['nullable', 'numeric', 'min:0'],
+        ], [
+            'customer_id.required' => 'يرجى اختيار العميل.',
+            'warehouse_id.required' => 'يرجى اختيار المستودع.',
+            'items.required' => 'يجب إضافة صنف واحد على الأقل.',
+        ]);
+
+        try {
+            $invoice = DB::transaction(function () use ($validated, $user, $inventoryService) {
+                $subtotal = 0.00;
+                $itemsData = [];
+
+                foreach ($validated['items'] as $item) {
+                    $qty = (float) $item['quantity'];
+                    $price = (float) $item['unit_price'];
+                    $discount = (float) ($item['line_discount'] ?? 0.00);
+                    $lineTotal = max(0.00, round(($qty * $price) - $discount, 2));
+                    $subtotal += $lineTotal;
+
+                    $itemsData[] = [
+                        'product_id' => (int) $item['product_id'],
+                        'unit_id' => ! empty($item['unit_id']) ? (int) $item['unit_id'] : null,
+                        'conversion_factor' => (float) ($item['conversion_factor'] ?? 1.0000),
+                        'quantity' => $qty,
+                        'base_quantity' => round($qty * (float) ($item['conversion_factor'] ?? 1.0000), 4),
+                        'unit_price' => $price,
+                        'line_discount' => $discount,
+                        'subtotal' => $lineTotal,
+                        'total_cogs' => 0.00,
+                        'total_profit' => 0.00,
+                    ];
+                }
+
+                $totalAmount = round($subtotal, 2);
+                $paymentType = $validated['payment_type'] ?? SalesInvoice::PAYMENT_CASH;
+
+                if ($paymentType === SalesInvoice::PAYMENT_CASH) {
+                    $paidAmount = $totalAmount;
+                    $remainingAmount = 0.00;
+                } elseif ($paymentType === SalesInvoice::PAYMENT_CREDIT) {
+                    $paidAmount = 0.00;
+                    $remainingAmount = $totalAmount;
+                } else {
+                    $paidAmount = min($totalAmount, max(0.00, (float) ($validated['paid_amount'] ?? 0.00)));
+                    $remainingAmount = max(0.00, round($totalAmount - $paidAmount, 2));
+                }
+
+                $customer = Customer::findOrFail((int) $validated['customer_id']);
+
+                $invoice = SalesInvoice::create([
+                    'invoice_number' => SalesInvoice::generateInvoiceNumber(),
+                    'customer_id' => $customer->id,
+                    'sales_rep_id' => $user->id,
+                    'warehouse_id' => (int) $validated['warehouse_id'],
+                    'invoice_date' => $validated['invoice_date'],
+                    'price_tier' => $validated['price_tier'],
+                    'payment_type' => $paymentType,
+                    'status' => SalesInvoice::STATUS_DRAFT,
+                    'subtotal' => $subtotal,
+                    'total_amount' => $totalAmount,
+                    'paid_amount' => $paidAmount,
+                    'remaining_amount' => $remainingAmount,
+                    'total_cogs' => 0.00,
+                    'total_profit' => 0.00,
+                    'notes' => $validated['notes'] ?? 'طلب عبر تطبيق المندوب',
+                    'created_by' => $user->id,
+                ]);
+
+                foreach ($itemsData as $row) {
+                    $row['sales_invoice_id'] = $invoice->id;
+                    SalesInvoiceItem::create($row);
+                }
+
+                // If rep has post permission or chooses to post directly
+                if ($validated['action'] === 'post') {
+                    $this->postInvoiceInternal($invoice, $inventoryService);
+                }
+
+                return $invoice;
+            });
+
+            $msg = $invoice->status === SalesInvoice::STATUS_POSTED
+                ? 'تم إنشاء الفاتورة وترحيلها بنجاح واحتساب عمولتك.'
+                : 'تم إرسال الطلب كمسودة معلقة بنجاح للاعتماد من إدارة المعرض.';
+
+            return redirect()->route('portal.orders.show', $invoice)
+                ->with('status', 'success')
+                ->with('message', $msg);
+        } catch (\Throwable $e) {
+            Log::error('Portal store order error: '.$e->getMessage(), ['exception' => $e]);
+
+            return back()->withInput()->with('error', 'تعذر إرسال الطلب: '.$e->getMessage());
+        }
+    }
+
+    /**
+     * Show Order details on mobile.
+     */
+    public function showOrder(SalesInvoice $invoice): View
+    {
+        $user = auth()->user();
+
+        if (! $user->isAdmin() && (int) $invoice->sales_rep_id !== (int) $user->id && (int) $invoice->created_by !== (int) $user->id) {
+            abort(403, 'غير مصرح لك باستعراض هذا الطلب.');
+        }
+
+        $invoice->loadMissing(['customer', 'warehouse', 'items.product', 'items.unit', 'commission']);
+
+        return view('portal.orders.show', [
+            'invoice' => $invoice,
+        ]);
+    }
+
+    /**
+     * My Commissions Breakdown & Statement Screen.
+     */
+    public function commissions(): View
+    {
+        $user = auth()->user();
+
+        $commissions = SalesCommission::forSalesRep($user->id)
+            ->with(['salesInvoice', 'customer'])
+            ->latest('id')
+            ->paginate(20);
+
+        $totalEarned = (float) SalesCommission::forSalesRep($user->id)
+            ->where('status', '!=', SalesCommission::STATUS_CANCELED)
+            ->sum('commission_amount');
+
+        $pendingAmount = (float) SalesCommission::forSalesRep($user->id)
+            ->where('status', SalesCommission::STATUS_PENDING)
+            ->sum('commission_amount');
+
+        $paidAmount = (float) SalesCommission::forSalesRep($user->id)
+            ->where('status', SalesCommission::STATUS_PAID)
+            ->sum('commission_amount');
+
+        return view('portal.commissions', [
+            'user' => $user,
+            'commissions' => $commissions,
+            'totalEarned' => $totalEarned,
+            'pendingAmount' => $pendingAmount,
+            'paidAmount' => $paidAmount,
+        ]);
+    }
+
+    /**
+     * Internal helper to post invoice and calculate commission.
+     */
+    private function postInvoiceInternal(SalesInvoice $invoice, InventoryService $inventoryService): void
+    {
+        $invoice->loadMissing('items.product');
+        $totalCogs = 0.00;
+        $totalProfit = 0.00;
+
+        foreach ($invoice->items as $item) {
+            $baseQty = (float) $item->base_quantity;
+            $unitPriceBase = (float) $item->unit_price;
+
+            $result = $inventoryService->deductStockFIFOWithPricing(
+                productId: $item->product_id,
+                warehouseId: $invoice->warehouse_id,
+                baseQuantity: $baseQty,
+                priceTier: $invoice->price_tier,
+                overrideUnitPriceBase: $unitPriceBase,
+                proratedLineDiscount: (float) $item->line_discount,
+                notes: 'فاتورة مبيعات تطبيق المندوب: '.$invoice->invoice_number,
+                referenceType: 'sales_invoice',
+                referenceId: $invoice->id,
+                salesInvoiceItemId: $item->id,
+                userId: auth()->id(),
+                customerId: $invoice->customer_id,
+                allowUnpricedBatches: true
+            );
+
+            $itemCogs = (float) $result['total_cogs'];
+            $itemProfit = round((float) $item->subtotal - $itemCogs, 2);
+
+            $item->update([
+                'total_cogs' => $itemCogs,
+                'total_profit' => $itemProfit,
+            ]);
+
+            $totalCogs += $itemCogs;
+            $totalProfit += $itemProfit;
+        }
+
+        $invoice->update([
+            'status' => SalesInvoice::STATUS_POSTED,
+            'posted_at' => now(),
+            'posted_by' => auth()->id(),
+            'total_cogs' => round($totalCogs, 2),
+            'total_profit' => round($totalProfit, 2),
+        ]);
+
+        if ((float) $invoice->remaining_amount > 0 && $invoice->customer_id) {
+            $customer = Customer::lockForUpdate()->find($invoice->customer_id);
+            if ($customer) {
+                $customer->increment('current_balance', (float) $invoice->remaining_amount);
+            }
+        }
+
+        app(CommissionService::class)->recordInvoiceCommission($invoice);
+    }
+}

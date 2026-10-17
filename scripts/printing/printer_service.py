@@ -5,9 +5,18 @@ and document spooling for single and multi-product batch sequences.
 Distinguishes spooler submission from physical verification.
 """
 
+import os
 import sys
 from typing import Any, Dict, List, Optional, Tuple, Union
 from PIL import Image
+
+# Twin-Section Media Configuration (Xprinter XP-233B 38x25mm twin-section roll)
+TWIN_SECTION_MODE: bool = os.environ.get("TWIN_SECTION_MODE", "1").strip().lower() not in ("0", "false", "no", "off")
+TWIN_CANVAS_WIDTH_DOTS: int = 304
+TWIN_CANVAS_HEIGHT_DOTS: int = 200
+TOP_OFFSET_DOTS: int = 0
+SECOND_OFFSET_DOTS: int = 104
+TWIN_ALLOWED_HEIGHTS_MM: Tuple[int, ...] = (12, 13)
 
 try:
     import win32print
@@ -45,6 +54,13 @@ class PrinterService:
         "label",
         "sticker",
     ]
+
+    TWIN_SECTION_MODE: bool = TWIN_SECTION_MODE
+    TWIN_CANVAS_WIDTH_DOTS: int = TWIN_CANVAS_WIDTH_DOTS
+    TWIN_CANVAS_HEIGHT_DOTS: int = TWIN_CANVAS_HEIGHT_DOTS
+    TOP_OFFSET_DOTS: int = TOP_OFFSET_DOTS
+    SECOND_OFFSET_DOTS: int = SECOND_OFFSET_DOTS
+    TWIN_ALLOWED_HEIGHTS_MM: Tuple[int, ...] = TWIN_ALLOWED_HEIGHTS_MM
 
     @staticmethod
     def get_available_printers() -> List[str]:
@@ -238,6 +254,188 @@ class PrinterService:
 
         return bytes(payload), items_summary
 
+    @staticmethod
+    def _image_to_monochrome_bytes(img: Image.Image) -> Tuple[int, int, bytes]:
+        """Convert a PIL Image to 1-bit monochrome bytes matching TSPL BITMAP expectations."""
+        width_px, height_px = img.size
+        width_bytes = (width_px + 7) // 8
+        padded_width_px = width_bytes * 8
+
+        gray_img = img.convert("L")
+        bw_img = gray_img.point(lambda p: 255 if p > 128 else 0, mode="1")
+
+        padded_img = Image.new("1", (padded_width_px, height_px), 1)
+        padded_img.paste(bw_img, (0, 0))
+        raw_bitmap = padded_img.tobytes()
+        return width_bytes, height_px, raw_bitmap
+
+    @classmethod
+    def is_twin_section_target(
+        cls,
+        printer_name: str,
+        width_mm: float,
+        height_mm: float
+    ) -> bool:
+        """
+        Check if current print job targets the Xprinter XP-233B 38x25mm twin-section roll.
+        Gating conditions:
+        1. TWIN_SECTION_MODE is ON.
+        2. printer_name == 'Xprinter XP-233B'
+        3. width_mm rounds to 38
+        4. height_mm rounds to one of TWIN_ALLOWED_HEIGHTS_MM (e.g. 12, 13)
+        """
+        env_val = os.environ.get("TWIN_SECTION_MODE", "1").strip().lower()
+        active = (env_val not in ("0", "false", "no", "off")) and getattr(cls, "TWIN_SECTION_MODE", True)
+        if not active:
+            return False
+        if (printer_name or "").strip() != "Xprinter XP-233B":
+            return False
+        if int(round(width_mm)) != 38:
+            return False
+        if int(round(height_mm)) not in cls.TWIN_ALLOWED_HEIGHTS_MM:
+            return False
+        return True
+
+    @classmethod
+    def build_twin_batch_tspl_payload(
+        cls,
+        items: List[Dict[str, Any]],
+        gap_mm: float = 2.0,
+        direction: int = 0,
+        include_direction: bool = True,
+        top_offset_dots: Optional[int] = None,
+        second_offset_dots: Optional[int] = None,
+    ) -> Tuple[bytes, List[Dict[str, Any]]]:
+        """
+        Build TSPL batch payload for 38x25mm twin-section roll (two ~12mm labels per 25mm carrier spot).
+        Composes 304x200 canvas with top and bottom sections, then rotates 180 degrees before BITMAP.
+        """
+        if not items:
+            raise ValueError("No items provided for twin TSPL batch payload.")
+
+        top_offset = cls.TOP_OFFSET_DOTS if top_offset_dots is None else top_offset_dots
+        second_offset = cls.SECOND_OFFSET_DOTS if second_offset_dots is None else second_offset_dots
+
+        # In twin mode, always emit DIRECTION 0 (verified physical combination: DIRECTION 0 + 180° rotation)
+        direction_line = "DIRECTION 0\r\n" if include_direction else ""
+        job_header = (
+            f"SIZE 38 mm, 25 mm\r\n"
+            f"GAP {gap_mm:g} mm, 0 mm\r\n"
+            f"{direction_line}"
+            f"REFERENCE 0,0\r\n"
+        ).encode("ascii")
+
+        sys.stderr.write(
+            f"[TSPL-TWIN-HEADER] include_direction={include_direction} | "
+            f"SIZE 38x25 mm | GAP {gap_mm:g} mm | "
+            f"{'DIRECTION 0' if include_direction else 'DIRECTION omitted'} | "
+            f"Offsets: Top={top_offset}, Second={second_offset}\n"
+        )
+        sys.stderr.flush()
+
+        label_units = []
+        for src_idx, item in enumerate(items):
+            img = item["image"]
+            qty = max(1, min(500, int(item.get("copies") or item.get("quantity") or 1)))
+            p_id = str(item.get("product_id") or item.get("id") or item.get("sku") or "")
+            p_name = str(item.get("product_name") or "")
+            p_sku = str(item.get("sku") or "")
+            for _ in range(qty):
+                label_units.append({
+                    "source_item_index": src_idx,
+                    "image": img,
+                    "product_id": p_id,
+                    "product_name": p_name,
+                    "sku": p_sku,
+                    "item_ref": item,
+                })
+
+        pairs = []
+        i = 0
+        while i < len(label_units):
+            top_unit = label_units[i]
+            bot_unit = label_units[i + 1] if (i + 1 < len(label_units)) else None
+            pairs.append((top_unit, bot_unit))
+            i += 2
+
+        grouped_runs = []
+        for top_unit, bot_unit in pairs:
+            top_key = top_unit["source_item_index"]
+            bot_key = bot_unit["source_item_index"] if bot_unit else None
+            key = (top_key, bot_key)
+
+            if grouped_runs and grouped_runs[-1]["key"] == key:
+                grouped_runs[-1]["count"] += 1
+            else:
+                grouped_runs.append({
+                    "key": key,
+                    "top_unit": top_unit,
+                    "bot_unit": bot_unit,
+                    "count": 1,
+                })
+
+        payload = bytearray(job_header)
+        for run_idx, run in enumerate(grouped_runs):
+            top_img = run["top_unit"]["image"]
+            bot_img = run["bot_unit"]["image"] if run["bot_unit"] else None
+            count = run["count"]
+
+            canvas = Image.new("RGB", (cls.TWIN_CANVAS_WIDTH_DOTS, cls.TWIN_CANVAS_HEIGHT_DOTS), "white")
+            canvas.paste(top_img, (0, top_offset))
+            if bot_img is not None:
+                canvas.paste(bot_img, (0, second_offset))
+
+            canvas_rotated = canvas.rotate(180)
+            width_bytes, height_dots, raw_bitmap = cls._image_to_monochrome_bytes(canvas_rotated)
+
+            expected_len = width_bytes * height_dots
+            if len(raw_bitmap) != expected_len:
+                raise ValueError(
+                    f"Twin bitmap byte length mismatch: got {len(raw_bitmap)} bytes, expected {expected_len}"
+                )
+
+            cmd_header = f"CLS\r\nBITMAP 0,0,{width_bytes},{height_dots},0,".encode("ascii")
+            cmd_footer = f"\r\nPRINT 1,{count}\r\n".encode("ascii")
+
+            payload.extend(cmd_header)
+            payload.extend(raw_bitmap)
+            payload.extend(cmd_footer)
+
+            sys.stderr.write(
+                f"[TSPL-TWIN-BATCH] Run [{run_idx + 1}/{len(grouped_runs)}] "
+                f"Top={run['top_unit']['product_id']} | "
+                f"Bot={run['bot_unit']['product_id'] if run['bot_unit'] else 'BLANK'} | "
+                f"Count={count} spot(s) | Bitmap={width_bytes}B x {height_dots}dots = {len(raw_bitmap)}B\n"
+            )
+            sys.stderr.flush()
+
+        items_summary = []
+        for idx, item in enumerate(items):
+            qty = max(1, min(500, int(item.get("copies") or item.get("quantity") or 1)))
+            img = item["image"]
+            width_px, height_px = img.size
+            width_mm = round((width_px / 203.0) * 25.4, 1)
+            height_mm = round((height_px / 203.0) * 25.4, 1)
+            items_summary.append({
+                "item_index": idx + 1,
+                "product_id": str(item.get("product_id") or item.get("id") or item.get("sku") or f"item_{idx + 1}"),
+                "product_name": str(item.get("product_name") or ""),
+                "sku": str(item.get("sku") or ""),
+                "requested_quantity": qty,
+                "image_width_px": width_px,
+                "image_height_px": height_px,
+                "image_width_mm": width_mm,
+                "image_height_mm": height_mm,
+                "printer_dpi": 203,
+                "bitmap_width_bytes": 38,
+                "bitmap_payload_length": 7600,
+                "configured_label_height_mm": height_mm,
+                "configured_gap_mm": gap_mm,
+                "tspl_command": "TWIN-MODE: 38x25mm carrier with 2 sections",
+            })
+
+        return bytes(payload), items_summary
+
     @classmethod
     def submit_batch_job_raw_tspl(
         cls,
@@ -261,14 +459,31 @@ class PrinterService:
             include_direction: When True (default), DIRECTION is included in the job header.
                 Set False only for controlled diagnostic testing (H2 hypothesis).
         """
-        payload, items_summary = cls.build_batch_tspl_payload(
-            items=items,
-            default_width_mm=default_width_mm,
-            default_height_mm=default_height_mm,
-            gap_mm=gap_mm,
-            direction=direction,
-            include_direction=include_direction,
-        )
+        first_img = items[0].get("image") if items else None
+        if first_img:
+            width_px_first, height_px_first = first_img.size
+            nominal_width_mm = round((width_px_first / 203.0) * 25.4, 1) or default_width_mm
+            nominal_height_mm = round((height_px_first / 203.0) * 25.4, 1) or default_height_mm
+        else:
+            nominal_width_mm = default_width_mm
+            nominal_height_mm = default_height_mm
+
+        if cls.is_twin_section_target(printer_name, nominal_width_mm, nominal_height_mm):
+            payload, items_summary = cls.build_twin_batch_tspl_payload(
+                items=items,
+                gap_mm=gap_mm,
+                direction=direction,
+                include_direction=include_direction,
+            )
+        else:
+            payload, items_summary = cls.build_batch_tspl_payload(
+                items=items,
+                default_width_mm=default_width_mm,
+                default_height_mm=default_height_mm,
+                gap_mm=gap_mm,
+                direction=direction,
+                include_direction=include_direction,
+            )
 
 
         total_labels = sum(item["requested_quantity"] for item in items_summary)
@@ -301,6 +516,11 @@ class PrinterService:
                 # Direct WritePrinter without StartPagePrinter / EndPagePrinter
                 # to prevent winprint from appending 0x0C Form Feed between labels
                 bytes_written = win32print.WritePrinter(hprinter, payload)
+                sys.stderr.write(
+                    f"[DIAGNOSTIC-SPOOLER] JobID={job_id} | PayloadLen={len(payload)} | "
+                    f"BytesWritten={bytes_written} | ExpectedLabels={total_labels} | Printer='{printer_name}'\n"
+                )
+                sys.stderr.flush()
                 if bytes_written != len(payload):
                     raise PrinterSpoolerError(
                         f"Truncated write to '{printer_name}': wrote {bytes_written} of {len(payload)} bytes."

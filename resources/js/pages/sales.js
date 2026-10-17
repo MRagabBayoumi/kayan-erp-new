@@ -29,6 +29,7 @@ function initSalesPOS(posPage = null) {
     // Meta Elements
     const customerSelect = document.getElementById('customerSelect');
     const customerTierHint = document.getElementById('customerTierHint');
+    const customerBalanceHint = document.getElementById('customerBalanceHint');
     const warehouseSelect = document.getElementById('warehouseSelect');
     const priceTierSelect = document.getElementById('priceTierSelect');
     const shippingInput = document.getElementById('shippingCost');
@@ -43,6 +44,9 @@ function initSalesPOS(posPage = null) {
     const quickProductId = document.getElementById('quickProductId');
     const quickStockBadge = document.getElementById('quickStockBadge');
     const quickUnitSelect = document.getElementById('quickUnitSelect');
+    const quickUnitPieceBtn = document.getElementById('quickUnitPieceBtn');
+    const quickUnitDozenBtn = document.getElementById('quickUnitDozenBtn');
+    const quickUnitDozenLabel = document.getElementById('quickUnitDozenLabel');
     const quickQtyInput = document.getElementById('quickQtyInput');
     const quickQtyMinus = document.getElementById('quickQtyMinus');
     const quickQtyPlus = document.getElementById('quickQtyPlus');
@@ -99,6 +103,7 @@ function initSalesPOS(posPage = null) {
 
     let activeSuggestionIndex = -1;
     let isSubmitting = false;
+    let lastProductSelectTime = 0;
 
     // Helper: Get product price based on selected tier and target unit factor
     function getProductPriceForTier(product, tier = null, targetUnitFactor = null) {
@@ -113,9 +118,8 @@ function initSalesPOS(posPage = null) {
             basePrice = parseFloat(product.retail_price ?? 0);
         }
 
-        if (targetUnitFactor !== null && targetUnitFactor !== undefined) {
-            const productFactor = parseFloat(product.unit_factor || 1.0) || 1.0;
-            return basePrice * (targetUnitFactor / productFactor);
+        if (targetUnitFactor !== null && targetUnitFactor !== undefined && targetUnitFactor > 1.0) {
+            return basePrice * targetUnitFactor;
         }
 
         return basePrice;
@@ -125,7 +129,7 @@ function initSalesPOS(posPage = null) {
     function formatStockBreakdown(product, stockQty = null) {
         if (!product) return '0 قطعة';
         const qty = stockQty !== null ? stockQty : getProductWarehouseStock(product);
-        const factor = Math.round(parseFloat(product.unit_factor || 1.0) || 1);
+        const factor = Math.round(parseFloat(product.package_factor || product.pieces_per_package || 12) || 12);
         const unitName = (product.unit || 'قطعة').trim();
 
         if (qty <= 0) {
@@ -136,17 +140,18 @@ function initSalesPOS(posPage = null) {
             return `${Number(qty.toFixed(2))} ${unitName}`;
         }
 
-        const totalPieces = Math.round(qty * factor);
+        const totalPieces = Math.round(qty);
         const packages = Math.floor(totalPieces / factor);
         const remainderPieces = totalPieces % factor;
+        const packLabel = (factor === 12 || unitName === 'دستة') ? 'دستة' : 'طرد';
 
-        if (remainderPieces === 0) {
-            return `${packages} ${unitName} (${totalPieces} قطعة)`;
-        }
         if (packages === 0) {
             return `${remainderPieces} قطعة`;
         }
-        return `${packages} ${unitName} و ${remainderPieces} قطعة (${totalPieces} قطعة)`;
+        if (remainderPieces === 0) {
+            return `${packages} ${packLabel} (${totalPieces} قطعة)`;
+        }
+        return `${packages} ${packLabel} و ${remainderPieces} قطعة (${totalPieces} قطعة)`;
     }
 
     // Helper: Get available warehouse stock
@@ -200,6 +205,80 @@ function initSalesPOS(posPage = null) {
         const selectedFactor = parseFloat(opt?.dataset.factor || 1.0) || 1.0;
         const price = getProductPriceForTier(prod, null, selectedFactor);
         quickPriceInput.value = price.toFixed(2);
+        syncUnitPillState(selectedFactor);
+    }
+
+    function syncUnitPillState(selectedFactor = 1.0) {
+        if (!quickUnitPieceBtn || !quickUnitDozenBtn) return;
+        if (selectedFactor > 1.0) {
+            quickUnitPieceBtn.classList.remove('active');
+            quickUnitDozenBtn.classList.add('active', 'dozen');
+        } else {
+            quickUnitPieceBtn.classList.add('active');
+            quickUnitDozenBtn.classList.remove('active', 'dozen');
+        }
+    }
+
+    function switchToDozen() {
+        if (!quickUnitSelect) return;
+        const pId = quickProductId ? parseInt(quickProductId.value, 10) : null;
+        const prod = productsData.find(p => p.id === pId);
+        const pkgFactor = prod ? (parseFloat(prod.package_factor || prod.pieces_per_package || 12.0) || 12.0) : 12.0;
+
+        let matched = false;
+        for (let i = 0; i < quickUnitSelect.options.length; i++) {
+            const opt = quickUnitSelect.options[i];
+            const optFactor = parseFloat(opt.dataset.factor || 1.0);
+            if (optFactor === pkgFactor || opt.text.includes('دست') || opt.dataset.name?.includes('دست')) {
+                quickUnitSelect.selectedIndex = i;
+                matched = true;
+                break;
+            }
+        }
+        if (!matched) {
+            for (let i = 0; i < quickUnitSelect.options.length; i++) {
+                if (parseFloat(quickUnitSelect.options[i].dataset.factor || 1.0) > 1.0) {
+                    quickUnitSelect.selectedIndex = i;
+                    break;
+                }
+            }
+        }
+        updateQuickPrice();
+        if (quickQtyInput) {
+            quickQtyInput.focus();
+            quickQtyInput.select();
+        }
+    }
+
+    function switchToPiece() {
+        if (!quickUnitSelect) return;
+        for (let i = 0; i < quickUnitSelect.options.length; i++) {
+            const opt = quickUnitSelect.options[i];
+            const optFactor = parseFloat(opt.dataset.factor || 1.0);
+            if (optFactor === 1.0 || opt.text.includes('قطع') || opt.dataset.name?.includes('قطع')) {
+                quickUnitSelect.selectedIndex = i;
+                break;
+            }
+        }
+        updateQuickPrice();
+        if (quickQtyInput) {
+            quickQtyInput.focus();
+            quickQtyInput.select();
+        }
+    }
+
+    if (quickUnitDozenBtn) {
+        quickUnitDozenBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            switchToDozen();
+        });
+    }
+
+    if (quickUnitPieceBtn) {
+        quickUnitPieceBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            switchToPiece();
+        });
     }
 
     // Customer Change Handler: Auto-sets price tier
@@ -429,6 +508,11 @@ function initSalesPOS(posPage = null) {
         if (quickProductId) quickProductId.value = product.id;
         if (quickProductInput) quickProductInput.value = `${product.name} (${product.sku})`;
 
+        const pkgFactor = parseInt(product.package_factor || product.pieces_per_package || 12, 10);
+        if (quickUnitDozenLabel) {
+            quickUnitDozenLabel.textContent = `دستة (* ${pkgFactor})`;
+        }
+
         // 1. Select matching unit
         if (quickUnitSelect) {
             const productUnitName = (product.unit || 'قطعة').trim();
@@ -456,16 +540,19 @@ function initSalesPOS(posPage = null) {
             quickSearchResults.innerHTML = '';
         }
 
-        // If Fast-Scan Mode is enabled: IMMEDIATELY ADD/INCREMENT TO TABLE!
+        // If Fast-Scan Mode is explicitly enabled: IMMEDIATELY ADD/INCREMENT TO TABLE!
         if (autoCommitIfFast && fastScanToggle && fastScanToggle.checked) {
             commitQuickAdd();
             return;
         }
 
-        // Otherwise follow POS keyboard flow:
+        // Otherwise follow POS keyboard flow: focus Quantity & select for instant editing
+        lastProductSelectTime = Date.now();
         if (quickQtyInput) {
-            quickQtyInput.focus();
-            quickQtyInput.select();
+            setTimeout(() => {
+                quickQtyInput.focus();
+                quickQtyInput.select();
+            }, 40);
         }
     }
 
@@ -514,13 +601,15 @@ function initSalesPOS(posPage = null) {
             if (e.key === 'Enter') {
                 e.preventDefault(); // Stop main form submission!
 
+                const shouldAutoCommit = !!(fastScanToggle && fastScanToggle.checked);
+
                 // 1. If an item in dropdown is actively selected with arrow keys
                 const items = quickSearchResults.querySelectorAll('.suggestion-item');
                 if (items.length > 0 && activeSuggestionIndex >= 0 && items[activeSuggestionIndex]) {
                     const pId = parseInt(items[activeSuggestionIndex].dataset.id, 10);
                     const found = productsData.find(item => item.id === pId);
                     if (found) {
-                        selectProduct(found, true);
+                        selectProduct(found, shouldAutoCommit);
                         return;
                     }
                 }
@@ -529,11 +618,11 @@ function initSalesPOS(posPage = null) {
                 const term = quickProductInput.value.trim();
                 const matched = findProductByTerm(term, mode);
                 if (matched) {
-                    selectProduct(matched, true);
+                    selectProduct(matched, shouldAutoCommit);
                 } else if (items.length > 0) {
                     const firstId = parseInt(items[0].dataset.id, 10);
                     const found = productsData.find(item => item.id === firstId);
-                    if (found) selectProduct(found, true);
+                    if (found) selectProduct(found, shouldAutoCommit);
                 } else {
                     alert('لم يتم العثور على صنف مطابق لهذا الباركود أو الكود.');
                     quickProductInput.select();
@@ -567,6 +656,9 @@ function initSalesPOS(posPage = null) {
                     quickQtyInput.select();
                 }
             } else if (e.key === 'Enter') {
+                if (Date.now() - lastProductSelectTime < 250) {
+                    return; // Ignore scanner trailing Enter
+                }
                 e.preventDefault();
                 commitQuickAdd();
             }
@@ -576,6 +668,19 @@ function initSalesPOS(posPage = null) {
     // Keyboard Flow: Quantity -> Tab -> (Price if editable, else Discount)
     if (quickQtyInput) {
         quickQtyInput.addEventListener('keydown', (e) => {
+            // Direct shortcut from quantity field: '*' or 'د' or 'd' switches unit to dozen (دستة)
+            if (e.key === '*' || e.key === 'd' || e.key === 'D' || e.key === 'د') {
+                e.preventDefault();
+                switchToDozen();
+                return;
+            }
+            // Direct shortcut from quantity field: '/' or 'ق' or 'p' switches unit to piece (قطعة)
+            if (e.key === '/' || e.key === 'p' || e.key === 'P' || e.key === 'ق') {
+                e.preventDefault();
+                switchToPiece();
+                return;
+            }
+
             if (e.key === 'Tab' && !e.shiftKey) {
                 e.preventDefault();
                 if (canEditPrice && quickPriceInput) {
@@ -585,7 +690,15 @@ function initSalesPOS(posPage = null) {
                     quickLineDiscountInput.focus();
                     quickLineDiscountInput.select();
                 }
+            } else if (e.key === 'Tab' && e.shiftKey) {
+                e.preventDefault();
+                if (quickUnitSelect) {
+                    quickUnitSelect.focus();
+                }
             } else if (e.key === 'Enter') {
+                if (Date.now() - lastProductSelectTime < 250) {
+                    return; // Ignore scanner trailing Enter
+                }
                 e.preventDefault();
                 commitQuickAdd();
             }
@@ -784,6 +897,9 @@ function initSalesPOS(posPage = null) {
                     ${unitOptionsHtml}
                 </select>
                 <input type="hidden" name="items[${rowIdx}][conversion_factor]" value="${data.conversionFactor}" class="row-conversion-factor">
+                <div class="row-factor-badge text-[11px] text-[var(--primary)] font-bold font-numeric mt-1 ${data.conversionFactor > 1 ? '' : 'hidden'}">
+                    (×${data.conversionFactor} قطعة)
+                </div>
             </td>
             <td>
                 <div class="pos-qty-stepper mx-auto">
@@ -866,11 +982,21 @@ function initSalesPOS(posPage = null) {
         if (priceInput) priceInput.addEventListener('input', updateRowSubtotal);
         if (discountInput) discountInput.addEventListener('input', updateRowSubtotal);
 
+        const factorBadge = row.querySelector('.row-factor-badge');
         if (unitSelect && factorHidden) {
             unitSelect.addEventListener('change', () => {
                 const opt = unitSelect.options[unitSelect.selectedIndex];
                 const newFactor = parseFloat(opt?.dataset.factor || 1.0) || 1.0;
                 factorHidden.value = newFactor;
+
+                if (factorBadge) {
+                    if (newFactor > 1.0) {
+                        factorBadge.textContent = `(×${newFactor} قطعة)`;
+                        factorBadge.classList.remove('hidden');
+                    } else {
+                        factorBadge.classList.add('hidden');
+                    }
+                }
 
                 const rowPid = parseInt(row.getAttribute('data-product-id') || row.querySelector('.row-product-id')?.value, 10);
                 const prod = productsData.find(p => p.id === rowPid);
@@ -1106,6 +1232,19 @@ function initSalesPOS(posPage = null) {
             const currentBal = parseFloat(customer.current_balance) || 0;
             const creditLim = parseFloat(customer.credit_limit) || 0;
 
+            if (customerBalanceHint) {
+                if (currentBal < 0) {
+                    customerBalanceHint.textContent = `· دائن له: ${Math.abs(currentBal).toFixed(2)} ج.م`;
+                    customerBalanceHint.className = 'text-[10px] font-bold text-emerald-600 dark:text-emerald-400';
+                } else if (currentBal > 0) {
+                    customerBalanceHint.textContent = `· مدين عليه: ${currentBal.toFixed(2)} ج.م`;
+                    customerBalanceHint.className = 'text-[10px] font-bold text-rose-600 dark:text-rose-400';
+                } else {
+                    customerBalanceHint.textContent = '· متزن (0.00)';
+                    customerBalanceHint.className = 'text-[10px] font-normal text-[var(--text-muted)]';
+                }
+            }
+
             if (customerCreditStatusBadge) {
                 customerCreditStatusBadge.classList.remove('hidden');
                 if (creditLim > 0) {
@@ -1117,8 +1256,36 @@ function initSalesPOS(posPage = null) {
                         customerCreditStatusBadge.className = 'text-xs px-2.5 py-1 rounded font-semibold border bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900';
                     }
                 } else {
-                    customerCreditStatusBadge.textContent = currentBal > 0 ? `الرصيد السابق: ${currentBal.toFixed(2)} ج.م (مستحق)` : `رصيد العميل: ${currentBal.toFixed(2)} ج.م`;
-                    customerCreditStatusBadge.className = 'text-xs px-2.5 py-1 rounded font-semibold border bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-900 dark:text-slate-300 dark:border-slate-800';
+                    if (currentBal > 0) {
+                        customerCreditStatusBadge.textContent = `الرصيد السابق: ${currentBal.toFixed(2)} ج.م (مدين عليه)`;
+                        customerCreditStatusBadge.className = 'text-xs px-2.5 py-1 rounded font-semibold border bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900';
+                    } else if (currentBal < 0) {
+                        customerCreditStatusBadge.textContent = `رصيد دائن لصالح العميل: ${Math.abs(currentBal).toFixed(2)} ج.م (له)`;
+                        customerCreditStatusBadge.className = 'text-xs px-2.5 py-1 rounded font-semibold border bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900';
+                    } else {
+                        customerCreditStatusBadge.textContent = 'رصيد العميل: 0.00 ج.م (متزن)';
+                        customerCreditStatusBadge.className = 'text-xs px-2.5 py-1 rounded font-semibold border bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-900 dark:text-slate-300 dark:border-slate-800';
+                    }
+                }
+            }
+
+            if (posRemainingHint && customer.name !== 'عميل نقدي') {
+                const finalBal = currentBal + remainingDebt;
+                let balanceNote = '';
+                if (finalBal > 0) {
+                    balanceNote = ` · الرصيد بعد الفاتورة: ${finalBal.toFixed(2)} ج.م (عليه)`;
+                } else if (finalBal < 0) {
+                    balanceNote = ` · الرصيد بعد الفاتورة: ${Math.abs(finalBal).toFixed(2)} ج.م (له)`;
+                } else {
+                    balanceNote = ` · الرصيد بعد الفاتورة: متزن (0.00)`;
+                }
+
+                if (paymentType === 'cash') {
+                    posRemainingHint.textContent = `كامل الفاتورة مسدد نقداً${balanceNote}`;
+                } else if (paymentType === 'credit') {
+                    posRemainingHint.textContent = `متبقي الفاتورة: ${remainingDebt.toFixed(2)} ج.م آجل${balanceNote}`;
+                } else {
+                    posRemainingHint.textContent = `متبقي الفاتورة: ${remainingDebt.toFixed(2)} ج.م${balanceNote}`;
                 }
             }
 
@@ -1141,6 +1308,7 @@ function initSalesPOS(posPage = null) {
                 }
             }
         } else {
+            if (customerBalanceHint) customerBalanceHint.textContent = '';
             if (customerCreditStatusBadge) customerCreditStatusBadge.classList.add('hidden');
             if (creditLimitAlertBox) creditLimitAlertBox.classList.add('hidden');
         }
@@ -1212,6 +1380,19 @@ function initSalesPOS(posPage = null) {
             if (quickProductInput) {
                 quickProductInput.focus();
                 quickProductInput.select();
+            }
+            return;
+        }
+
+        // F4: Quick toggle Piece / Dozen
+        if (e.key === 'F4') {
+            e.preventDefault();
+            const opt = quickUnitSelect ? quickUnitSelect.options[quickUnitSelect.selectedIndex] : null;
+            const currentFactor = parseFloat(opt?.dataset.factor || 1.0) || 1.0;
+            if (currentFactor > 1.0) {
+                switchToPiece();
+            } else {
+                switchToDozen();
             }
             return;
         }
@@ -1378,7 +1559,7 @@ function initSalesPOS(posPage = null) {
                     previousCustomerValue = newCust.id;
 
                     if (customerTierHint) {
-                        const label = newCust.pricing_tier === 'wholesale' ? 'جملة' : 'تجزئة';
+                        const label = newCust.pricing_tier === 'wholesale' ? 'جملة' : (newCust.pricing_tier === 'distributor' ? 'موزع' : 'تجزئة');
                         customerTierHint.textContent = `فئة: ${label}`;
                     }
                     if (priceTierSelect && newCust.pricing_tier) {

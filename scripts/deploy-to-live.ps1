@@ -44,6 +44,13 @@ foreach ($folder in $syncFolders) {
     }
 }
 
+# Sync vendor packages to ensure newly installed composer dependencies are present in Live
+$srcVendor = Join-Path $devDir "vendor"
+$dstVendor = Join-Path $liveDir "vendor"
+if (Test-Path $srcVendor) {
+    robocopy $srcVendor $dstVendor /E /XD .git | Out-Null
+}
+
 # Sync root project files (excluding .env, storage, etc.)
 $rootFiles = @("composer.json", "composer.lock", "package.json", "package-lock.json", "vite.config.js", "artisan")
 foreach ($file in $rootFiles) {

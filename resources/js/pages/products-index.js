@@ -376,6 +376,43 @@ export function initProductsIndex() {
             window.location.href = url.toString();
         });
     }
+
+    // Category Multi-Select Filter Label Handling
+    const categoryDropdown = document.getElementById('productCategoryFilterDropdown');
+    const categoryFilterLabel = document.getElementById('productCategoryFilterLabel');
+    if (categoryDropdown && categoryFilterLabel) {
+        const categoryCheckboxes = categoryDropdown.querySelectorAll('.category-filter-cb');
+
+        function updateCategoryFilterLabel() {
+            const checked = Array.from(categoryCheckboxes).filter(cb => cb.checked);
+            if (checked.length === 0) {
+                categoryFilterLabel.textContent = 'كل التصنيفات';
+            } else if (checked.length === 1) {
+                const labelText = checked[0].closest('label')?.querySelector('span')?.textContent?.trim() || 'تصنيف محدد';
+                categoryFilterLabel.textContent = labelText;
+            } else {
+                categoryFilterLabel.textContent = `${checked.length} تصنيفات محددة`;
+            }
+        }
+
+        categoryCheckboxes.forEach(cb => {
+            cb.addEventListener('change', updateCategoryFilterLabel);
+        });
+
+        document.getElementById('selectAllCategoriesBtn')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            categoryCheckboxes.forEach(cb => { cb.checked = true; });
+            updateCategoryFilterLabel();
+        });
+
+        document.getElementById('clearAllCategoriesBtn')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            categoryCheckboxes.forEach(cb => { cb.checked = false; });
+            updateCategoryFilterLabel();
+        });
+    }
 }
 
 export function showPrintToast(msg) {

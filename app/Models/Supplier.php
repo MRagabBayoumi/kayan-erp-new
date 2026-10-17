@@ -89,4 +89,9 @@ class Supplier extends Model
     {
         return $this->hasMany(PurchaseInvoice::class)->latest('invoice_date');
     }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(SupplierPayment::class)->latest('payment_date');
+    }
 }

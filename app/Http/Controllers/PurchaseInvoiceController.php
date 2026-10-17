@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\PurchaseInvoice;
 use App\Models\PurchaseInvoiceItem;
 use App\Models\Supplier;
+use App\Models\Treasury;
 use App\Models\Unit;
 use App\Models\Warehouse;
 use App\Services\InventoryService;
@@ -179,12 +180,12 @@ class PurchaseInvoiceController extends Controller
                 if (! empty($itemInput['conversion_factor']) && (float) $itemInput['conversion_factor'] > 0) {
                     $factor = (float) $itemInput['conversion_factor'];
                 } elseif ($unitId) {
-                    $unit = \App\Models\Unit::find($unitId);
+                    $unit = Unit::find($unitId);
                     if ($unit && (float) $unit->conversion_factor > 0) {
                         $factor = (float) $unit->conversion_factor;
                     }
                 } elseif (! empty($itemInput['unit_name'])) {
-                    $unit = \App\Models\Unit::where('name', trim($itemInput['unit_name']))->first();
+                    $unit = Unit::where('name', trim($itemInput['unit_name']))->first();
                     if ($unit) {
                         $unitId = $unit->id;
                         $factor = (float) $unit->conversion_factor > 0 ? (float) $unit->conversion_factor : 1.0000;
@@ -292,12 +293,14 @@ class PurchaseInvoiceController extends Controller
      */
     public function show(PurchaseInvoice $purchase): View
     {
-        $purchase->load(['supplier', 'warehouse', 'creator', 'items.product.category', 'batches']);
+        $purchase->load(['supplier', 'warehouse', 'creator', 'items.product.category', 'batches', 'payments.creator', 'payments.treasury']);
+        $treasuries = Treasury::where('is_active', true)->orderBy('name')->get();
 
         return view('purchases.show', [
             'title' => 'فاتورة شراء: '.$purchase->invoice_number,
             'moduleName' => 'المشتريات والموردين',
             'invoice' => $purchase,
+            'treasuries' => $treasuries,
         ]);
     }
 
@@ -479,7 +482,7 @@ class PurchaseInvoiceController extends Controller
     /**
      * Internal atomic posting helper with unit conversion and optional batch price overrides.
      *
-     * @param array<int, array{retail_price?: float, wholesale_price?: float, distributor_price?: float}> $customPrices
+     * @param  array<int, array{retail_price?: float, wholesale_price?: float, distributor_price?: float}>  $customPrices
      */
     private function executePosting(PurchaseInvoice $invoice, InventoryService $inventoryService, array $customPrices = []): void
     {

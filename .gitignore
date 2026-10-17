@@ -36,4 +36,5 @@ __pycache__/
 storage/orga_export/
 storage/*.png
 *.sql
+scripts/tunnel/cloudflared.exe
 

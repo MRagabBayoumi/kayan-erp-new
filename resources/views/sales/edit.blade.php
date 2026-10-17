@@ -101,9 +101,12 @@
                                 <x-icon name="user" size="13" class="text-[var(--primary)]" />
                                 <span>العميل</span>
                             </span>
-                            <span id="customerTierHint" class="text-[10px] text-[var(--text-muted)] font-normal">
-                                فئة: {{ $invoice->price_tier === 'wholesale' ? 'جملة' : ($invoice->price_tier === 'distributor' ? 'موزع' : 'تجزئة') }}
-                            </span>
+                            <div class="flex items-center gap-1.5">
+                                <span id="customerTierHint" class="text-[10px] text-[var(--text-muted)] font-normal">
+                                    فئة: {{ $invoice->price_tier === 'wholesale' ? 'جملة' : ($invoice->price_tier === 'distributor' ? 'موزع' : 'تجزئة') }}
+                                </span>
+                                <span id="customerBalanceHint" class="text-[10px] font-semibold"></span>
+                            </div>
                         </label>
                         <div class="flex items-center gap-1">
                             <select id="customerSelect" name="customer_id" class="erp-input w-full text-xs font-semibold @error('customer_id') erp-input-error @enderror" required>
@@ -202,10 +205,10 @@
 
                     <div class="flex items-center gap-2">
                         <!-- Fast-Scan Mode Toggle Pill -->
-                        <label for="fastScanToggle" id="fastScanBadge" class="pos-fast-scan-badge active" title="عند التفعيل: مسح الباركود يدرج الصنف فوراً أو يزيد كميته تلقائياً">
-                            <input type="checkbox" id="fastScanToggle" class="hidden" checked>
+                        <label for="fastScanToggle" id="fastScanBadge" class="pos-fast-scan-badge" title="عند التفعيل: مسح الباركود يدرج الصنف فوراً أو يزيد كميته تلقائياً">
+                            <input type="checkbox" id="fastScanToggle" class="hidden">
                             <x-icon name="barcode" size="14" />
-                            <span>المسح المباشر السريع (مفعل)</span>
+                            <span>المسح المباشر السريع (معطل)</span>
                         </label>
 
                         <div class="purchases-quick-entry-shortcuts hidden md:flex">
@@ -326,9 +329,22 @@
 
                         <!-- Unit of Measurement -->
                         <div class="erp-form-group mb-0">
-                            <label for="quickUnitSelect" class="erp-form-label text-xs font-semibold">
-                                وحدة القياس
-                            </label>
+                            <div class="flex items-center justify-between mb-1">
+                                <label for="quickUnitSelect" class="erp-form-label text-xs font-semibold mb-0">
+                                    وحدة القياس
+                                </label>
+                                <!-- Fast Unit Switcher Pills (Piece / Dozen) -->
+                                <div class="pos-unit-switcher" id="posQuickUnitSwitcher">
+                                    <button type="button" id="quickUnitPieceBtn" class="pos-unit-pill active" data-unit="piece" title="بيع بالقطعة الفردية (اختصار: P أو ق)">
+                                        <x-icon name="disc" size="11" />
+                                        <span>قطعة (×1)</span>
+                                    </button>
+                                    <button type="button" id="quickUnitDozenBtn" class="pos-unit-pill" data-unit="dozen" title="بيع بالدستة أو العبوة كاملة (اختصار: * أو D أو د)">
+                                        <x-icon name="layers" size="11" />
+                                        <span id="quickUnitDozenLabel">دستة (* 12)</span>
+                                    </button>
+                                </div>
+                            </div>
                             <select id="quickUnitSelect" class="erp-input text-xs">
                                 @forelse($units as $u)
                                     <option value="{{ $u->id }}" data-name="{{ $u->name }}" data-factor="{{ $u->conversion_factor }}" {{ $u->is_default ? 'selected' : '' }}>
@@ -481,6 +497,9 @@
                                                     @endforeach
                                                 </select>
                                                 <input type="hidden" name="items[{{ $idx }}][conversion_factor]" value="{{ $factor }}" class="row-conversion-factor">
+                                                <div class="row-factor-badge text-[11px] text-[var(--primary)] font-bold font-numeric mt-1 {{ $factor > 1 ? '' : 'hidden' }}">
+                                                    (×{{ (float)$factor }} قطعة)
+                                                </div>
                                             </td>
                                             <td>
                                                 <div class="pos-qty-stepper mx-auto">

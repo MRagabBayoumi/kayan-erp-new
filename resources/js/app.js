@@ -19,6 +19,7 @@ import { initPurchases } from './pages/purchases.js';
 import { initSales } from './pages/sales.js';
 import { initShifts } from './pages/shifts.js';
 import { initPrintTemplatesPage } from './pages/print-templates.js';
+import { initPortalPage } from './pages/portal.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     initThemeAndDensity();
@@ -44,6 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initShifts();
     initPrintTemplatesPage();
     initDirectPythonPrint();
+    initPortalPage();
 });
 
 /**
@@ -294,8 +296,12 @@ function initDropdowns() {
     });
 
     // Close dropdowns on outside click
-    document.addEventListener('click', () => {
+    document.addEventListener('click', (e) => {
         document.querySelectorAll('.erp-dropdown-menu.open').forEach(menu => {
+            // Keep menu open when interacting with its contents (e.g. checkboxes, labels, inputs)
+            if (menu.contains(e.target) && !e.target.closest('.erp-dropdown-item:not(.keep-open)')) {
+                return;
+            }
             menu.classList.remove('open');
         });
     });

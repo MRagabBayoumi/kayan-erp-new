@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\BatchCostMovement;
+use App\Models\CashierShift;
+use App\Models\Customer;
 use App\Models\InventoryBatch;
 use App\Models\Product;
 use App\Models\SalesInvoice;
@@ -772,6 +774,9 @@ class InventoryService
                 }
             }
 
+            // Cancel sales rep commission
+            app(CommissionService::class)->cancelInvoiceCommission($invoice);
+
             // Mark invoice as VOIDED
             $invoice->update([
                 'status' => SalesInvoice::STATUS_VOIDED,
@@ -887,6 +892,9 @@ class InventoryService
                     $customer->decrement('current_balance', (float) $invoice->remaining_amount);
                 }
             }
+
+            // 6.2 Cancel sales rep commission
+            app(CommissionService::class)->cancelInvoiceCommission($invoice);
 
             // 7. Mark invoice as DRAFT
             $invoice->update([

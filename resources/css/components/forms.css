@@ -55,6 +55,12 @@
     transition: all 0.15s ease;
 }
 
+/* Inputs with search icon and camera button */
+.erp-search-input {
+    padding-right: 42px !important;
+    padding-left: 38px !important;
+}
+
 .erp-textarea {
     height: auto;
     min-height: 80px;

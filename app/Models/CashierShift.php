@@ -100,6 +100,16 @@ class CashierShift extends Model
         return $q->latest('id')->first();
     }
 
+    public static function getActiveShiftForUser(?int $userId = null): ?self
+    {
+        $uid = $userId ?: auth()->id();
+        if (! $uid) {
+            return null;
+        }
+
+        return static::getActiveShift($uid);
+    }
+
     public static function generateShiftNumber(): string
     {
         $todayStr = now()->format('Ymd');
@@ -169,6 +179,24 @@ class CashierShift extends Model
         ]);
     }
 
+    public function recordCustomerPayment(CustomerPayment $payment): void
+    {
+        if ($payment->payment_method === CustomerPayment::METHOD_CASH) {
+            $this->cash_sales_amount = round((float) $this->cash_sales_amount + (float) $payment->amount, 2);
+            $this->recalculateAndSave();
+
+            $this->cashMovements()->create([
+                'user_id' => $payment->created_by ?: auth()->id() ?: $this->user_id,
+                'movement_type' => CashierCashMovement::TYPE_SALE,
+                'amount' => $payment->amount,
+                'reference_id' => $payment->id,
+                'reference_type' => CustomerPayment::class,
+                'notes' => "تحصيل دفعة عميل رقم {$payment->payment_number}".($payment->salesInvoice ? " (فاتورة #{$payment->salesInvoice->invoice_number})" : ''),
+                'created_at' => now(),
+            ]);
+        }
+    }
+
     public function recordCashReturn(float $amount, ?int $returnId = null): void
     {
         $this->cash_returns_amount = round((float) $this->cash_returns_amount + $amount, 2);
@@ -183,6 +211,28 @@ class CashierShift extends Model
             'notes' => "صرف مرتجع نقدي #{$returnId}",
             'created_at' => now(),
         ]);
+    }
+
+    public function recordExpense(Expense $expense): void
+    {
+        $this->recordCashMovement(
+            CashierCashMovement::TYPE_CASH_OUT,
+            (float) $expense->amount,
+            "صرف مصروف: {$expense->category?->name} ({$expense->expense_number})",
+            $expense->id,
+            Expense::class
+        );
+    }
+
+    public function recordSupplierPayment(SupplierPayment $payment): void
+    {
+        $this->recordCashMovement(
+            CashierCashMovement::TYPE_CASH_OUT,
+            (float) $payment->amount,
+            "سند صرف مورد: {$payment->supplier?->name} ({$payment->payment_number})",
+            $payment->id,
+            SupplierPayment::class
+        );
     }
 
     public function closeShift(float $actualBalance, ?string $notes = null, ?int $closedById = null): void

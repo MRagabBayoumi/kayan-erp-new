@@ -2,6 +2,10 @@
      data-initial-template="{{ json_encode($currentTemplate) }}" 
      data-initial-sample="{{ json_encode($sampleData) }}">
 
+    <script type="application/json" id="printTemplateInitialData">
+        {!! json_encode(['template' => $currentTemplate, 'sample' => $sampleData], JSON_UNESCAPED_UNICODE) !!}
+    </script>
+
     @php
         $activeLogo = $currentTemplate->getSetting('general.custom_logo') ?: ($sampleData['company']['logo_url'] ?? null);
     @endphp

@@ -40,6 +40,13 @@
                 @endcan
             @endif
 
+            @if($invoice->status === 'posted' && (float)$invoice->remaining_amount > 0)
+                <button type="button" class="erp-btn erp-btn-success" data-action="open-payment-modal" title="تسجيل دفعة سداد أو قسط لهذه الفاتورة">
+                    <x-icon name="dollar-sign" size="16" />
+                    <span>تسجيل دفعة سداد</span>
+                </button>
+            @endif
+
             <!-- Compact Print Selection Menu -->
             <div class="erp-dropdown">
                 <button type="button" class="erp-btn erp-btn-secondary" data-dropdown-toggle="salesPrintMenu" title="خيارات ونماذج الطباعة">
@@ -78,9 +85,16 @@
         </x-slot:actions>
 
         <x-slot:extra>
-            <span class="erp-badge {{ $invoice->status_badge_class }} py-1 px-2.5 text-xs font-semibold">
-                {{ $invoice->status_label }}
-            </span>
+            <div class="flex items-center gap-2">
+                <span class="erp-badge {{ $invoice->status_badge_class }} py-1 px-2.5 text-xs font-semibold">
+                    {{ $invoice->status_label }}
+                </span>
+                @if($invoice->status === 'posted')
+                    <span class="erp-badge {{ $invoice->payment_status_badge_class }} py-1 px-2.5 text-xs font-semibold">
+                        {{ $invoice->payment_status_label }}
+                    </span>
+                @endif
+            </div>
         </x-slot:extra>
     </x-control-panel>
 @endsection
@@ -339,6 +353,106 @@
             </div>
         </div>
 
+        <!-- Payments & Installments History Card -->
+        <div class="erp-card">
+            <div class="erp-card-header flex items-center justify-between">
+                <div class="erp-card-title flex items-center gap-2">
+                    <x-icon name="dollar-sign" size="18" class="text-emerald-600" />
+                    <span>سجل دفعات وأقساط الفاتورة (سندات القبض المالية)</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="erp-badge font-numeric {{ $invoice->payment_status_badge_class }} text-xs">
+                        {{ $invoice->payment_status_label }}
+                    </span>
+                    @if($invoice->status === 'posted' && (float)$invoice->remaining_amount > 0)
+                        <button type="button" class="erp-btn erp-btn-sm erp-btn-success" data-action="open-payment-modal">
+                            <x-icon name="plus" size="14" />
+                            <span>إضافة دفعة سداد</span>
+                        </button>
+                    @endif
+                </div>
+            </div>
+
+            <div class="erp-card-body p-0">
+                @if($invoice->payments->count() > 0)
+                    <div class="erp-table-responsive">
+                        <table class="erp-table text-xs">
+                            <thead>
+                                <tr>
+                                    <th class="w-12 text-center">#</th>
+                                    <th>رقم سند القبض</th>
+                                    <th>تاريخ السداد</th>
+                                    <th>طريقة الدفع</th>
+                                    <th>مرجع / شيك</th>
+                                    <th class="text-left">المبلغ المسدد</th>
+                                    <th>المحصل</th>
+                                    <th>ملاحظات</th>
+                                    <th class="text-center w-28">الإجراءات</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($invoice->payments as $index => $pay)
+                                    <tr>
+                                        <td class="text-center font-numeric text-[var(--text-muted)]">{{ $index + 1 }}</td>
+                                        <td class="font-numeric font-bold text-[var(--primary)]">{{ $pay->payment_number }}</td>
+                                        <td class="font-numeric">{{ $pay->payment_date ? $pay->payment_date->format('Y-m-d') : '—' }}</td>
+                                        <td>
+                                            <span class="erp-badge {{ $pay->payment_method_badge_class }} text-[11px]">
+                                                {{ $pay->payment_method_label }}
+                                            </span>
+                                        </td>
+                                        <td class="font-mono text-xs">{{ $pay->reference_number ?: '—' }}</td>
+                                        <td class="text-left font-numeric font-bold text-emerald-600 text-sm">
+                                            {{ number_format((float)$pay->amount, 2) }} ج.م
+                                        </td>
+                                        <td>{{ $pay->creator->name ?? '—' }}</td>
+                                        <td class="text-[var(--text-muted)]">{{ $pay->notes ?: '—' }}</td>
+                                        <td class="text-center">
+                                            <div class="inline-flex items-center gap-1.5">
+                                                <a href="{{ route('sales.payments.receipt', $pay) }}" target="_blank" class="erp-btn erp-btn-ghost erp-btn-sm" title="طباعة سند القبض">
+                                                    <x-icon name="printer" size="14" />
+                                                    <span>طباعة</span>
+                                                </a>
+                                                @if(auth()->user()?->isAdmin())
+                                                    <form action="{{ route('sales.payments.destroy', $pay) }}" method="POST" class="inline" data-confirm="هل أنت متأكد من إلغاء وحذف سند القبض رقم {{ $pay->payment_number }}؟ سيتم استرجاع الرصيد إلى الفاتورة وحساب العميل آلياً.">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit" class="erp-btn erp-btn-ghost erp-btn-sm text-[var(--danger)]" title="إلغاء سند القبض">
+                                                            <x-icon name="trash" size="14" />
+                                                        </button>
+                                                    </form>
+                                                @endif
+                                            </div>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @else
+                    <div class="p-6 text-center text-xs">
+                        @if((float)$invoice->remaining_amount <= 0.001)
+                            <div class="text-emerald-600 font-bold flex items-center justify-center gap-1.5">
+                                <x-icon name="check-circle" size="16" />
+                                <span>تم سداد هذه الفاتورة بالكامل عند الشراء. لا توجد دفعات متبقية.</span>
+                            </div>
+                        @else
+                            <p class="text-[var(--text-muted)] mb-3">
+                                لم يتم تسجيل أي دفعات سداد إضافية على هذه الفاتورة حتى الآن. المتبقي الآجل حالياً:
+                                <strong class="text-rose-600 font-numeric font-bold text-sm">{{ number_format((float)$invoice->remaining_amount, 2) }} ج.م</strong>
+                            </p>
+                            @if($invoice->status === 'posted')
+                                <button type="button" class="erp-btn erp-btn-sm erp-btn-success" data-action="open-payment-modal">
+                                    <x-icon name="plus" size="14" />
+                                    <span>تسجيل دفعة الآن</span>
+                                </button>
+                            @endif
+                        @endif
+                    </div>
+                @endif
+            </div>
+        </div>
+
         <!-- Invoice Totals & Summary Card -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <!-- Notes Card -->
@@ -393,19 +507,78 @@
                                 <td class="text-left font-numeric text-[var(--primary)] text-base">{{ number_format((float)$invoice->total_amount, 2) }} ج.م</td>
                             </tr>
                             <tr>
-                                <td class="text-[var(--text-muted)] font-semibold">طريقة السداد:</td>
+                                <td class="text-[var(--text-muted)] font-semibold">طريقة السداد الأساسية:</td>
                                 <td class="text-left">
                                     <span class="erp-badge {{ $invoice->payment_type_badge_class }} text-xs">{{ $invoice->payment_type_label }}</span>
                                 </td>
                             </tr>
                             <tr>
-                                <td class="text-emerald-700 font-semibold">المدفوع نقداً بالدرج:</td>
-                                <td class="text-left font-numeric font-bold text-emerald-600">{{ number_format((float)($invoice->paid_amount ?? 0), 2) }} ج.م</td>
+                                <td class="text-[var(--text-muted)] font-semibold">حالة السداد الحالية:</td>
+                                <td class="text-left">
+                                    <span class="erp-badge {{ $invoice->payment_status_badge_class }} text-xs">{{ $invoice->payment_status_label }}</span>
+                                </td>
+                            </tr>
+                            @php
+                                $subsequentPaymentsSum = (float) $invoice->payments->sum('amount');
+                                $initialPaid = max(0.00, (float) $invoice->paid_amount - $subsequentPaymentsSum);
+                            @endphp
+                            @if($subsequentPaymentsSum > 0)
+                            <tr>
+                                <td class="text-[var(--text-muted)]">المسدد عند إنشاء الفاتورة:</td>
+                                <td class="text-left font-numeric text-xs">{{ number_format($initialPaid, 2) }} ج.م</td>
                             </tr>
                             <tr>
-                                <td class="text-rose-700 font-semibold">المتبقي الآجل (حساب العميل):</td>
-                                <td class="text-left font-numeric font-bold text-rose-600">{{ number_format((float)($invoice->remaining_amount ?? 0), 2) }} ج.م</td>
+                                <td class="text-emerald-700 font-semibold">إجمالي الدفعات اللاحقة المسددة:</td>
+                                <td class="text-left font-numeric font-bold text-emerald-600">+ {{ number_format($subsequentPaymentsSum, 2) }} ج.م</td>
                             </tr>
+                            @endif
+                            <tr>
+                                <td class="text-emerald-700 font-bold">إجمالي ما تم سداده:</td>
+                                <td class="text-left font-numeric font-bold text-emerald-600 text-sm">{{ number_format((float)($invoice->paid_amount ?? 0), 2) }} ج.م</td>
+                            </tr>
+                            <tr>
+                                <td class="text-rose-700 font-bold">المتبقي الآجل حالياً:</td>
+                                <td class="text-left font-numeric font-black text-rose-600 text-base">
+                                    @if((float)$invoice->remaining_amount <= 0.001)
+                                        <span class="text-emerald-600">0.00 ج.م (خالص)</span>
+                                    @else
+                                        {{ number_format((float)$invoice->remaining_amount, 2) }} ج.م
+                                    @endif
+                                </td>
+                            </tr>
+                            @if($invoice->customer && $invoice->customer->name !== 'عميل نقدي')
+                                @php
+                                    $isPosted = $invoice->status === 'posted';
+                                    $custCurrentBal = (float) $invoice->customer->current_balance;
+                                    $remAmount = (float) ($invoice->remaining_amount ?? 0);
+                                    $custPrevBal = $isPosted ? round($custCurrentBal - $remAmount, 2) : round($custCurrentBal, 2);
+                                    $custFinalBal = $isPosted ? round($custCurrentBal, 2) : round($custCurrentBal + $remAmount, 2);
+                                @endphp
+                                <tr>
+                                    <td class="text-[var(--text-muted)] font-semibold">الرصيد السابق للعميل (قبل الفاتورة):</td>
+                                    <td class="text-left font-numeric font-bold">
+                                        @if($custPrevBal > 0)
+                                            <span class="text-rose-600">{{ number_format($custPrevBal, 2) }} ج.م (مدين عليه)</span>
+                                        @elseif($custPrevBal < 0)
+                                            <span class="text-emerald-600">{{ number_format(abs($custPrevBal), 2) }} ج.م (رصيد دائن له)</span>
+                                        @else
+                                            <span class="text-[var(--text-muted)]">0.00 ج.م (متزن)</span>
+                                        @endif
+                                    </td>
+                                </tr>
+                                <tr class="bg-[var(--surface-muted)]">
+                                    <td class="text-[var(--text-main)] font-bold">إجمالي حساب العميل بعد الفاتورة:</td>
+                                    <td class="text-left font-numeric font-black">
+                                        @if($custFinalBal > 0)
+                                            <span class="text-rose-600">{{ number_format($custFinalBal, 2) }} ج.م (مستحق عليه)</span>
+                                        @elseif($custFinalBal < 0)
+                                            <span class="text-emerald-600">{{ number_format(abs($custFinalBal), 2) }} ج.م (رصيد دائن له)</span>
+                                        @else
+                                            <span class="text-[var(--text-muted)]">0.00 ج.م (متزن)</span>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endif
                             @if($invoice->due_date)
                             <tr>
                                 <td class="text-amber-700 font-semibold">تاريخ الاستحقاق:</td>
@@ -428,4 +601,159 @@
             </div>
         </div>
     </div>
+
+    @if($invoice->status === 'posted' && (float)$invoice->remaining_amount > 0)
+    <!-- Record Payment Modal -->
+    <div id="recordPaymentModal" class="erp-modal-overlay hidden" role="dialog" aria-modal="true">
+        <div class="erp-modal-container max-w-lg">
+            <form action="{{ route('sales.payments.store', $invoice) }}" method="POST" id="recordPaymentForm">
+                @csrf
+                <div class="erp-modal-header">
+                    <div class="erp-modal-title flex items-center gap-2">
+                        <x-icon name="dollar-sign" size="18" class="text-emerald-600" />
+                        <span>تسجيل دفعة سداد نقدية / سند قبض</span>
+                    </div>
+                    <button type="button" class="erp-modal-close" data-action="close-payment-modal" aria-label="إغلاق">✕</button>
+                </div>
+                <div class="erp-modal-body p-5 flex flex-col gap-4 text-xs">
+                    <div class="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg flex items-center justify-between">
+                        <div>
+                            <span class="text-[var(--text-muted)] block text-[11px]">العميل:</span>
+                            <strong class="text-sm text-[var(--text-main)]">{{ $invoice->customer->name }}</strong>
+                            <span class="text-[10px] text-[var(--text-muted)] block">فاتورة: #{{ $invoice->invoice_number }}</span>
+                        </div>
+                        <div class="text-left">
+                            <span class="text-[var(--text-muted)] block text-[11px]">المتبقي الآجل:</span>
+                            <strong class="font-numeric font-black text-base text-rose-600" id="modalRemainingAmount">{{ number_format((float)$invoice->remaining_amount, 2) }} ج.م</strong>
+                        </div>
+                    </div>
+
+                    <div class="erp-form-group">
+                        <div class="flex items-center justify-between mb-1">
+                            <label for="paymentAmount" class="erp-form-label font-bold mb-0">
+                                مبلغ الدفعة المسدد (ج.م) <span class="text-[var(--danger)]">*</span>
+                            </label>
+                            <button type="button" id="payFullRemainingBtn" class="text-xs text-[var(--primary)] font-semibold hover:underline">
+                                سداد كامل المتبقي ({{ number_format((float)$invoice->remaining_amount, 2) }})
+                            </button>
+                        </div>
+                        <input 
+                            type="number" 
+                            id="paymentAmount" 
+                            name="amount" 
+                            step="0.01" 
+                            min="0.01" 
+                            max="{{ (float)$invoice->remaining_amount }}" 
+                            value="{{ (float)$invoice->remaining_amount }}" 
+                            class="erp-input font-numeric font-bold text-base" 
+                            required
+                        >
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="erp-form-group">
+                            <label for="paymentDate" class="erp-form-label">
+                                تاريخ الدفعة <span class="text-[var(--danger)]">*</span>
+                            </label>
+                            <input 
+                                type="date" 
+                                id="paymentDate" 
+                                name="payment_date" 
+                                value="{{ date('Y-m-d') }}" 
+                                class="erp-input font-numeric" 
+                                required
+                            >
+                        </div>
+
+                        <div class="erp-form-group">
+                            <label for="paymentMethod" class="erp-form-label">
+                                طريقة السداد <span class="text-[var(--danger)]">*</span>
+                            </label>
+                            <select id="paymentMethod" name="payment_method" class="erp-input" required>
+                                <option value="cash" selected>نقدي (بالدرج / الخزينة)</option>
+                                <option value="bank_transfer">تحويل بنكي / فودافون كاش</option>
+                                <option value="cheque">شيك بنكي</option>
+                                <option value="card">شبكة / بطاقة دفع (POS)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="erp-form-group">
+                        <label for="paymentRef" class="erp-form-label">
+                            رقم المرجع / رقم الشيك (اختياري)
+                        </label>
+                        <input 
+                            type="text" 
+                            id="paymentRef" 
+                            name="reference_number" 
+                            class="erp-input" 
+                            placeholder="مثال: رقم التحويل البنكي أو رقم الشيك"
+                        >
+                    </div>
+
+                    <div class="erp-form-group">
+                        <label for="paymentNotes" class="erp-form-label">
+                            ملاحظات الدفعة
+                        </label>
+                        <textarea 
+                            id="paymentNotes" 
+                            name="notes" 
+                            rows="2" 
+                            class="erp-input" 
+                            placeholder="أي تفاصيل أو ملاحظات تخص هذا السند..."
+                        ></textarea>
+                    </div>
+                </div>
+                <div class="erp-modal-footer p-4 flex justify-end gap-2 bg-[var(--surface-muted)] border-t border-[var(--border-color)]">
+                    <button type="button" class="erp-btn erp-btn-secondary" data-action="close-payment-modal">إلغاء</button>
+                    <button type="submit" class="erp-btn erp-btn-success">
+                        <x-icon name="check" size="16" />
+                        <span>تأكيد السداد وحفظ سند القبض</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const modal = document.getElementById('recordPaymentModal');
+            if (!modal) return;
+
+            const openBtns = document.querySelectorAll('[data-action="open-payment-modal"]');
+            const closeBtns = modal.querySelectorAll('[data-action="close-payment-modal"]');
+            const payFullBtn = document.getElementById('payFullRemainingBtn');
+            const amountInput = document.getElementById('paymentAmount');
+            const fullRemaining = {{ (float)$invoice->remaining_amount }};
+
+            openBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    modal.classList.remove('hidden');
+                    modal.classList.add('open');
+                    if (amountInput) setTimeout(() => amountInput.focus(), 100);
+                });
+            });
+
+            closeBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('open');
+                });
+            });
+
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('open');
+                }
+            });
+
+            if (payFullBtn && amountInput) {
+                payFullBtn.addEventListener('click', () => {
+                    amountInput.value = fullRemaining.toFixed(2);
+                });
+            }
+        });
+    </script>
+    @endif
 @endsection

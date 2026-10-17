@@ -44,6 +44,13 @@
                 </a>
             </div>
 
+            @if($invoice->status === 'posted' && (float)$invoice->remaining_amount > 0)
+                <button type="button" onclick="document.getElementById('recordSupplierPaymentModal').classList.remove('hidden')" class="erp-btn erp-btn-success">
+                    <x-icon name="credit-card" size="16" />
+                    <span>تسجيل دفعة سداد للمورد</span>
+                </button>
+            @endif
+
             <a href="{{ route('purchases.index') }}" class="erp-btn erp-btn-ghost">
                 <x-icon name="arrow-left" size="16" />
                 <span>العودة للقائمة</span>
@@ -53,6 +60,9 @@
         <x-slot:extra>
             <span class="erp-badge {{ $invoice->status_badge_class }} py-1 px-2.5 text-xs font-semibold">
                 {{ $invoice->status_label }}
+            </span>
+            <span class="px-2.5 py-1 text-xs font-bold rounded-full border {{ $invoice->payment_status_badge_class }}">
+                {{ $invoice->payment_status_label }}
             </span>
         </x-slot:extra>
     </x-control-panel>
@@ -303,6 +313,169 @@
                     </table>
                 </div>
             </div>
+        <!-- Payments & Installments Section -->
+        @if($invoice->status === 'posted')
+            <div class="erp-card">
+                <div class="erp-card-header">
+                    <div class="erp-card-title">
+                        <x-icon name="receipt" size="18" />
+                        <span>سجل دفعات وأقساط الفاتورة للمورد (سندات الصرف)</span>
+                    </div>
+
+                    @if((float)$invoice->remaining_amount > 0)
+                        <button type="button" onclick="document.getElementById('recordSupplierPaymentModal').style.display='flex'" class="erp-btn erp-btn-success text-xs py-1 px-3">
+                            <x-icon name="plus-circle" size="14" />
+                            <span>تسجيل دفعة سداد (متبقي {{ number_format((float)$invoice->remaining_amount, 2) }} ج.م)</span>
+                        </button>
+                    @endif
+                </div>
+
+                @if($invoice->payments->isEmpty())
+                    <div class="text-center py-6 text-[var(--text-muted)] text-xs" style="padding: 24px;">
+                        لا توجد سندات صرف أو أقساط مسجلة على هذه الفاتورة بعد.
+                        @if((float)$invoice->paid_amount > 0)
+                            <div class="text-[11px] text-[var(--text-secondary)] mt-1">
+                                (تم سداد مبلغ {{ number_format((float)$invoice->paid_amount, 2) }} ج.م كدفعة أولى عند إنشاء الفاتورة)
+                            </div>
+                        @endif
+                    </div>
+                @else
+                    <div class="erp-table-responsive">
+                        <table class="erp-table">
+                            <thead>
+                                <tr>
+                                    <th>رقم السند</th>
+                                    <th>تاريخ الصرف</th>
+                                    <th>طريقة الصرف</th>
+                                    <th>الخزينة / المصدر</th>
+                                    <th>المبلغ المسدد</th>
+                                    <th>رقم المرجع / التحويل</th>
+                                    <th>الملاحظات</th>
+                                    <th>المسؤول</th>
+                                    <th style="text-align: center;">إجراءات</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($invoice->payments as $pay)
+                                    <tr class="erp-table-row">
+                                        <td class="font-mono font-medium text-[var(--text-main)]">{{ $pay->payment_number }}</td>
+                                        <td class="font-numeric text-[var(--text-secondary)]">{{ $pay->payment_date ? \Carbon\Carbon::parse($pay->payment_date)->format('Y-m-d') : '—' }}</td>
+                                        <td>
+                                            <span class="erp-badge {{ $pay->payment_method === 'cash' ? 'erp-badge-success' : 'erp-badge-info' }}">
+                                                {{ $pay->payment_method_label }}
+                                            </span>
+                                        </td>
+                                        <td class="text-[var(--text-secondary)]">{{ $pay->treasury?->name ?? 'درج الكاشير' }}</td>
+                                        <td class="font-bold font-numeric text-[var(--danger)]">
+                                            {{ number_format((float)$pay->amount, 2) }} ج.م
+                                        </td>
+                                        <td class="font-mono text-[var(--text-secondary)]">{{ $pay->reference_number ?: '—' }}</td>
+                                        <td class="text-[var(--text-secondary)] max-w-xs truncate" title="{{ $pay->notes }}">{{ $pay->notes ?: '—' }}</td>
+                                        <td class="text-[var(--text-muted)]">{{ $pay->creator?->name ?? 'النظام' }}</td>
+                                        <td style="text-align: center;">
+                                            <div style="display: inline-flex; align-items: center; gap: 6px;">
+                                                <a href="{{ route('supplier-payments.receipt', $pay) }}" target="_blank" class="erp-btn erp-btn-secondary text-xs py-1 px-2" title="طباعة سند الصرف">
+                                                    <x-icon name="printer" size="14" />
+                                                </a>
+                                                <form action="{{ route('supplier-payments.destroy', $pay) }}" method="POST" onsubmit="return confirm('هل تريد إلغاء سند الصرف واسترجاع المديونية؟');">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="erp-btn erp-btn-danger text-xs py-1 px-2" title="إلغاء واسترداد">
+                                                        <x-icon name="trash-2" size="14" />
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endif
+            </div>
         @endif
+    </div>
+
+    <!-- Modal: Record Supplier Payment -->
+    <div id="recordSupplierPaymentModal" class="erp-modal-overlay">
+        <div class="erp-modal-container">
+            <div class="erp-modal-header">
+                <h3 class="erp-modal-title">
+                    <x-icon name="credit-card" size="18" />
+                    <span>تسجيل دفعة سداد للمورد</span>
+                </h3>
+                <button type="button" class="erp-modal-close" onclick="document.getElementById('recordSupplierPaymentModal').style.display='none'">&times;</button>
+            </div>
+
+            <form action="{{ route('purchases.payments.store', $invoice) }}" method="POST">
+                @csrf
+                <div class="erp-modal-body">
+                    <div style="background: var(--bg-surface-alt); padding: 12px 14px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); margin-bottom: 14px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 12px;">
+                            <span style="color: var(--text-muted);">المورد:</span>
+                            <strong style="color: var(--text-main);">{{ $invoice->supplier?->name }}</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 12px; margin-top: 6px;">
+                            <span style="color: var(--text-muted);">المتبقي على الفاتورة:</span>
+                            <strong class="font-numeric" style="color: var(--danger); font-size: 14px;" id="supplierRemainingDisplay">
+                                {{ number_format((float)$invoice->remaining_amount, 2) }} ج.م
+                            </strong>
+                        </div>
+                    </div>
+
+                    <div class="erp-form-group">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                            <label class="erp-form-label" style="margin-bottom: 0;">المبلغ المسدد (ج.م) <span class="required">*</span></label>
+                            <button type="button" onclick="document.getElementById('supplierPaymentAmountInput').value = '{{ (float)$invoice->remaining_amount }}'" class="text-xs text-[var(--primary)] hover:underline font-bold">
+                                سداد كامل المتبقي
+                            </button>
+                        </div>
+                        <input type="number" step="0.01" min="0.01" max="{{ (float)$invoice->remaining_amount }}" name="amount" id="supplierPaymentAmountInput" required placeholder="0.00" class="erp-input font-numeric font-bold text-base text-[var(--danger)]">
+                    </div>
+
+                    <div class="erp-form-grid">
+                        <div class="erp-form-group">
+                            <label class="erp-form-label">تاريخ السداد <span class="required">*</span></label>
+                            <input type="date" name="payment_date" required value="{{ date('Y-m-d') }}" class="erp-input font-numeric">
+                        </div>
+                        <div class="erp-form-group">
+                            <label class="erp-form-label">طريقة الصرف <span class="required">*</span></label>
+                            <select name="payment_method" required class="erp-input">
+                                <option value="cash">نقداً</option>
+                                <option value="bank_transfer">تحويل بنكي</option>
+                                <option value="card">فيزا / بطاقة</option>
+                                <option value="cheque">شيك</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="erp-form-group">
+                        <label class="erp-form-label">الخزينة المسحوب منها</label>
+                        <select name="treasury_id" class="erp-input">
+                            <option value="">-- الخزينة الافتراضية --</option>
+                            @foreach($treasuries ?? [] as $tr)
+                                <option value="{{ $tr->id }}">{{ $tr->name }} (رصيد: {{ number_format((float)$tr->current_balance, 2) }} ج.م)</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="erp-form-grid">
+                        <div class="erp-form-group">
+                            <label class="erp-form-label">رقم المرجع / التحويل (إن وجد)</label>
+                            <input type="text" name="reference_number" placeholder="رقم الشيك أو الحوالة..." class="erp-input font-mono">
+                        </div>
+                        <div class="erp-form-group">
+                            <label class="erp-form-label">ملاحظات إضافية</label>
+                            <input type="text" name="notes" placeholder="ملاحظات..." class="erp-input">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="erp-modal-footer">
+                    <button type="button" onclick="document.getElementById('recordSupplierPaymentModal').style.display='none'" class="erp-btn erp-btn-secondary">إلغاء</button>
+                    <button type="submit" class="erp-btn erp-btn-primary">حفظ وتأكيد السند</button>
+                </div>
+            </form>
+        </div>
     </div>
 @endsection

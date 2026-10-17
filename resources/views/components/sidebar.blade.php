@@ -83,6 +83,19 @@
         </div>
         @endcan
 
+        <!-- Sales Representatives Field Portal -->
+        @can('access-sales-portal')
+        <div class="erp-nav-section">
+            <div class="erp-nav-section-title">مندوبو المبيعات</div>
+            <a href="{{ route('portal.index') }}" class="erp-nav-item {{ request()->is('portal*') ? 'active' : '' }}" title="بوابة المندوب الميداني">
+                <div class="erp-nav-content">
+                    <span class="erp-nav-icon"><x-icon name="smartphone" size="18" class="text-sky-500" /></span>
+                    <span class="erp-nav-label font-bold text-sky-600">بوابة المندوب (الموبايل)</span>
+                </div>
+            </a>
+        </div>
+        @endcan
+
         <!-- Purchases -->
         @can('access-purchases')
         <div class="erp-nav-section">
@@ -140,6 +153,12 @@
                     <span class="erp-nav-label">حركات المخزون</span>
                 </div>
             </a>
+            <a href="{{ route('inventory.stocktake') }}" class="erp-nav-item {{ request()->routeIs('inventory.stocktake*') ? 'active' : '' }}" title="جرد المخزون والتسوية">
+                <div class="erp-nav-content">
+                    <span class="erp-nav-icon"><x-icon name="clipboard-check" size="18" /></span>
+                    <span class="erp-nav-label">جرد المخزون والتسوية</span>
+                </div>
+            </a>
             <a href="{{ route('inventory.low-stock') }}" class="erp-nav-item {{ request()->routeIs('inventory.low-stock') ? 'active' : '' }}" title="نواقص المخزون">
                 <div class="erp-nav-content">
                     <span class="erp-nav-icon"><x-icon name="alert-triangle" size="18" /></span>
@@ -154,25 +173,31 @@
         @can('manage-company-settings')
         <div class="erp-nav-section">
             <div class="erp-nav-section-title">المالية والحسابات</div>
-            <a href="#" class="erp-nav-item">
+            <a href="{{ route('treasuries.index') }}" class="erp-nav-item {{ request()->is('treasuries*') ? 'active' : '' }}" title="الخزائن والحسابات البنكية">
                 <div class="erp-nav-content">
-                    <span class="erp-nav-icon"><x-icon name="banknote" size="18" /></span>
-                    <span class="erp-nav-label">مدفوعات العملاء</span>
+                    <span class="erp-nav-icon"><x-icon name="landmark" size="18" /></span>
+                    <span class="erp-nav-label">الخزائن والبنوك</span>
                 </div>
             </a>
-            <a href="#" class="erp-nav-item">
+            <a href="{{ route('sales.payments.index') }}" class="erp-nav-item {{ request()->is('sales-payments*') ? 'active' : '' }}" title="سندات قبض ومتحصلات العملاء">
+                <div class="erp-nav-content">
+                    <span class="erp-nav-icon"><x-icon name="banknote" size="18" /></span>
+                    <span class="erp-nav-label">مقبوضات العملاء</span>
+                </div>
+            </a>
+            <a href="{{ route('supplier-payments.index') }}" class="erp-nav-item {{ request()->is('supplier-payments*') ? 'active' : '' }}" title="مدفوعات وسندات صرف الموردين">
                 <div class="erp-nav-content">
                     <span class="erp-nav-icon"><x-icon name="credit-card" size="18" /></span>
                     <span class="erp-nav-label">مدفوعات الموردين</span>
                 </div>
             </a>
-            <a href="#" class="erp-nav-item">
+            <a href="{{ route('expenses.index') }}" class="erp-nav-item {{ request()->is('expenses*') ? 'active' : '' }}" title="المصروفات التشغيلية والعمومية">
                 <div class="erp-nav-content">
                     <span class="erp-nav-icon"><x-icon name="receipt" size="18" /></span>
                     <span class="erp-nav-label">المصروفات الجارية</span>
                 </div>
             </a>
-            <a href="#" class="erp-nav-item">
+            <a href="#" class="erp-nav-item opacity-60 cursor-not-allowed" title="قريباً: التقارير المالية والأرباح">
                 <div class="erp-nav-content">
                     <span class="erp-nav-icon"><x-icon name="trending-up" size="18" /></span>
                     <span class="erp-nav-label">التقارير المالية والأرباح</span>

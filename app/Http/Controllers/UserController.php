@@ -56,6 +56,9 @@ class UserController extends Controller
             'password' => ['required', 'string', 'min:6'],
             'role_id' => ['required', 'exists:roles,id'],
             'warehouse_id' => ['nullable', 'exists:warehouses,id'],
+            'phone' => ['nullable', 'string', 'max:35'],
+            'commission_rate' => ['nullable', 'numeric', 'min:0'],
+            'commission_type' => ['nullable', 'string', 'in:percentage,fixed'],
             'can_access_all_warehouses' => ['sometimes', 'boolean'],
             'is_active' => ['sometimes', 'boolean'],
         ], [
@@ -75,10 +78,13 @@ class UserController extends Controller
         User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
+            'phone' => filled($validated['phone'] ?? null) ? trim($validated['phone']) : null,
             'password' => Hash::make($validated['password']),
             'role_id' => $role->id,
             'role' => $role->slug, // Keep synced for backward compatibility
             'warehouse_id' => $validated['warehouse_id'] ?? null,
+            'commission_rate' => (float) ($validated['commission_rate'] ?? 0.00),
+            'commission_type' => $validated['commission_type'] ?? 'percentage',
             'can_access_all_warehouses' => $request->boolean('can_access_all_warehouses', false),
             'is_active' => $request->boolean('is_active', true),
         ]);
@@ -116,6 +122,9 @@ class UserController extends Controller
             'password' => ['nullable', 'string', 'min:6'],
             'role_id' => ['required', 'exists:roles,id'],
             'warehouse_id' => ['nullable', 'exists:warehouses,id'],
+            'phone' => ['nullable', 'string', 'max:35'],
+            'commission_rate' => ['nullable', 'numeric', 'min:0'],
+            'commission_type' => ['nullable', 'string', 'in:percentage,fixed'],
             'can_access_all_warehouses' => ['sometimes', 'boolean'],
             'is_active' => ['sometimes', 'boolean'],
         ], [
@@ -132,9 +141,12 @@ class UserController extends Controller
         $updateData = [
             'name' => $validated['name'],
             'email' => $validated['email'],
+            'phone' => filled($validated['phone'] ?? null) ? trim($validated['phone']) : null,
             'role_id' => $role->id,
             'role' => $role->slug,
             'warehouse_id' => $validated['warehouse_id'] ?? null,
+            'commission_rate' => array_key_exists('commission_rate', $validated) ? (float) $validated['commission_rate'] : $user->commission_rate,
+            'commission_type' => $validated['commission_type'] ?? $user->commission_type ?? 'percentage',
             'can_access_all_warehouses' => $request->boolean('can_access_all_warehouses', false),
             'is_active' => $request->boolean('is_active', true),
         ];

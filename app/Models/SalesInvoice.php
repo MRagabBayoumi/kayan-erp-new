@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class SalesInvoice extends Model
 {
@@ -32,6 +34,7 @@ class SalesInvoice extends Model
     protected $fillable = [
         'invoice_number',
         'customer_id',
+        'sales_rep_id',
         'warehouse_id',
         'cashier_shift_id',
         'invoice_date',
@@ -49,6 +52,8 @@ class SalesInvoice extends Model
         'due_date',
         'total_cogs',
         'total_profit',
+        'commission_rate',
+        'commission_amount',
         'notes',
         'created_by',
         'posted_at',
@@ -74,6 +79,8 @@ class SalesInvoice extends Model
             'remaining_amount' => 'decimal:2',
             'total_cogs' => 'decimal:2',
             'total_profit' => 'decimal:2',
+            'commission_rate' => 'decimal:2',
+            'commission_amount' => 'decimal:2',
         ];
     }
 
@@ -95,6 +102,35 @@ class SalesInvoice extends Model
             self::PAYMENT_PARTIAL => 'erp-badge-warning',
             default => 'erp-badge-neutral',
         };
+    }
+
+    public function getIsFullyPaidAttribute(): bool
+    {
+        return (float) $this->remaining_amount <= 0.001;
+    }
+
+    public function getPaymentStatusLabelAttribute(): string
+    {
+        if ($this->is_fully_paid) {
+            return 'مدفوعة بالكامل';
+        }
+        if ((float) $this->paid_amount > 0) {
+            return 'مدفوعة جزئياً';
+        }
+
+        return 'آجل غير مسدد';
+    }
+
+    public function getPaymentStatusBadgeClassAttribute(): string
+    {
+        if ($this->is_fully_paid) {
+            return 'erp-badge-success';
+        }
+        if ((float) $this->paid_amount > 0) {
+            return 'erp-badge-warning';
+        }
+
+        return 'erp-badge-danger';
     }
 
     public function customer(): BelongsTo
@@ -135,6 +171,26 @@ class SalesInvoice extends Model
     public function cashierShift(): BelongsTo
     {
         return $this->belongsTo(CashierShift::class, 'cashier_shift_id');
+    }
+
+    public function salesRep(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'sales_rep_id');
+    }
+
+    public function commission(): HasOne
+    {
+        return $this->hasOne(SalesCommission::class, 'sales_invoice_id');
+    }
+
+    public function scopeForSalesRep(Builder $query, int $repId): Builder
+    {
+        return $query->where('sales_rep_id', $repId);
+    }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(CustomerPayment::class)->latest('payment_date');
     }
 
     public static function generateInvoiceNumber(): string

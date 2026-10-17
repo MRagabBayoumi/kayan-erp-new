@@ -24,6 +24,7 @@ class CompanySetting extends Model
         'company_phone',
         'logo_path',
         'program_status',
+        'custom_backup_path',
     ];
 
     /**

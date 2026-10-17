@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\CashierShift;
 use App\Models\Category;
 use App\Models\Customer;
 use App\Models\Product;
@@ -294,4 +295,61 @@ test('net profit is visible to admin and company manager, but hidden from cashie
     $cashierShow->assertOk();
     $cashierShow->assertDontSee('صافي ربح الفاتورة:');
     $cashierShow->assertDontSee('إجمالي تكلفة البضاعة المباعة (COGS):');
+});
+
+test('unposting a deferred credit invoice with customer and active shift reverts customer balance and shift return', function () {
+    $shift = CashierShift::create([
+        'shift_number' => CashierShift::generateShiftNumber(),
+        'user_id' => $this->admin->id,
+        'opened_by' => $this->admin->id,
+        'warehouse_id' => $this->warehouse->id,
+        'opened_at' => now(),
+        'opening_balance' => 500.00,
+        'status' => CashierShift::STATUS_OPEN,
+    ]);
+
+    // Initial customer balance is 100
+    $this->customer->update(['current_balance' => 100.00]);
+
+    // Create posted invoice: Total = 350, Paid = 150 (recorded in shift), Remaining = 200 (added to customer balance)
+    $response = $this->post(route('sales.store'), [
+        'customer_id' => $this->customer->id,
+        'warehouse_id' => $this->warehouse->id,
+        'invoice_date' => now()->format('Y-m-d'),
+        'price_tier' => 'retail',
+        'payment_type' => 'partial',
+        'action' => 'post',
+        'paid_amount' => 150.00,
+        'items' => [
+            [
+                'product_id' => $this->product->id,
+                'unit_id' => $this->unitPiece->id,
+                'conversion_factor' => 1.0,
+                'quantity' => 10,
+                'unit_price' => 35.00,
+                'line_discount' => 0,
+            ],
+        ],
+    ]);
+
+    $response->assertRedirect();
+    $invoice = SalesInvoice::latest('id')->first();
+    expect($invoice->status)->toBe(SalesInvoice::STATUS_POSTED);
+    expect((float) $invoice->remaining_amount)->toBe(200.0);
+
+    // Customer balance should be 100 + 200 = 300
+    $this->customer->refresh();
+    expect((float) $this->customer->current_balance)->toBe(300.0);
+
+    // Unpost the invoice for editing
+    $unpostResponse = $this->post(route('sales.unpost-and-edit', $invoice));
+    $unpostResponse->assertRedirect(route('sales.edit', $invoice));
+
+    // Customer balance must be reverted by remaining 200 => back to 100
+    $this->customer->refresh();
+    expect((float) $this->customer->current_balance)->toBe(100.0);
+
+    // Invoice status is draft
+    $invoice->refresh();
+    expect($invoice->status)->toBe(SalesInvoice::STATUS_DRAFT);
 });

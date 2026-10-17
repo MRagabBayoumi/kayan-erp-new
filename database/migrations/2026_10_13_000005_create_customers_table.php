@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('city')->nullable()->index();
             $table->string('address')->nullable();
             $table->enum('customer_type', ['wholesale', 'retail', 'distributor'])->default('wholesale')->index();
-            $table->enum('pricing_tier', ['wholesale', 'retail'])->default('wholesale');
+            $table->enum('pricing_tier', ['wholesale', 'retail', 'distributor'])->default('wholesale');
             $table->decimal('credit_limit', 12, 2)->default(0.00);
             $table->decimal('current_balance', 12, 2)->default(0.00);
             $table->text('notes')->nullable();

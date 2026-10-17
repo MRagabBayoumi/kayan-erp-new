@@ -48,7 +48,7 @@
         @endif
 
         <!-- Search & Filter Bar -->
-        <div class="erp-card mb-4 p-3">
+        <div class="erp-card erp-card-filter mb-4 p-3 overflow-visible">
             <form action="{{ route('products.index') }}" method="GET" class="erp-filter-form">
                 <!-- Search Input with Camera Barcode Scanner -->
                 <div class="flex-1 min-w-[220px] relative flex items-center">
@@ -57,10 +57,10 @@
                         id="productSearchInput"
                         name="search" 
                         value="{{ $currentSearch }}" 
-                        class="erp-input font-numeric w-full pr-9 pl-9" 
+                        class="erp-input erp-search-input font-numeric w-full" 
                         placeholder="بحث باسم المنتج، كود SKU، أو الباركود..."
                     >
-                    <span class="absolute right-2.5 opacity-60 flex items-center pointer-events-none">
+                    <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] flex items-center pointer-events-none">
                         <x-icon name="search" size="16" />
                     </span>
                     <button 
@@ -68,7 +68,7 @@
                         data-action="open-barcode-scanner"
                         data-target-input="productSearchInput"
                         title="مسح الباركود بالكاميرا للبحث السريع"
-                        class="absolute left-1 top-1/2 -translate-y-1/2 h-7 w-7 border-0 bg-[var(--primary-soft)] text-[var(--primary)] rounded inline-flex items-center justify-center cursor-pointer">
+                        class="absolute left-1.5 top-1/2 -translate-y-1/2 h-7 w-7 border-0 bg-[var(--primary-soft)] text-[var(--primary)] rounded inline-flex items-center justify-center cursor-pointer">
                         <x-icon name="camera" size="15" />
                     </button>
                 </div>
@@ -76,7 +76,7 @@
                 <!-- Category Multi-Select Filter -->
                 <div class="erp-dropdown min-w-[200px]">
                     <button type="button" class="erp-btn erp-btn-secondary w-full justify-between" data-dropdown-toggle="productCategoryFilterDropdown">
-                        <span class="truncate">
+                        <span class="truncate" id="productCategoryFilterLabel">
                             @if(empty($selectedCategoryIds))
                                 كل التصنيفات
                             @elseif(count($selectedCategoryIds) === 1)
@@ -87,11 +87,18 @@
                         </span>
                         <x-icon name="chevron-down" size="14" />
                     </button>
-                    <div id="productCategoryFilterDropdown" class="erp-dropdown-menu p-3 max-h-64 overflow-y-auto w-64">
-                        <div class="text-xs font-bold text-[var(--text-muted)] mb-2">اختر التصنيفات المطلوبة:</div>
+                    <div id="productCategoryFilterDropdown" class="erp-dropdown-menu p-3 max-h-64 overflow-y-auto w-64 shadow-lg">
+                        <div class="flex items-center justify-between text-xs font-bold text-[var(--text-muted)] mb-2 pb-1 border-b border-[var(--border-color)]">
+                            <span>اختر التصنيفات:</span>
+                            <div class="flex gap-2">
+                                <button type="button" id="selectAllCategoriesBtn" class="text-[var(--primary)] hover:underline text-[11px] font-normal cursor-pointer">تحديد الكل</button>
+                                <span class="text-[var(--border-color)]">|</span>
+                                <button type="button" id="clearAllCategoriesBtn" class="text-[var(--danger)] hover:underline text-[11px] font-normal cursor-pointer">مسح</button>
+                            </div>
+                        </div>
                         @foreach($categories as $category)
                             <label class="flex items-center gap-2 py-1.5 px-2 hover:bg-[var(--bg-hover)] rounded cursor-pointer text-xs">
-                                <input type="checkbox" name="category_ids[]" value="{{ $category->id }}" {{ in_array($category->id, $selectedCategoryIds) ? 'checked' : '' }} class="rounded border-[var(--border-color)]">
+                                <input type="checkbox" name="category_ids[]" value="{{ $category->id }}" {{ in_array($category->id, $selectedCategoryIds) ? 'checked' : '' }} class="category-filter-cb rounded border-[var(--border-color)]">
                                 <span class="text-[var(--text-main)]">{{ $category->name }}</span>
                             </label>
                         @endforeach

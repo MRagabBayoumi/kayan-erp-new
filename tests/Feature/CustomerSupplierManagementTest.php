@@ -1,8 +1,10 @@
 <?php
 
 use App\Models\Customer;
+use App\Models\SalesInvoice;
 use App\Models\ShippingOffice;
 use App\Models\Supplier;
+use App\Models\Warehouse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -120,6 +122,40 @@ test('customer can be updated', function () {
         'customer_type' => 'distributor',
         'city' => 'الإسكندرية',
     ]);
+});
+
+test('customer can be created and updated with distributor pricing tier', function () {
+    $response = $this->post(route('customers.store'), [
+        'name' => 'شركة التوزيع الحديثة',
+        'company_name' => 'موزع معتمد دلتا',
+        'phone' => '01099887766',
+        'customer_type' => 'distributor',
+        'pricing_tier' => 'distributor',
+        'city' => 'المنصورة',
+        'credit_limit' => 150000,
+        'current_balance' => 0,
+    ]);
+
+    $response->assertRedirect(route('customers.index'));
+    $response->assertSessionHas('success');
+
+    $customer = Customer::where('phone', '01099887766')->first();
+    expect($customer)->not->toBeNull()
+        ->and($customer->pricing_tier)->toBe('distributor')
+        ->and($customer->customer_type)->toBe('distributor')
+        ->and($customer->getPricingTierLabel())->toBe('سعر الموزع');
+
+    $updateResponse = $this->put(route('customers.update', $customer), [
+        'name' => 'شركة التوزيع الحديثة (معدل)',
+        'phone' => '01099887766',
+        'customer_type' => 'distributor',
+        'pricing_tier' => 'distributor',
+        'credit_limit' => 200000,
+    ]);
+
+    $updateResponse->assertRedirect(route('customers.index'));
+    expect($customer->fresh()->name)->toBe('شركة التوزيع الحديثة (معدل)')
+        ->and($customer->fresh()->pricing_tier)->toBe('distributor');
 });
 
 test('customer with zero balance can be deleted', function () {
@@ -406,4 +442,80 @@ test('dashboard displays real customer, supplier, and product counters', functio
     $response->assertOk();
     $response->assertSee('دليل عملاء الجملة والتجزئة');
     $response->assertSee('دليل الموردين ومصانع الصين');
+});
+
+test('customer can be created with credit opening balance and appears in statement', function () {
+    $response = $this->post(route('customers.store'), [
+        'name' => 'علي حنفي تيست',
+        'phone' => '01127556176',
+        'customer_type' => 'wholesale',
+        'pricing_tier' => 'wholesale',
+        'opening_balance' => -5734.00,
+    ]);
+
+    $response->assertRedirect(route('customers.index'));
+
+    $customer = Customer::where('phone', '01127556176')->first();
+    expect($customer)->not->toBeNull();
+    expect((float) $customer->opening_balance)->toBe(-5734.00);
+    expect((float) $customer->current_balance)->toBe(-5734.00);
+
+    // Check Statement page
+    $statementResponse = $this->get(route('customers.statement', $customer));
+    $statementResponse->assertOk();
+    $statementResponse->assertSee('-5,734.00');
+    $statementResponse->assertSee('رصيد دائن لصالح العميل');
+
+    // Check Printable Statement
+    $printResponse = $this->get(route('customers.statement.print', ['customer' => $customer, 'format' => 'a4']));
+    $printResponse->assertOk();
+    $printResponse->assertSee('5,734.00');
+    $printResponse->assertSee('رصيد دائن لصالح العميل');
+});
+
+test('sales invoice print shows paid, invoice remaining, previous balance, and net remaining balance', function () {
+    $customer = Customer::create([
+        'name' => 'عميل اختبار فواتير',
+        'phone' => '01012344321',
+        'customer_type' => 'wholesale',
+        'pricing_tier' => 'wholesale',
+        'opening_balance' => -5734.00,
+        'current_balance' => -334.00,
+    ]);
+
+    $warehouse = Warehouse::first() ?? Warehouse::create([
+        'name' => 'المخزن الرئيسي',
+        'code' => 'MAIN-WH',
+        'is_active' => true,
+    ]);
+
+    $invoice = SalesInvoice::create([
+        'invoice_number' => 'INV-TEST-0001',
+        'customer_id' => $customer->id,
+        'warehouse_id' => $warehouse->id,
+        'invoice_date' => now()->toDateString(),
+        'price_tier' => 'wholesale',
+        'payment_type' => 'credit',
+        'status' => 'posted',
+        'subtotal' => 5400.00,
+        'discount_amount' => 0.00,
+        'shipping_cost' => 0.00,
+        'total_amount' => 5400.00,
+        'paid_amount' => 0.00,
+        'remaining_amount' => 5400.00,
+        'total_cogs' => 0.00,
+        'total_profit' => 0.00,
+        'created_by' => auth()->id() ?? 1,
+        'posted_at' => now(),
+    ]);
+
+    $response = $this->get(route('sales.print', ['sale' => $invoice, 'format' => 'a4']));
+    $response->assertOk();
+    $response->assertSee('المدفوع:');
+    $response->assertSee('المتبقي من الفاتورة:');
+    $response->assertSee('5,400.00');
+    $response->assertSee('الرصيد السابق للعميل:');
+    $response->assertSee('5,734.00');
+    $response->assertSee('إجمالي الحساب المتبقي:');
+    $response->assertSee('334.00');
 });

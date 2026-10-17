@@ -5,6 +5,7 @@ use App\Models\InventoryBatch;
 use App\Models\Product;
 use App\Models\StockBalance;
 use App\Models\StockMovement;
+use App\Models\User;
 use App\Models\Warehouse;
 use App\Services\InventoryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -168,7 +169,16 @@ test('opening stock with missing warehouse returns validation error', function (
     $response->assertSessionHasErrors(['opening_warehouse_id']);
 });
 
-test('product can be updated while opening balance remains locked and immutable', function () {
+test('product can be updated by non-admin while opening balance remains locked and immutable', function () {
+    $warehouseUser = User::firstOrCreate(
+        ['email' => 'warehouse-keeper@kayan-erp.com'],
+        [
+            'name' => 'أمين مخزن تجريبي',
+            'password' => bcrypt('password'),
+            'role' => User::ROLE_WAREHOUSE,
+        ]
+    );
+
     $product = Product::create([
         'sku' => 'IMMUTABLE-PROD',
         'name' => 'صنف تجريبي محمي',
@@ -185,14 +195,14 @@ test('product can be updated while opening balance remains locked and immutable'
         'opening_balance_date' => '2026-10-01',
     ]);
 
-    $response = $this->put(route('products.update', $product), [
+    $response = $this->actingAs($warehouseUser)->put(route('products.update', $product), [
         'sku' => 'IMMUTABLE-PROD',
         'name' => 'صنف تجريبي تم تحديث اسمه',
         'category_id' => $this->category->id,
-        'cost_price' => 22.00,
-        'wholesale_price' => 32.00,
-        'retail_price' => 45.00,
-        'distributor_price' => 28.00,
+        'cost_price' => 20.00,
+        'wholesale_price' => 30.00,
+        'retail_price' => 40.00,
+        'distributor_price' => 26.00,
         'unit' => 'دستة',
         'pieces_per_package' => 24,
         'min_stock_alert' => 15,
@@ -205,11 +215,102 @@ test('product can be updated while opening balance remains locked and immutable'
 
     $freshProduct = $product->fresh();
     expect($freshProduct->name)->toBe('صنف تجريبي تم تحديث اسمه')
-        ->and((float) $freshProduct->distributor_price)->toEqual(28.00)
         ->and($freshProduct->pieces_per_package)->toBe(24)
-        // Opening balance fields are strictly preserved
+        // Opening balance fields are strictly preserved for non-admin
         ->and((float) $freshProduct->opening_quantity)->toEqual(100.00)
         ->and((float) $freshProduct->opening_cost)->toEqual(20.00);
+});
+
+test('system administrator can view and edit opening stock balance in edit product page', function () {
+    $admin = User::firstOrCreate(
+        ['email' => 'admin-test@kayan-erp.com'],
+        [
+            'name' => 'مدير النظام التجريبي',
+            'password' => bcrypt('password'),
+            'role' => User::ROLE_ADMIN,
+        ]
+    );
+
+    $product = Product::create([
+        'sku' => 'ADMIN-OPENING-PROD',
+        'name' => 'صنف تعديل رصيد افتتاحي',
+        'category_id' => $this->category->id,
+        'cost_price' => 50.00,
+        'wholesale_price' => 70.00,
+        'retail_price' => 90.00,
+        'unit' => 'قطعة',
+        'min_stock_alert' => 5,
+        'opening_quantity' => 10.00,
+        'opening_cost' => 50.00,
+        'opening_warehouse_id' => $this->defaultWarehouse->id,
+        'opening_balance_date' => '2026-10-01',
+    ]);
+
+    // Create opening batch and stock balance
+    $service = app(InventoryService::class);
+    $service->addStock(
+        productId: $product->id,
+        warehouseId: $this->defaultWarehouse->id,
+        quantity: 10.00,
+        costPrice: 50.00,
+        referenceType: 'opening_balance',
+        referenceId: $product->id,
+        sourceType: 'opening_balance',
+        sourceId: $product->id
+    );
+
+    // 1. Admin views edit page: sees editable opening inputs and badge
+    $viewResponse = $this->actingAs($admin)->get(route('products.edit', $product));
+    $viewResponse->assertStatus(200);
+    $viewResponse->assertSee('صلاحية خاصة بمدير النظام');
+    $viewResponse->assertSee('name="opening_quantity"', false);
+    $viewResponse->assertSee('name="opening_cost"', false);
+
+    // 2. Non-admin views edit page: sees read-only text and locked badge
+    $warehouseUser = User::firstOrCreate(
+        ['email' => 'warehouse-keeper@kayan-erp.com'],
+        [
+            'name' => 'أمين مخزن تجريبي',
+            'password' => bcrypt('password'),
+            'role' => User::ROLE_WAREHOUSE,
+        ]
+    );
+    $nonAdminView = $this->actingAs($warehouseUser)->get(route('products.edit', $product));
+    $nonAdminView->assertStatus(200);
+    $nonAdminView->assertSee('مغلق ضد التعديل حفاظاً على سلامة المخزون');
+    $nonAdminView->assertDontSee('name="opening_quantity"', false);
+
+    // 3. Admin updates opening stock from 10 to 25 @ 48 EGP
+    $updateResponse = $this->actingAs($admin)->put(route('products.update', $product), [
+        'sku' => 'ADMIN-OPENING-PROD',
+        'name' => 'صنف تعديل رصيد افتتاحي',
+        'category_id' => $this->category->id,
+        'cost_price' => 50.00,
+        'wholesale_price' => 70.00,
+        'retail_price' => 90.00,
+        'unit' => 'قطعة',
+        'min_stock_alert' => 5,
+        'opening_quantity' => 25.00,
+        'opening_cost' => 48.00,
+        'opening_warehouse_id' => $this->defaultWarehouse->id,
+        'opening_balance_date' => '2026-10-05',
+    ]);
+
+    $updateResponse->assertRedirect(route('products.index'));
+
+    $freshProduct = $product->fresh();
+    expect((float) $freshProduct->opening_quantity)->toEqual(25.00)
+        ->and((float) $freshProduct->opening_cost)->toEqual(48.00);
+
+    // Verify batch was updated
+    $batch = InventoryBatch::where('product_id', $product->id)->first();
+    expect((float) $batch->initial_quantity)->toEqual(25.00)
+        ->and((float) $batch->remaining_quantity)->toEqual(25.00)
+        ->and((float) $batch->cost_price)->toEqual(48.00);
+
+    // Verify stock balance was incremented to 25
+    $balance = StockBalance::where('product_id', $product->id)->where('warehouse_id', $this->defaultWarehouse->id)->first();
+    expect((float) $balance->quantity)->toEqual(25.00);
 });
 
 test('per-warehouse FIFO inventory correctly deducts from chosen warehouse and tracks running balance', function () {
@@ -283,4 +384,66 @@ test('per-warehouse FIFO inventory correctly deducts from chosen warehouse and t
 
     // Product total stock is now 60
     expect($product->fresh()->total_stock)->toEqual(60.00);
+});
+
+test('admin can update product name even when opening_balance_date has legacy 1970 date', function () {
+    $admin = User::firstOrCreate(
+        ['email' => 'admin-test@kayan-erp.com'],
+        [
+            'name' => 'مدير النظام التجريبي',
+            'password' => bcrypt('password'),
+            'role' => User::ROLE_ADMIN,
+        ]
+    );
+
+    $product = Product::create([
+        'sku' => 'LEGACY-DATE-PROD',
+        'name' => 'صنف برصيد تاريخ قديم',
+        'category_id' => $this->category->id,
+        'cost_price' => 15.00,
+        'wholesale_price' => 20.00,
+        'retail_price' => 25.00,
+        'unit' => 'قطعة',
+        'min_stock_alert' => 5,
+        'opening_quantity' => 10.00,
+        'opening_cost' => 15.00,
+        'opening_warehouse_id' => $this->defaultWarehouse->id,
+        'opening_balance_date' => '1970-01-01',
+    ]);
+
+    $service = app(InventoryService::class);
+    $service->addStock(
+        productId: $product->id,
+        warehouseId: $this->defaultWarehouse->id,
+        quantity: 10.00,
+        costPrice: 15.00,
+        referenceType: 'opening_balance',
+        referenceId: $product->id,
+        sourceType: 'opening_balance',
+        sourceId: $product->id
+    );
+
+    // Edit page loads without error and displays a valid fallback date instead of 1970
+    $viewResponse = $this->actingAs($admin)->get(route('products.edit', $product));
+    $viewResponse->assertStatus(200);
+    $viewResponse->assertDontSee('value="1970-01-01"', false);
+
+    // Admin updates product name with legacy opening_balance_date passed
+    $updateResponse = $this->actingAs($admin)->put(route('products.update', $product), [
+        'sku' => 'LEGACY-DATE-PROD',
+        'name' => 'اسم صنف جديد ومعدل بنجاح',
+        'category_id' => $this->category->id,
+        'cost_price' => 15.00,
+        'wholesale_price' => 20.00,
+        'retail_price' => 25.00,
+        'unit' => 'قطعة',
+        'min_stock_alert' => 5,
+        'opening_quantity' => 10.00,
+        'opening_cost' => 15.00,
+        'opening_warehouse_id' => $this->defaultWarehouse->id,
+        'opening_balance_date' => '1970-01-01',
+    ]);
+
+    $updateResponse->assertRedirect(route('products.index'));
+    expect($product->fresh()->name)->toBe('اسم صنف جديد ومعدل بنجاح');
 });

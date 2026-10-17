@@ -66,6 +66,19 @@
                     </div>
                 </div>
 
+                <div class="purchases-kpi-stat">
+                    <div class="purchases-kpi-icon-wrap {{ ($metrics['total_remaining'] ?? 0) > 0 ? 'warning' : 'success' }}">
+                        <x-icon name="dollar-sign" size="22" />
+                    </div>
+                    <div class="purchases-kpi-info">
+                        <div class="purchases-kpi-label">متبقي آجل للتحصيل (مديونيات)</div>
+                        <div class="purchases-kpi-value font-numeric {{ ($metrics['total_remaining'] ?? 0) > 0 ? 'text-rose-600' : 'text-[var(--success)]' }}">
+                            {{ number_format($metrics['total_remaining'] ?? 0, 2) }} ج.م
+                        </div>
+                        <div class="purchases-kpi-desc">أقساط ومتبقيات على العملاء</div>
+                    </div>
+                </div>
+
                 @can('view-cogs')
                 <div class="purchases-kpi-stat">
                     <div class="purchases-kpi-icon-wrap">
@@ -120,6 +133,14 @@
                 </div>
 
                 <div class="w-40 min-w-[140px]">
+                    <select name="payment_status" class="erp-input w-full">
+                        <option value="">-- حالة السداد --</option>
+                        <option value="paid" {{ ($currentPaymentStatus ?? '') === 'paid' ? 'selected' : '' }}>خالص (مسدد بالكامل)</option>
+                        <option value="unpaid" {{ ($currentPaymentStatus ?? '') === 'unpaid' ? 'selected' : '' }}>آجل / به متبقي</option>
+                    </select>
+                </div>
+
+                <div class="w-40 min-w-[140px]">
                     <select name="price_tier" class="erp-input w-full">
                         <option value="">-- فئة التسعير --</option>
                         <option value="retail" {{ $currentPriceTier === 'retail' ? 'selected' : '' }}>قطاعي</option>
@@ -155,7 +176,7 @@
                         <x-icon name="filter" size="14" />
                         <span>تصفية</span>
                     </button>
-                    @if($currentSearch || $currentStatus || $currentWarehouseId || $currentCustomerId || $currentPriceTier)
+                    @if($currentSearch || $currentStatus || $currentWarehouseId || $currentCustomerId || $currentPriceTier || ($currentPaymentStatus ?? false))
                         <a href="{{ route('sales.index') }}" class="erp-btn erp-btn-ghost text-xs" title="إلغاء الفلاتر">
                             <x-icon name="x" size="14" />
                             <span>إعادة تعيين</span>
@@ -183,7 +204,8 @@
                                 <th>التكلفة (COGS)</th>
                                 <th>صافي الربح</th>
                                 @endcan
-                                <th>الحالة</th>
+                                <th>حالة الصرف</th>
+                                <th>حالة السداد والمتبقي</th>
                                 <th class="text-center">الإجراءات</th>
                             </tr>
                         </thead>
@@ -235,11 +257,30 @@
                                             {{ $inv->status_label }}
                                         </span>
                                     </td>
+                                    <td>
+                                        @if($inv->status === 'posted')
+                                            <span class="erp-badge {{ $inv->payment_status_badge_class }} text-[11px]">
+                                                {{ $inv->payment_status_label }}
+                                            </span>
+                                            @if((float) $inv->remaining_amount > 0)
+                                                <div class="text-[11px] font-numeric font-bold text-rose-600 mt-0.5">
+                                                    متبقي: {{ number_format((float)$inv->remaining_amount, 2) }} ج.م
+                                                </div>
+                                            @endif
+                                        @else
+                                            <span class="text-[var(--text-muted)] text-xs">—</span>
+                                        @endif
+                                    </td>
                                     <td class="text-center">
                                         <div class="inline-flex items-center gap-1.5">
                                             <a href="{{ route('sales.show', $inv) }}" class="erp-btn erp-btn-ghost erp-btn-sm" title="عرض التفاصيل">
                                                 <x-icon name="eye" size="14" />
                                             </a>
+                                            @if($inv->status === 'posted' && (float)$inv->remaining_amount > 0)
+                                                <a href="{{ route('sales.show', $inv) }}" class="erp-btn erp-btn-ghost erp-btn-sm text-emerald-600 font-bold" title="تسجيل دفعة سداد">
+                                                    <x-icon name="dollar-sign" size="14" />
+                                                </a>
+                                            @endif
                                             @if($inv->status === 'draft')
                                                 <a href="{{ route('sales.edit', $inv) }}" class="erp-btn erp-btn-ghost erp-btn-sm text-amber-600" title="تعديل الفاتورة">
                                                     <x-icon name="edit-3" size="14" />

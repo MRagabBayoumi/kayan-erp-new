@@ -150,6 +150,12 @@
             <circle cx="12" cy="13" r="3"/>
             @break
 
+        @case('smartphone')
+        @case('mobile')
+            <rect width="14" height="20" x="5" y="2" rx="2" ry="2"/>
+            <path d="M12 18h.01"/>
+            @break
+
         @case('scan')
         @case('scan-barcode')
             <path d="M3 7V5a2 2 0 0 1 2-2h2"/>

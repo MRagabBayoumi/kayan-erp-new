@@ -7,6 +7,10 @@
                 <x-icon name="arrow-right" size="16" />
                 <span>العودة للموردين</span>
             </a>
+            <button type="button" onclick="document.getElementById('recordSupplierPaymentModal').style.display='flex'" class="erp-btn erp-btn-success">
+                <x-icon name="credit-card" size="16" />
+                <span>تسجيل دفعة / سند صرف</span>
+            </button>
             <a href="{{ route('suppliers.statement', $supplier) }}" class="erp-btn erp-btn-primary">
                 <x-icon name="file-text" size="16" />
                 <span>كشف الحساب المالي</span>
@@ -319,4 +323,122 @@
             </div>
         </div>
     </div>
+
+    <!-- Modal: Record Supplier Payment -->
+    <div id="recordSupplierPaymentModal" class="erp-modal-overlay">
+        <div class="erp-modal-container">
+            <div class="erp-modal-header">
+                <h3 class="erp-modal-title">
+                    <x-icon name="credit-card" size="18" />
+                    <span>تسجيل دفعة / سند صرف للمورد: {{ $supplier->name }}</span>
+                </h3>
+                <button type="button" class="erp-modal-close" onclick="document.getElementById('recordSupplierPaymentModal').style.display='none'">&times;</button>
+            </div>
+
+            <form action="{{ route('suppliers.payments.store', $supplier) }}" method="POST">
+                @csrf
+                <div class="erp-modal-body">
+                    <div style="background: var(--bg-surface-alt); padding: 12px 14px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); margin-bottom: 14px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+                            <span style="color: var(--text-muted);">الرصيد المستحق للمورد حالياً:</span>
+                            <span class="font-bold font-numeric text-rose-700 text-sm" style="color: var(--danger); font-size: 14px;">
+                                {{ number_format((float)$supplier->current_balance, 2) }} {{ $supplier->getCurrencySymbol() }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="erp-form-group">
+                        <label class="erp-form-label">تخصيص الدفعة على فاتورة محددة (اختياري)</label>
+                        <select name="purchase_invoice_id" id="supplierInvoiceSelect" onchange="handleSupplierInvoiceChange(this)" class="erp-input w-full">
+                            <option value="" data-remaining="">-- دفعة عامة على الحساب (تخفيض المديونية) --</option>
+                            @foreach($unpaidInvoices ?? [] as $unpaid)
+                                <option value="{{ $unpaid->id }}" data-remaining="{{ (float)$unpaid->remaining_amount }}">
+                                    فاتورة رقم {{ $unpaid->invoice_number }} (تاريخ: {{ $unpaid->invoice_date->format('Y-m-d') }} - متبقي: {{ number_format((float)$unpaid->remaining_amount, 2) }} ج.م)
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="erp-form-group">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                            <label class="erp-form-label" style="margin-bottom: 0;">المبلغ المسدد <span class="required">*</span></label>
+                            <button type="button" id="supplierFillMaxBtn" onclick="fillSupplierMax()" class="text-xs text-[var(--primary)] hover:underline font-bold hidden">
+                                سداد كامل الفاتورة
+                            </button>
+                        </div>
+                        <input type="number" step="0.01" min="0.01" name="amount" id="supplierPaymentAmount" required placeholder="0.00" class="erp-input font-numeric font-bold text-base text-[var(--danger)]">
+                    </div>
+
+                    <div class="erp-form-grid">
+                        <div class="erp-form-group">
+                            <label class="erp-form-label">تاريخ الصرف <span class="required">*</span></label>
+                            <input type="date" name="payment_date" required value="{{ date('Y-m-d') }}" class="erp-input font-numeric">
+                        </div>
+                        <div class="erp-form-group">
+                            <label class="erp-form-label">طريقة الصرف <span class="required">*</span></label>
+                            <select name="payment_method" required class="erp-input">
+                                <option value="cash">نقداً</option>
+                                <option value="bank_transfer">تحويل بنكي</option>
+                                <option value="card">فيزا / بطاقة</option>
+                                <option value="cheque">شيك</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="erp-form-group">
+                        <label class="erp-form-label">الخزينة المسحوب منها</label>
+                        <select name="treasury_id" class="erp-input">
+                            <option value="">-- الخزينة الافتراضية --</option>
+                            @foreach($treasuries ?? [] as $tr)
+                                <option value="{{ $tr->id }}">{{ $tr->name }} (رصيد: {{ number_format((float)$tr->current_balance, 2) }} ج.م)</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="erp-form-grid">
+                        <div class="erp-form-group">
+                            <label class="erp-form-label">رقم المرجع / التحويل (إن وجد)</label>
+                            <input type="text" name="reference_number" placeholder="رقم الشيك أو الحوالة..." class="erp-input font-mono">
+                        </div>
+                        <div class="erp-form-group">
+                            <label class="erp-form-label">ملاحظات</label>
+                            <input type="text" name="notes" placeholder="ملاحظات..." class="erp-input">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="erp-modal-footer">
+                    <button type="button" onclick="document.getElementById('recordSupplierPaymentModal').style.display='none'" class="erp-btn erp-btn-secondary">إلغاء</button>
+                    <button type="submit" class="erp-btn erp-btn-primary">حفظ وتأكيد السند</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function handleSupplierInvoiceChange(select) {
+            const selectedOpt = select.options[select.selectedIndex];
+            const remaining = selectedOpt.getAttribute('data-remaining');
+            const fillBtn = document.getElementById('supplierFillMaxBtn');
+            const amountInput = document.getElementById('supplierPaymentAmount');
+
+            if (remaining && parseFloat(remaining) > 0) {
+                fillBtn.classList.remove('hidden');
+                fillBtn.textContent = 'سداد كامل الفاتورة (' + parseFloat(remaining).toFixed(2) + ')';
+                amountInput.max = remaining;
+            } else {
+                fillBtn.classList.add('hidden');
+                amountInput.removeAttribute('max');
+            }
+        }
+
+        function fillSupplierMax() {
+            const select = document.getElementById('supplierInvoiceSelect');
+            const selectedOpt = select.options[select.selectedIndex];
+            const remaining = selectedOpt.getAttribute('data-remaining');
+            if (remaining) {
+                document.getElementById('supplierPaymentAmount').value = remaining;
+            }
+        }
+    </script>
 @endsection

@@ -122,6 +122,12 @@
                     <span>إعدادات النظام</span>
                 </a>
                 @endcan
+                @can('access-sales-portal')
+                <a href="{{ route('portal.index') }}" class="erp-dropdown-item text-sky-600 font-semibold">
+                    <x-icon name="smartphone" size="14" />
+                    <span>بوابة المندوب الميداني (الموبايل)</span>
+                </a>
+                @endcan
                 <div class="erp-dropdown-divider"></div>
                 <form method="POST" action="{{ route('logout') }}" class="m-0">
                     @csrf

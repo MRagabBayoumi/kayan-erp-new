@@ -11,6 +11,7 @@ use App\Models\SalesInvoice;
 use App\Models\SalesInvoiceItem;
 use App\Models\Unit;
 use App\Models\Warehouse;
+use App\Services\CommissionService;
 use App\Services\InventoryService;
 use App\Services\Printing\PythonPrintEngineService;
 use App\Services\PrintTemplateService;
@@ -55,6 +56,15 @@ class SalesInvoiceController extends Controller
             $query->where('price_tier', $request->input('price_tier'));
         }
 
+        if ($request->filled('payment_status')) {
+            $pStatus = $request->input('payment_status');
+            if ($pStatus === 'paid') {
+                $query->where('remaining_amount', '<=', 0.001);
+            } elseif ($pStatus === 'unpaid') {
+                $query->where('remaining_amount', '>', 0.001);
+            }
+        }
+
         $invoices = $query->orderByDesc('id')
             ->paginate(15)
             ->withQueryString();
@@ -67,6 +77,7 @@ class SalesInvoiceController extends Controller
             'posted_total' => (float) SalesInvoice::where('status', SalesInvoice::STATUS_POSTED)->sum('total_amount'),
             'draft_count' => SalesInvoice::where('status', SalesInvoice::STATUS_DRAFT)->count(),
             'total_profit' => (float) SalesInvoice::where('status', SalesInvoice::STATUS_POSTED)->sum('total_profit'),
+            'total_remaining' => (float) SalesInvoice::where('status', SalesInvoice::STATUS_POSTED)->sum('remaining_amount'),
         ];
 
         return view('sales.index', [
@@ -81,6 +92,7 @@ class SalesInvoiceController extends Controller
             'currentWarehouseId' => $request->input('warehouse_id'),
             'currentCustomerId' => $request->input('customer_id'),
             'currentPriceTier' => $request->input('price_tier'),
+            'currentPaymentStatus' => $request->input('payment_status'),
             'canViewCogs' => auth()->user()?->isAdmin() || Gate::allows('view-cogs'),
         ]);
     }
@@ -127,7 +139,8 @@ class SalesInvoiceController extends Controller
             'cost_price' => (float) $p->cost_price,
             'unit' => $p->unit ?? 'قطعة',
             'unit_factor' => (float) $p->unit_factor,
-            'pieces_per_package' => (int) ($p->pieces_per_package ?? round($p->unit_factor)),
+            'package_factor' => (float) $p->package_factor,
+            'pieces_per_package' => (int) ($p->pieces_per_package ?: (int) round($p->package_factor)),
             'stocks' => $p->stockBalances->pluck('quantity', 'warehouse_id')->map(fn ($q) => (float) $q)->toArray(),
             'total_stock' => (float) $p->total_stock,
             'formatted_stock' => $p->formatStockBreakdown(),
@@ -193,6 +206,7 @@ class SalesInvoiceController extends Controller
             'discount_type' => ['nullable', 'string', 'in:fixed,percentage'],
             'discount_value' => ['nullable', 'numeric', 'min:0'],
             'notes' => ['nullable', 'string', 'max:1000'],
+            'sales_rep_id' => ['nullable', 'exists:users,id'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['required', 'exists:products,id'],
             'items.*.unit_id' => ['nullable', 'exists:units,id'],
@@ -253,10 +267,6 @@ class SalesInvoiceController extends Controller
                 foreach ($validated['items'] as $itemInput) {
                     $prodId = (int) $itemInput['product_id'];
                     $product = $productsMap->get($prodId);
-                    $productFactor = (float) ($product?->unit_factor ?? 1.0);
-                    if ($productFactor <= 0) {
-                        $productFactor = 1.0;
-                    }
 
                     $qty = (float) $itemInput['quantity'];
                     $price = (float) $itemInput['unit_price'];
@@ -266,9 +276,8 @@ class SalesInvoiceController extends Controller
                         $selectedFactor = 1.0;
                     }
 
-                    // Ratio of transaction unit to product registered inventory unit
-                    $effectiveFactor = $selectedFactor / $productFactor;
-                    $baseQty = round($qty * $effectiveFactor, 4);
+                    // Total equivalent base pieces to deduct from warehouse FIFO stock
+                    $baseQty = round($qty * $selectedFactor, 4);
 
                     $lineSubtotal = max(0.00, round(($qty * $price) - $lineDiscount, 2));
                     $subtotal += $lineSubtotal;
@@ -313,6 +322,8 @@ class SalesInvoiceController extends Controller
                 $dueDate = filled($validated['due_date'] ?? null) ? $validated['due_date'] : null;
 
                 $customer = Customer::findOrFail((int) $validated['customer_id']);
+                $salesRepId = $validated['sales_rep_id'] ?? (auth()->user()?->isSalesRep() ? auth()->id() : $customer->sales_rep_id);
+
                 if ($remainingAmount > 0) {
                     if ($customer->name === 'عميل نقدي') {
                         throw new \InvalidArgumentException('لا يمكن إجراء بيع آجل أو تسجيل مديونية على "العميل النقدي". يرجى اختيار عميل مسجل أو إضافة عميل جديد.');
@@ -326,6 +337,7 @@ class SalesInvoiceController extends Controller
                 $invoice = SalesInvoice::create([
                     'invoice_number' => SalesInvoice::generateInvoiceNumber(),
                     'customer_id' => (int) $validated['customer_id'],
+                    'sales_rep_id' => $salesRepId,
                     'warehouse_id' => (int) $validated['warehouse_id'],
                     'cashier_shift_id' => $activeShift?->id,
                     'invoice_date' => $validated['invoice_date'],
@@ -458,7 +470,8 @@ class SalesInvoiceController extends Controller
             'cost_price' => (float) $p->cost_price,
             'unit' => $p->unit ?? 'قطعة',
             'unit_factor' => (float) $p->unit_factor,
-            'pieces_per_package' => (int) ($p->pieces_per_package ?? round($p->unit_factor)),
+            'package_factor' => (float) $p->package_factor,
+            'pieces_per_package' => (int) ($p->pieces_per_package ?: (int) round($p->package_factor)),
             'stocks' => $p->stockBalances->pluck('quantity', 'warehouse_id')->map(fn ($q) => (float) $q)->toArray(),
             'total_stock' => (float) $p->total_stock,
             'formatted_stock' => $p->formatStockBreakdown(),
@@ -541,6 +554,7 @@ class SalesInvoiceController extends Controller
             'discount_type' => ['nullable', 'string', 'in:fixed,percentage'],
             'discount_value' => ['nullable', 'numeric', 'min:0'],
             'notes' => ['nullable', 'string', 'max:1000'],
+            'sales_rep_id' => ['nullable', 'exists:users,id'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['required', 'exists:products,id'],
             'items.*.unit_id' => ['nullable', 'exists:units,id'],
@@ -592,10 +606,6 @@ class SalesInvoiceController extends Controller
                 foreach ($validated['items'] as $itemInput) {
                     $prodId = (int) $itemInput['product_id'];
                     $product = $productsMap->get($prodId);
-                    $productFactor = (float) ($product?->unit_factor ?? 1.0);
-                    if ($productFactor <= 0) {
-                        $productFactor = 1.0;
-                    }
 
                     $qty = (float) $itemInput['quantity'];
                     $price = (float) $itemInput['unit_price'];
@@ -605,8 +615,8 @@ class SalesInvoiceController extends Controller
                         $selectedFactor = 1.0;
                     }
 
-                    $effectiveFactor = $selectedFactor / $productFactor;
-                    $baseQty = round($qty * $effectiveFactor, 4);
+                    // Total equivalent base pieces to deduct from warehouse FIFO stock
+                    $baseQty = round($qty * $selectedFactor, 4);
 
                     $lineSubtotal = max(0.00, round(($qty * $price) - $lineDiscount, 2));
                     $subtotal += $lineSubtotal;
@@ -665,6 +675,7 @@ class SalesInvoiceController extends Controller
                 // 1. Update invoice header
                 $sale->update([
                     'customer_id' => (int) $validated['customer_id'],
+                    'sales_rep_id' => array_key_exists('sales_rep_id', $validated) ? $validated['sales_rep_id'] : $sale->sales_rep_id,
                     'warehouse_id' => (int) $validated['warehouse_id'],
                     'cashier_shift_id' => $activeShift?->id ?? $sale->cashier_shift_id,
                     'invoice_date' => $validated['invoice_date'],
@@ -725,6 +736,7 @@ class SalesInvoiceController extends Controller
             'items.product',
             'items.unit',
             'items.batchAllocations.batch',
+            'payments.creator',
         ]);
 
         $canViewCogs = auth()->user()?->isAdmin() || Gate::allows('view-cogs');
@@ -889,13 +901,8 @@ class SalesInvoiceController extends Controller
 
         foreach ($invoice->items as $item) {
             $baseQty = (float) $item->base_quantity;
-            $productFactor = (float) ($item->product?->unit_factor ?? 1.0);
-            if ($productFactor <= 0) {
-                $productFactor = 1.0;
-            }
             $selectedFactor = (float) ($item->conversion_factor > 0 ? $item->conversion_factor : 1.0);
-            $effectiveFactor = $selectedFactor / $productFactor;
-            $unitPriceBase = (float) $item->unit_price / ($effectiveFactor > 0 ? $effectiveFactor : 1.0);
+            $unitPriceBase = (float) $item->unit_price / $selectedFactor;
 
             $result = $inventoryService->deductStockFIFOWithPricing(
                 productId: $item->product_id,
@@ -939,5 +946,8 @@ class SalesInvoiceController extends Controller
                 $customer->increment('current_balance', (float) $invoice->remaining_amount);
             }
         }
+
+        // Calculate and record sales rep commission upon posting
+        app(CommissionService::class)->recordInvoiceCommission($invoice);
     }
 }
