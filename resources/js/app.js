@@ -20,6 +20,7 @@ import { initSales } from './pages/sales.js';
 import { initShifts } from './pages/shifts.js';
 import { initPrintTemplatesPage } from './pages/print-templates.js';
 import { initPortalPage } from './pages/portal.js';
+import { initSalesRepsPage } from './pages/sales-reps.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     initThemeAndDensity();
@@ -46,6 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initPrintTemplatesPage();
     initDirectPythonPrint();
     initPortalPage();
+    initSalesRepsPage();
 });
 
 /**

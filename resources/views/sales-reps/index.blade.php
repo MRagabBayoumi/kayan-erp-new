@@ -3,7 +3,7 @@
 @section('control_panel')
     <x-control-panel title="إدارة وتحليل أداء مناديب المبيعات" :breadcrumbs="['المبيعات' => route('sales.index'), 'المناديب والمبيعات الميدانية' => '#']">
         <x-slot:actions>
-            <button type="button" data-action="open-add-rep-modal" class="erp-btn erp-btn-primary">
+            <button type="button" id="openAddRepBtn" data-action="open-add-rep-modal" onclick="openAddRepModal()" class="erp-btn erp-btn-primary">
                 <x-icon name="user-plus" size="16" />
                 <span>إضافة مندوب مبيعات سريع</span>
             </button>
@@ -271,104 +271,103 @@
 </div>
 
 <!-- Modal: Add New Sales Representative -->
-<div id="addRepModal" class="erp-modal-overlay hidden fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
-    <div class="erp-card w-full max-w-lg mb-0 shadow-xl overflow-hidden max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-150">
-        <div class="erp-card-header bg-[var(--bg-hover)] shrink-0">
-            <h3 class="erp-card-title text-sm font-bold">
-                <x-icon name="user-plus" size="16" class="text-[var(--primary)]" />
+<div id="addRepModal" class="erp-modal-overlay" style="display: none;">
+    <div class="erp-modal-container max-w-lg">
+        <div class="erp-modal-header">
+            <div class="erp-modal-title">
+                <x-icon name="user-plus" size="18" class="text-[var(--primary)]" />
                 <span>إضافة مندوب مبيعات ميداني جديد</span>
-            </h3>
-            <button type="button" data-action="close-modal" data-target="addRepModal" class="p-1 text-slate-400 hover:text-slate-600 rounded">
-                <x-icon name="x" size="16" />
-            </button>
+            </div>
+            <button type="button" class="erp-modal-close" data-action="close-modal" data-target="addRepModal" onclick="closeRepModal('addRepModal')" title="إغلاق">✕</button>
         </div>
 
-        <form method="POST" action="{{ route('sales-reps.store') }}" class="p-5 space-y-3.5 overflow-y-auto">
+        <form method="POST" action="{{ route('sales-reps.store') }}">
             @csrf
+            <div class="erp-modal-body p-5 space-y-3.5 overflow-y-auto max-h-[70vh]">
+                @if($errors->any())
+                    <div class="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-md">
+                        <div class="font-bold mb-1">يرجى تصحيح الأخطاء التالية:</div>
+                        <ul class="list-disc list-inside space-y-0.5">
+                            @foreach($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
 
-            @if($errors->any())
-                <div class="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-md">
-                    <div class="font-bold mb-1">يرجى تصحيح الأخطاء التالية:</div>
-                    <ul class="list-disc list-inside space-y-0.5">
-                        @foreach($errors->all() as $error)
-                            <li>{{ $error }}</li>
+                <!-- Name -->
+                <div class="erp-form-group mb-0">
+                    <label class="erp-form-label">اسم المندوب بالكامل <span class="required">*</span></label>
+                    <input type="text" name="name" value="{{ old('name') }}" required placeholder="مثال: أحمد محمود إبراهيم" class="erp-input text-xs sm:text-sm">
+                </div>
+
+                <!-- Username & Password -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div class="erp-form-group mb-0">
+                        <label class="erp-form-label">اسم المستخدم للدخول <span class="required">*</span></label>
+                        <input type="text" name="username" value="{{ old('username') }}" required placeholder="مثال: ahmed_rep" class="erp-input text-xs sm:text-sm font-mono text-left" dir="ltr">
+                    </div>
+
+                    <div class="erp-form-group mb-0">
+                        <label class="erp-form-label">كلمة المرور للدخول <span class="required">*</span></label>
+                        <input type="password" name="password" required minlength="6" placeholder="لا تقل عن 6 أحرف" class="erp-input text-xs sm:text-sm font-mono text-left" dir="ltr">
+                    </div>
+                </div>
+
+                <!-- Phone & Email -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div class="erp-form-group mb-0">
+                        <label class="erp-form-label">رقم الهاتف (اختياري)</label>
+                        <input type="tel" name="phone" value="{{ old('phone') }}" placeholder="مثال: 01012345678" class="erp-input text-xs sm:text-sm font-numeric">
+                    </div>
+
+                    <div class="erp-form-group mb-0">
+                        <label class="erp-form-label">البريد الإلكتروني (اختياري)</label>
+                        <input type="email" name="email" value="{{ old('email') }}" placeholder="rep@company.com" class="erp-input text-xs sm:text-sm text-left" dir="ltr">
+                    </div>
+                </div>
+
+                <!-- Commission Rate & Type -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div class="erp-form-group mb-0">
+                        <label class="erp-form-label">نوع احتساب العمولة <span class="required">*</span></label>
+                        <select name="commission_type" required class="erp-select text-xs">
+                            <option value="percentage" {{ old('commission_type', 'percentage') === 'percentage' ? 'selected' : '' }}>نسبة مئوية (%) من قيمة الفاتورة</option>
+                            <option value="fixed" {{ old('commission_type') === 'fixed' ? 'selected' : '' }}>مبلغ ثابت (ج.م) لكل فاتورة</option>
+                        </select>
+                    </div>
+
+                    <div class="erp-form-group mb-0">
+                        <label class="erp-form-label">قيمة أو نسبة العمولة <span class="required">*</span></label>
+                        <div class="relative">
+                            <input type="number" step="0.01" min="0" name="commission_rate" value="{{ old('commission_rate', '0.00') }}" required placeholder="مثال: 5 أو 50" class="erp-input text-xs font-numeric">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Warehouse Assignment -->
+                <div class="erp-form-group mb-0">
+                    <label class="erp-form-label">المستودع أو الفرع التابع له المندوب</label>
+                    <select name="warehouse_id" class="erp-select text-xs">
+                        <option value="">-- كافة المستودعات والفروع --</option>
+                        @foreach($warehouses as $wh)
+                            <option value="{{ $wh->id }}" {{ (string)old('warehouse_id') === (string)$wh->id ? 'selected' : '' }}>{{ $wh->name }}</option>
                         @endforeach
-                    </ul>
-                </div>
-            @endif
-
-            <!-- Name -->
-            <div class="erp-form-group mb-0">
-                <label class="erp-form-label">اسم المندوب بالكامل <span class="required">*</span></label>
-                <input type="text" name="name" value="{{ old('name') }}" required placeholder="مثال: أحمد محمود إبراهيم" class="erp-input text-xs sm:text-sm">
-            </div>
-
-            <!-- Username & Password -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div class="erp-form-group mb-0">
-                    <label class="erp-form-label">اسم المستخدم للدخول <span class="required">*</span></label>
-                    <input type="text" name="username" value="{{ old('username') }}" required placeholder="مثال: ahmed_rep" class="erp-input text-xs sm:text-sm font-mono text-left" dir="ltr">
-                </div>
-
-                <div class="erp-form-group mb-0">
-                    <label class="erp-form-label">كلمة المرور للدخول <span class="required">*</span></label>
-                    <input type="password" name="password" required minlength="6" placeholder="لا تقل عن 6 أحرف" class="erp-input text-xs sm:text-sm font-mono text-left" dir="ltr">
-                </div>
-            </div>
-
-            <!-- Phone & Email -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div class="erp-form-group mb-0">
-                    <label class="erp-form-label">رقم الهاتف (اختياري)</label>
-                    <input type="tel" name="phone" value="{{ old('phone') }}" placeholder="مثال: 01012345678" class="erp-input text-xs sm:text-sm font-numeric">
-                </div>
-
-                <div class="erp-form-group mb-0">
-                    <label class="erp-form-label">البريد الإلكتروني (اختياري)</label>
-                    <input type="email" name="email" value="{{ old('email') }}" placeholder="rep@company.com" class="erp-input text-xs sm:text-sm text-left" dir="ltr">
-                </div>
-            </div>
-
-            <!-- Commission Rate & Type -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div class="erp-form-group mb-0">
-                    <label class="erp-form-label">نوع احتساب العمولة <span class="required">*</span></label>
-                    <select name="commission_type" required class="erp-select text-xs">
-                        <option value="percentage" {{ old('commission_type', 'percentage') === 'percentage' ? 'selected' : '' }}>نسبة مئوية (%) من قيمة الفاتورة</option>
-                        <option value="fixed" {{ old('commission_type') === 'fixed' ? 'selected' : '' }}>مبلغ ثابت (ج.م) لكل فاتورة</option>
                     </select>
                 </div>
 
-                <div class="erp-form-group mb-0">
-                    <label class="erp-form-label">قيمة أو نسبة العمولة <span class="required">*</span></label>
-                    <div class="relative">
-                        <input type="number" step="0.01" min="0" name="commission_rate" value="{{ old('commission_rate', '0.00') }}" required placeholder="مثال: 5 أو 50" class="erp-input text-xs font-numeric">
-                    </div>
+                <!-- Active Checkbox -->
+                <div class="pt-1">
+                    <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+                        <input type="checkbox" name="is_active" value="1" {{ old('is_active', '1') === '1' ? 'checked' : '' }} class="rounded border-[var(--border-color)] text-[var(--primary)] focus:ring-[var(--primary)]">
+                        <span class="text-xs font-semibold text-[var(--text-main)]">الحساب نشط ويحق له تسجيل الدخول لبوابة المندوب الميداني</span>
+                    </label>
                 </div>
             </div>
 
-            <!-- Warehouse Assignment -->
-            <div class="erp-form-group mb-0">
-                <label class="erp-form-label">المستودع أو الفرع التابع له المندوب</label>
-                <select name="warehouse_id" class="erp-select text-xs">
-                    <option value="">-- كافة المستودعات والفروع --</option>
-                    @foreach($warehouses as $wh)
-                        <option value="{{ $wh->id }}" {{ (string)old('warehouse_id') === (string)$wh->id ? 'selected' : '' }}>{{ $wh->name }}</option>
-                    @endforeach
-                </select>
-            </div>
-
-            <!-- Active Checkbox -->
-            <div class="pt-1">
-                <label class="inline-flex items-center gap-2 cursor-pointer select-none">
-                    <input type="checkbox" name="is_active" value="1" {{ old('is_active', '1') === '1' ? 'checked' : '' }} class="rounded border-[var(--border-color)] text-[var(--primary)] focus:ring-[var(--primary)]">
-                    <span class="text-xs font-semibold text-[var(--text-main)]">الحساب نشط ويحق له تسجيل الدخول لبوابة المندوب الميداني</span>
-                </label>
-            </div>
-
-            <!-- Actions -->
-            <div class="flex items-center justify-end gap-2 pt-3 border-t border-[var(--border-light)]">
-                <button type="button" data-action="close-modal" data-target="addRepModal" class="erp-btn erp-btn-secondary text-xs">إلغاء</button>
+            <!-- Actions Footer -->
+            <div class="erp-modal-footer p-4 flex items-center justify-end gap-2.5 bg-[var(--bg-surface-alt)] border-t border-[var(--border-light)]">
+                <button type="button" data-action="close-modal" data-target="addRepModal" onclick="closeRepModal('addRepModal')" class="erp-btn erp-btn-secondary text-xs">إلغاء</button>
                 <button type="submit" class="erp-btn erp-btn-primary text-xs">
                     <x-icon name="check" size="14" />
                     <span>حفظ وإنشاء حساب المندوب</span>
@@ -379,92 +378,91 @@
 </div>
 
 <!-- Modal: Edit Sales Representative -->
-<div id="editRepModal" class="erp-modal-overlay hidden fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
-    <div class="erp-card w-full max-w-lg mb-0 shadow-xl overflow-hidden max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-150">
-        <div class="erp-card-header bg-[var(--bg-hover)] shrink-0">
-            <h3 class="erp-card-title text-sm font-bold">
-                <x-icon name="edit" size="16" class="text-[var(--primary)]" />
+<div id="editRepModal" class="erp-modal-overlay" style="display: none;">
+    <div class="erp-modal-container max-w-lg">
+        <div class="erp-modal-header">
+            <div class="erp-modal-title">
+                <x-icon name="edit" size="18" class="text-[var(--primary)]" />
                 <span>تعديل بيانات المندوب ونسبة العمولة</span>
-            </h3>
-            <button type="button" data-action="close-modal" data-target="editRepModal" class="p-1 text-slate-400 hover:text-slate-600 rounded">
-                <x-icon name="x" size="16" />
-            </button>
+            </div>
+            <button type="button" class="erp-modal-close" data-action="close-modal" data-target="editRepModal" onclick="closeRepModal('editRepModal')" title="إغلاق">✕</button>
         </div>
 
-        <form id="editRepForm" method="POST" action="" class="p-5 space-y-3.5 overflow-y-auto">
+        <form id="editRepForm" method="POST" action="">
             @csrf
             @method('PUT')
-
-            <!-- Name -->
-            <div class="erp-form-group mb-0">
-                <label class="erp-form-label">اسم المندوب بالكامل <span class="required">*</span></label>
-                <input type="text" id="editRepName" name="name" required class="erp-input text-xs sm:text-sm">
-            </div>
-
-            <!-- Username & Password Change -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="erp-modal-body p-5 space-y-3.5 overflow-y-auto max-h-[70vh]">
+                <!-- Name -->
                 <div class="erp-form-group mb-0">
-                    <label class="erp-form-label">اسم المستخدم للدخول <span class="required">*</span></label>
-                    <input type="text" id="editRepUsername" name="username" required class="erp-input text-xs sm:text-sm font-mono text-left" dir="ltr">
+                    <label class="erp-form-label">اسم المندوب بالكامل <span class="required">*</span></label>
+                    <input type="text" id="editRepName" name="name" required class="erp-input text-xs sm:text-sm">
                 </div>
 
-                <div class="erp-form-group mb-0">
-                    <label class="erp-form-label">كلمة المرور (اتركه فارغاً للتثبيت)</label>
-                    <input type="password" name="password" minlength="6" placeholder="كلمة مرور جديدة (اختياري)" class="erp-input text-xs sm:text-sm font-mono text-left" dir="ltr">
-                </div>
-            </div>
+                <!-- Username & Password Change -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div class="erp-form-group mb-0">
+                        <label class="erp-form-label">اسم المستخدم للدخول <span class="required">*</span></label>
+                        <input type="text" id="editRepUsername" name="username" required class="erp-input text-xs sm:text-sm font-mono text-left" dir="ltr">
+                    </div>
 
-            <!-- Phone & Email -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div class="erp-form-group mb-0">
-                    <label class="erp-form-label">رقم الهاتف (اختياري)</label>
-                    <input type="tel" id="editRepPhone" name="phone" class="erp-input text-xs sm:text-sm font-numeric">
+                    <div class="erp-form-group mb-0">
+                        <label class="erp-form-label">كلمة المرور (اتركه فارغاً للتثبيت)</label>
+                        <input type="password" name="password" minlength="6" placeholder="كلمة مرور جديدة (اختياري)" class="erp-input text-xs sm:text-sm font-mono text-left" dir="ltr">
+                    </div>
                 </div>
 
-                <div class="erp-form-group mb-0">
-                    <label class="erp-form-label">البريد الإلكتروني (اختياري)</label>
-                    <input type="email" id="editRepEmail" name="email" class="erp-input text-xs sm:text-sm text-left" dir="ltr">
-                </div>
-            </div>
+                <!-- Phone & Email -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div class="erp-form-group mb-0">
+                        <label class="erp-form-label">رقم الهاتف (اختياري)</label>
+                        <input type="tel" id="editRepPhone" name="phone" class="erp-input text-xs sm:text-sm font-numeric">
+                    </div>
 
-            <!-- Commission Rate & Type -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div class="erp-form-group mb-0">
+                        <label class="erp-form-label">البريد الإلكتروني (اختياري)</label>
+                        <input type="email" id="editRepEmail" name="email" class="erp-input text-xs sm:text-sm text-left" dir="ltr">
+                    </div>
+                </div>
+
+                <!-- Commission Rate & Type -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div class="erp-form-group mb-0">
+                        <label class="erp-form-label">نوع العمولة <span class="required">*</span></label>
+                        <select id="editRepCommissionType" name="commission_type" required class="erp-select text-xs">
+                            <option value="percentage">نسبة مئوية (%)</option>
+                            <option value="fixed">مبلغ ثابت (ج.م)</option>
+                        </select>
+                    </div>
+
+                    <div class="erp-form-group mb-0">
+                        <label class="erp-form-label">نسبة أو قيمة العمولة <span class="required">*</span></label>
+                        <input type="number" step="0.01" min="0" id="editRepCommissionRate" name="commission_rate" required class="erp-input text-xs font-numeric">
+                    </div>
+                </div>
+
+                <!-- Warehouse Assignment -->
                 <div class="erp-form-group mb-0">
-                    <label class="erp-form-label">نوع العمولة <span class="required">*</span></label>
-                    <select id="editRepCommissionType" name="commission_type" required class="erp-select text-xs">
-                        <option value="percentage">نسبة مئوية (%)</option>
-                        <option value="fixed">مبلغ ثابت (ج.م)</option>
+                    <label class="erp-form-label">المستودع / الفرع</label>
+                    <select id="editRepWarehouseId" name="warehouse_id" class="erp-select text-xs">
+                        <option value="">-- كافة المستودعات والفروع --</option>
+                        @foreach($warehouses as $wh)
+                            <option value="{{ $wh->id }}">{{ $wh->name }}</option>
+                        @endforeach
                     </select>
                 </div>
 
-                <div class="erp-form-group mb-0">
-                    <label class="erp-form-label">نسبة أو قيمة العمولة <span class="required">*</span></label>
-                    <input type="number" step="0.01" min="0" id="editRepCommissionRate" name="commission_rate" required class="erp-input text-xs font-numeric">
+                <!-- Active Checkbox -->
+                <div class="pt-1">
+                    <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+                        <input type="checkbox" id="editRepActive" name="is_active" value="1" class="rounded border-[var(--border-color)] text-[var(--primary)] focus:ring-[var(--primary)]">
+                        <span class="text-xs font-semibold text-[var(--text-main)]">الحساب نشط ويحق له استخدام النظام</span>
+                    </label>
                 </div>
             </div>
 
-            <!-- Warehouse Assignment -->
-            <div class="erp-form-group mb-0">
-                <label class="erp-form-label">المستودع / الفرع</label>
-                <select id="editRepWarehouseId" name="warehouse_id" class="erp-select text-xs">
-                    <option value="">-- كافة المستودعات والفروع --</option>
-                    @foreach($warehouses as $wh)
-                        <option value="{{ $wh->id }}">{{ $wh->name }}</option>
-                    @endforeach
-                </select>
-            </div>
-
-            <!-- Active Checkbox -->
-            <div class="pt-1">
-                <label class="inline-flex items-center gap-2 cursor-pointer select-none">
-                    <input type="checkbox" id="editRepActive" name="is_active" value="1" class="rounded border-[var(--border-color)] text-[var(--primary)] focus:ring-[var(--primary)]">
-                    <span class="text-xs font-semibold text-[var(--text-main)]">الحساب نشط ويحق له استخدام النظام</span>
-                </label>
-            </div>
-
-            <!-- Actions -->
-            <div class="flex items-center justify-end gap-2 pt-3 border-t border-[var(--border-light)]">
-                <button type="button" data-action="close-modal" data-target="editRepModal" class="erp-btn erp-btn-secondary text-xs">إلغاء</button>
+            <!-- Actions Footer -->
+            <div class="erp-modal-footer p-4 flex items-center justify-end gap-2.5 bg-[var(--bg-surface-alt)] border-t border-[var(--border-light)]">
+                <button type="button" data-action="close-modal" data-target="editRepModal" onclick="closeRepModal('editRepModal')" class="erp-btn erp-btn-secondary text-xs">إلغاء</button>
                 <button type="submit" class="erp-btn erp-btn-primary text-xs">
                     <x-icon name="check" size="14" />
                     <span>تحديث بيانات المندوب</span>
@@ -476,48 +474,101 @@
 
 @push('scripts')
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Auto-open add modal if there were validation errors
-        @if($errors->any())
-            const addModal = document.getElementById('addRepModal');
-            if (addModal) {
-                addModal.classList.remove('hidden');
-            }
-        @endif
+    function openAddRepModal() {
+        const modal = document.getElementById('addRepModal');
+        if (modal) {
+            modal.classList.add('open');
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
+            const firstInput = modal.querySelector('input[name="name"]');
+            if (firstInput) firstInput.focus();
+        }
+    }
 
-        // Modal toggles
-        document.querySelectorAll('[data-action="open-add-rep-modal"]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.getElementById('addRepModal').classList.remove('hidden');
-            });
-        });
+    function closeRepModal(modalId) {
+        const modal = typeof modalId === 'string' ? document.getElementById(modalId) : modalId;
+        if (modal) {
+            modal.classList.remove('open');
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
+        }
+    }
 
-        document.querySelectorAll('[data-action="close-modal"]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const target = document.getElementById(btn.getAttribute('data-target'));
-                if (target) target.classList.add('hidden');
-            });
-        });
+    function openEditRepModal(btn) {
+        const modal = document.getElementById('editRepModal');
+        if (!modal) return;
 
-        // Edit Modal population
-        document.querySelectorAll('[data-action="open-edit-rep-modal"]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const repId = btn.getAttribute('data-rep-id');
-                const form = document.getElementById('editRepForm');
-                form.action = `/sales-reps/${repId}`;
+        const repId = btn.getAttribute('data-rep-id');
+        const form = document.getElementById('editRepForm');
+        if (form) {
+            form.action = `/sales-reps/${repId}`;
+        }
 
-                document.getElementById('editRepName').value = btn.getAttribute('data-rep-name') || '';
-                document.getElementById('editRepUsername').value = btn.getAttribute('data-rep-username') || '';
-                document.getElementById('editRepEmail').value = btn.getAttribute('data-rep-email') || '';
-                document.getElementById('editRepPhone').value = btn.getAttribute('data-rep-phone') || '';
-                document.getElementById('editRepCommissionRate').value = btn.getAttribute('data-rep-commission-rate') || 0;
-                document.getElementById('editRepCommissionType').value = btn.getAttribute('data-rep-commission-type') || 'percentage';
-                document.getElementById('editRepWarehouseId').value = btn.getAttribute('data-rep-warehouse-id') || '';
-                document.getElementById('editRepActive').checked = btn.getAttribute('data-rep-active') === '1';
+        const setVal = (id, val) => {
+            const el = document.getElementById(id);
+            if (el) el.value = val ?? '';
+        };
 
-                document.getElementById('editRepModal').classList.remove('hidden');
-            });
-        });
+        setVal('editRepName', btn.getAttribute('data-rep-name') || '');
+        setVal('editRepUsername', btn.getAttribute('data-rep-username') || '');
+        setVal('editRepEmail', btn.getAttribute('data-rep-email') || '');
+        setVal('editRepPhone', btn.getAttribute('data-rep-phone') || '');
+        setVal('editRepCommissionRate', btn.getAttribute('data-rep-commission-rate') || 0);
+        setVal('editRepCommissionType', btn.getAttribute('data-rep-commission-type') || 'percentage');
+        setVal('editRepWarehouseId', btn.getAttribute('data-rep-warehouse-id') || '');
+
+        const activeCb = document.getElementById('editRepActive');
+        if (activeCb) {
+            activeCb.checked = btn.getAttribute('data-rep-active') === '1';
+        }
+
+        modal.classList.add('open');
+        modal.classList.remove('hidden');
+        modal.style.display = 'flex';
+
+        const nameInput = document.getElementById('editRepName');
+        if (nameInput) nameInput.focus();
+    }
+
+    // Auto-open add modal if there were validation errors
+    @if($errors->any())
+        openAddRepModal();
+    @endif
+
+    // Global click listener delegation for maximum reliability
+    document.addEventListener('click', function(e) {
+        const openAddBtn = e.target.closest('[data-action="open-add-rep-modal"]');
+        if (openAddBtn) {
+            e.preventDefault();
+            openAddRepModal();
+            return;
+        }
+
+        const openEditBtn = e.target.closest('[data-action="open-edit-rep-modal"]');
+        if (openEditBtn) {
+            e.preventDefault();
+            openEditRepModal(openEditBtn);
+            return;
+        }
+
+        const closeBtn = e.target.closest('[data-action="close-modal"]');
+        if (closeBtn) {
+            e.preventDefault();
+            const target = closeBtn.getAttribute('data-target');
+            closeRepModal(target);
+            return;
+        }
+
+        if (e.target.classList && e.target.classList.contains('erp-modal-overlay')) {
+            closeRepModal(e.target);
+        }
+    });
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeRepModal('addRepModal');
+            closeRepModal('editRepModal');
+        }
     });
 </script>
 @endpush
