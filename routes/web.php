@@ -5,12 +5,15 @@ use App\Http\Controllers\BackupController;
 use App\Http\Controllers\CashierShiftController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CompanySettingController;
+use App\Http\Controllers\CustomerApprovalController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\CustomerPaymentController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\InventoryController;
+use App\Http\Controllers\PortalAttendanceController;
 use App\Http\Controllers\PortalController;
+use App\Http\Controllers\PortalVisitController;
 use App\Http\Controllers\PrintTemplateController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductImportController;
@@ -18,7 +21,9 @@ use App\Http\Controllers\PurchaseInvoiceController;
 use App\Http\Controllers\PurchaseReturnController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SalesInvoiceController;
+use App\Http\Controllers\SalesRepAttendanceController;
 use App\Http\Controllers\SalesRepController;
+use App\Http\Controllers\SalesRepVisitController;
 use App\Http\Controllers\ShippingOfficeController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\SupplierPaymentController;
@@ -279,6 +284,19 @@ Route::middleware('auth')->group(function () {
         Route::get('/sales-reps', [SalesRepController::class, 'index'])->name('sales-reps.index');
         Route::get('/sales-reps/create', [SalesRepController::class, 'create'])->name('sales-reps.create');
         Route::post('/sales-reps', [SalesRepController::class, 'store'])->name('sales-reps.store');
+
+        // Customer Approval Requests
+        Route::get('/sales-reps/customer-requests', [CustomerApprovalController::class, 'index'])->name('sales-reps.customer-requests.index');
+        Route::post('/sales-reps/customer-requests/{customer}/approve', [CustomerApprovalController::class, 'approve'])->name('sales-reps.customer-requests.approve');
+        Route::post('/sales-reps/customer-requests/{customer}/reject', [CustomerApprovalController::class, 'reject'])->name('sales-reps.customer-requests.reject');
+
+        // Reps Attendance Monitoring
+        Route::get('/sales-reps/attendance', [SalesRepAttendanceController::class, 'index'])->name('sales-reps.attendance.index');
+
+        // Reps Visits Monitoring
+        Route::get('/sales-reps/visits', [SalesRepVisitController::class, 'index'])->name('sales-reps.visits.index');
+
+        // Rep Details & Commissions
         Route::get('/sales-reps/{rep}', [SalesRepController::class, 'show'])->name('sales-reps.show');
         Route::put('/sales-reps/{rep}', [SalesRepController::class, 'update'])->name('sales-reps.update');
         Route::post('/sales-reps/commissions/{commission}/pay', [SalesRepController::class, 'payCommission'])->name('sales-reps.commissions.pay');
@@ -288,6 +306,18 @@ Route::middleware('auth')->group(function () {
     Route::middleware('can:access-sales-portal')->prefix('portal')->name('portal.')->group(function () {
         Route::get('/', [PortalController::class, 'index'])->name('index');
         Route::get('/catalog', [PortalController::class, 'catalog'])->name('catalog');
+
+        // GPS Attendance & Work Hours
+        Route::get('/attendance', [PortalAttendanceController::class, 'index'])->name('attendance.index');
+        Route::post('/attendance/check-in', [PortalAttendanceController::class, 'checkIn'])->name('attendance.check-in');
+        Route::post('/attendance/check-out', [PortalAttendanceController::class, 'checkOut'])->name('attendance.check-out');
+
+        // GPS Customer Visits
+        Route::get('/visits', [PortalVisitController::class, 'index'])->name('visits.index');
+        Route::get('/visits/create', [PortalVisitController::class, 'create'])->name('visits.create');
+        Route::post('/visits', [PortalVisitController::class, 'store'])->name('visits.store');
+        Route::get('/visits/{visit}', [PortalVisitController::class, 'show'])->name('visits.show');
+        Route::post('/visits/{visit}/complete', [PortalVisitController::class, 'complete'])->name('visits.complete');
 
         // Customer field registration & directory
         Route::get('/customers', [PortalController::class, 'customers'])->name('customers.index');

@@ -8,10 +8,17 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
 
 class Customer extends Model
 {
     use HasFactory, SoftDeletes;
+
+    public const APPROVAL_PENDING = 'pending';
+
+    public const APPROVAL_APPROVED = 'approved';
+
+    public const APPROVAL_REJECTED = 'rejected';
 
     protected $fillable = [
         'name',
@@ -30,6 +37,11 @@ class Customer extends Model
         'notes',
         'is_active',
         'sales_rep_id',
+        'approval_status',
+        'approved_by',
+        'approved_at',
+        'rejection_reason',
+        'store_images',
     ];
 
     protected function casts(): array
@@ -41,12 +53,24 @@ class Customer extends Model
             'latitude' => 'decimal:7',
             'longitude' => 'decimal:7',
             'is_active' => 'boolean',
+            'approved_at' => 'datetime',
+            'store_images' => 'array',
         ];
     }
 
     public function salesRep(): BelongsTo
     {
         return $this->belongsTo(User::class, 'sales_rep_id');
+    }
+
+    public function approver(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function visits(): HasMany
+    {
+        return $this->hasMany(SalesRepVisit::class, 'customer_id');
     }
 
     public function scopeForSalesRep(Builder $query, int $repId): Builder
@@ -57,6 +81,47 @@ class Customer extends Model
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);
+    }
+
+    public function scopeApproved(Builder $query): Builder
+    {
+        return $query->where('approval_status', self::APPROVAL_APPROVED);
+    }
+
+    public function scopePendingApproval(Builder $query): Builder
+    {
+        return $query->where('approval_status', self::APPROVAL_PENDING);
+    }
+
+    public function isApproved(): bool
+    {
+        return $this->approval_status === self::APPROVAL_APPROVED;
+    }
+
+    public function isPending(): bool
+    {
+        return $this->approval_status === self::APPROVAL_PENDING;
+    }
+
+    public function isRejected(): bool
+    {
+        return $this->approval_status === self::APPROVAL_REJECTED;
+    }
+
+    public function getStoreImageUrlsAttribute(): array
+    {
+        if (empty($this->store_images) || ! is_array($this->store_images)) {
+            return [];
+        }
+
+        $urls = [];
+        foreach ($this->store_images as $path) {
+            if ($path && Storage::disk('public')->exists($path)) {
+                $urls[] = asset('storage/'.$path);
+            }
+        }
+
+        return $urls;
     }
 
     public function scopeWholesale(Builder $query): Builder

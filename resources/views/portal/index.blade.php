@@ -30,38 +30,83 @@
         </div>
     </div>
 
+    <!-- Daily GPS Attendance Status Banner -->
+    <div class="erp-card mb-0 p-3 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 {{ ! $todayAttendance ? 'border-amber-300 bg-amber-50/70' : ($todayAttendance->status === 'present' ? 'border-emerald-300 bg-emerald-50/70' : 'border-blue-300 bg-blue-50/70') }}">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0 {{ ! $todayAttendance ? 'bg-amber-100 text-amber-700' : ($todayAttendance->status === 'present' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700') }}">
+                <x-icon name="clock" size="20" />
+            </div>
+            <div>
+                @if(! $todayAttendance)
+                    <div class="text-xs sm:text-sm font-bold text-amber-900">لم تقم بتسجيل حضورك الميداني اليوم بعد</div>
+                    <div class="text-[11px] text-amber-700">سجل حضورك الآن عبر الـ GPS لاحتساب ساعات عملك الميدانية</div>
+                @elseif($todayAttendance->status === 'present')
+                    <div class="text-xs sm:text-sm font-bold text-emerald-900 flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                        <span>أنت مسجل حضورك الميداني اليوم</span>
+                    </div>
+                    <div class="text-[11px] text-emerald-700 font-numeric">وقت الحضور: {{ $todayAttendance->check_in_time->format('h:i A') }} (مدة الدوام جارية)</div>
+                @else
+                    <div class="text-xs sm:text-sm font-bold text-blue-900">تم إنهاء يوم العمل بنجاح (انصراف مكتمل)</div>
+                    <div class="text-[11px] text-blue-700 font-numeric">إجمالي وقت العمل اليوم: {{ $todayAttendance->formatted_work_duration }}</div>
+                @endif
+            </div>
+        </div>
+
+        <a href="{{ route('portal.attendance.index') }}" class="erp-btn {{ ! $todayAttendance ? 'erp-btn-warning' : ($todayAttendance->status === 'present' ? 'erp-btn-danger' : 'erp-btn-secondary') }} text-xs py-1.5 px-3 self-stretch sm:self-auto justify-center">
+            <x-icon name="{{ ! $todayAttendance ? 'log-in' : ($todayAttendance->status === 'present' ? 'log-out' : 'eye') }}" size="14" />
+            <span>{{ ! $todayAttendance ? 'تسجيل الحضور الآن' : ($todayAttendance->status === 'present' ? 'شاشة الحضور / انصراف' : 'عرض سجل الدوام') }}</span>
+        </a>
+    </div>
+
     <!-- Quick Action Cards (Kayan ERP Card Style) -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <a href="{{ route('portal.orders.create') }}" class="erp-card hover:border-[var(--primary)] hover:shadow-sm transition-all p-3.5 sm:p-4 flex flex-col items-center justify-center text-center group mb-0">
-            <div class="w-10 h-10 rounded-md bg-[var(--primary-soft)] text-[var(--primary)] flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
-                <x-icon name="plus-circle" size="20" />
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3">
+        <a href="{{ route('portal.orders.create') }}" class="erp-card hover:border-[var(--primary)] hover:shadow-sm transition-all p-3 flex flex-col items-center justify-center text-center group mb-0">
+            <div class="w-9 h-9 rounded-md bg-[var(--primary-soft)] text-[var(--primary)] flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform">
+                <x-icon name="plus-circle" size="18" />
             </div>
-            <span class="text-xs sm:text-sm font-bold text-[var(--text-main)]">طلب بيع جديد</span>
-            <span class="text-[11px] text-[var(--text-muted)] mt-0.5">تسجيل فاتورة ميدانية</span>
+            <span class="text-xs font-bold text-[var(--text-main)]">طلب بيع جديد</span>
+            <span class="text-[10px] text-[var(--text-muted)] mt-0.5">تسجيل فاتورة</span>
         </a>
 
-        <a href="{{ route('portal.customers.create') }}" class="erp-card hover:border-[var(--primary)] hover:shadow-sm transition-all p-3.5 sm:p-4 flex flex-col items-center justify-center text-center group mb-0">
-            <div class="w-10 h-10 rounded-md bg-emerald-50 text-emerald-700 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
-                <x-icon name="user-plus" size="20" />
+        <a href="{{ route('portal.visits.create') }}" class="erp-card hover:border-[var(--primary)] hover:shadow-sm transition-all p-3 flex flex-col items-center justify-center text-center group mb-0">
+            <div class="w-9 h-9 rounded-md bg-rose-50 text-rose-600 flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform">
+                <x-icon name="map-pin" size="18" />
             </div>
-            <span class="text-xs sm:text-sm font-bold text-[var(--text-main)]">تسجيل عميل</span>
-            <span class="text-[11px] text-[var(--text-muted)] mt-0.5">إضافة عميل وموقعه</span>
+            <span class="text-xs font-bold text-[var(--text-main)]">زيارة ميدانية</span>
+            <span class="text-[10px] text-[var(--text-muted)] mt-0.5">توثيق وصول GPS</span>
         </a>
 
-        <a href="{{ route('portal.catalog') }}" class="erp-card hover:border-[var(--primary)] hover:shadow-sm transition-all p-3.5 sm:p-4 flex flex-col items-center justify-center text-center group mb-0">
-            <div class="w-10 h-10 rounded-md bg-amber-50 text-amber-700 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
-                <x-icon name="package" size="20" />
+        <a href="{{ route('portal.attendance.index') }}" class="erp-card hover:border-[var(--primary)] hover:shadow-sm transition-all p-3 flex flex-col items-center justify-center text-center group mb-0">
+            <div class="w-9 h-9 rounded-md bg-sky-50 text-sky-600 flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform">
+                <x-icon name="clock" size="18" />
             </div>
-            <span class="text-xs sm:text-sm font-bold text-[var(--text-main)]">كتالوج الأصناف</span>
-            <span class="text-[11px] text-[var(--text-muted)] mt-0.5">الأسعار والمخزون الحي</span>
+            <span class="text-xs font-bold text-[var(--text-main)]">دوام العمل (GPS)</span>
+            <span class="text-[10px] text-[var(--text-muted)] mt-0.5">حضور وانصراف</span>
         </a>
 
-        <a href="{{ route('portal.orders.index') }}" class="erp-card hover:border-[var(--primary)] hover:shadow-sm transition-all p-3.5 sm:p-4 flex flex-col items-center justify-center text-center group mb-0">
-            <div class="w-10 h-10 rounded-md bg-slate-100 text-slate-700 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
-                <x-icon name="file-text" size="20" />
+        <a href="{{ route('portal.customers.create') }}" class="erp-card hover:border-[var(--primary)] hover:shadow-sm transition-all p-3 flex flex-col items-center justify-center text-center group mb-0">
+            <div class="w-9 h-9 rounded-md bg-emerald-50 text-emerald-700 flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform">
+                <x-icon name="user-plus" size="18" />
             </div>
-            <span class="text-xs sm:text-sm font-bold text-[var(--text-main)]">سجل الطلبيات</span>
-            <span class="text-[11px] text-[var(--text-muted)] mt-0.5">متابعة الفواتير وحالاتها</span>
+            <span class="text-xs font-bold text-[var(--text-main)]">تسجيل عميل</span>
+            <span class="text-[10px] text-[var(--text-muted)] mt-0.5">بيانات وصور المحل</span>
+        </a>
+
+        <a href="{{ route('portal.catalog') }}" class="erp-card hover:border-[var(--primary)] hover:shadow-sm transition-all p-3 flex flex-col items-center justify-center text-center group mb-0">
+            <div class="w-9 h-9 rounded-md bg-amber-50 text-amber-700 flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform">
+                <x-icon name="package" size="18" />
+            </div>
+            <span class="text-xs font-bold text-[var(--text-main)]">كتالوج الأصناف</span>
+            <span class="text-[10px] text-[var(--text-muted)] mt-0.5">سعر الجملة والمخزون</span>
+        </a>
+
+        <a href="{{ route('portal.orders.index') }}" class="erp-card hover:border-[var(--primary)] hover:shadow-sm transition-all p-3 flex flex-col items-center justify-center text-center group mb-0">
+            <div class="w-9 h-9 rounded-md bg-slate-100 text-slate-700 flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform">
+                <x-icon name="file-text" size="18" />
+            </div>
+            <span class="text-xs font-bold text-[var(--text-main)]">سجل الطلبيات</span>
+            <span class="text-[10px] text-[var(--text-muted)] mt-0.5">متابعة الفواتير</span>
         </a>
     </div>
 

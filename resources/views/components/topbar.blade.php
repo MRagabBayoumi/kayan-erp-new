@@ -128,6 +128,10 @@
                     <span>بوابة المندوب الميداني (الموبايل)</span>
                 </a>
                 @endcan
+                <button type="button" class="erp-dropdown-item font-semibold text-emerald-600" data-action="install-pwa-app" style="display: none;">
+                    <x-icon name="download" size="14" />
+                    <span>تثبيت البرنامج على الكمبيوتر</span>
+                </button>
                 <div class="erp-dropdown-divider"></div>
                 <form method="POST" action="{{ route('logout') }}" class="m-0">
                     @csrf

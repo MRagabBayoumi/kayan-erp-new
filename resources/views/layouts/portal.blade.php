@@ -5,7 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#714B67">
+    <link rel="manifest" href="{{ asset('manifest.json') }}">
+    <link rel="apple-touch-icon" href="{{ asset('icon-192.png') }}">
+    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
+    <link rel="alternate icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
 
     <title>{{ $title ?? 'بوابة المندوب' }} | {{ $globalCompanySetting?->company_name ?? config('app.name', 'Kayan ERP') }}</title>
 
@@ -48,16 +54,22 @@
                 <a href="{{ route('portal.index') }}" class="px-3 py-1.5 rounded transition-all {{ request()->routeIs('portal.index') ? 'bg-white/25 text-white font-bold' : 'text-white/80 hover:bg-white/10 hover:text-white' }}">
                     الرئيسية
                 </a>
-                <a href="{{ route('portal.catalog') }}" class="px-3 py-1.5 rounded transition-all {{ request()->routeIs('portal.catalog') ? 'bg-white/25 text-white font-bold' : 'text-white/80 hover:bg-white/10 hover:text-white' }}">
+                <a href="{{ route('portal.attendance.index') }}" class="px-2.5 py-1.5 rounded transition-all {{ request()->routeIs('portal.attendance.*') ? 'bg-white/25 text-white font-bold' : 'text-white/80 hover:bg-white/10 hover:text-white' }}">
+                    الحضور (GPS)
+                </a>
+                <a href="{{ route('portal.visits.index') }}" class="px-2.5 py-1.5 rounded transition-all {{ request()->routeIs('portal.visits.*') ? 'bg-white/25 text-white font-bold' : 'text-white/80 hover:bg-white/10 hover:text-white' }}">
+                    الزيارات
+                </a>
+                <a href="{{ route('portal.catalog') }}" class="px-2.5 py-1.5 rounded transition-all {{ request()->routeIs('portal.catalog') ? 'bg-white/25 text-white font-bold' : 'text-white/80 hover:bg-white/10 hover:text-white' }}">
                     الكتالوج
                 </a>
-                <a href="{{ route('portal.customers.index') }}" class="px-3 py-1.5 rounded transition-all {{ request()->routeIs('portal.customers.*') ? 'bg-white/25 text-white font-bold' : 'text-white/80 hover:bg-white/10 hover:text-white' }}">
+                <a href="{{ route('portal.customers.index') }}" class="px-2.5 py-1.5 rounded transition-all {{ request()->routeIs('portal.customers.*') ? 'bg-white/25 text-white font-bold' : 'text-white/80 hover:bg-white/10 hover:text-white' }}">
                     عملائي
                 </a>
-                <a href="{{ route('portal.orders.index') }}" class="px-3 py-1.5 rounded transition-all {{ request()->routeIs('portal.orders.index') || request()->routeIs('portal.orders.show') ? 'bg-white/25 text-white font-bold' : 'text-white/80 hover:bg-white/10 hover:text-white' }}">
+                <a href="{{ route('portal.orders.index') }}" class="px-2.5 py-1.5 rounded transition-all {{ request()->routeIs('portal.orders.index') || request()->routeIs('portal.orders.show') ? 'bg-white/25 text-white font-bold' : 'text-white/80 hover:bg-white/10 hover:text-white' }}">
                     سجل الطلبيات
                 </a>
-                <a href="{{ route('portal.commissions') }}" class="px-3 py-1.5 rounded transition-all {{ request()->routeIs('portal.commissions') ? 'bg-white/25 text-white font-bold' : 'text-white/80 hover:bg-white/10 hover:text-white' }}">
+                <a href="{{ route('portal.commissions') }}" class="px-2.5 py-1.5 rounded transition-all {{ request()->routeIs('portal.commissions') ? 'bg-white/25 text-white font-bold' : 'text-white/80 hover:bg-white/10 hover:text-white' }}">
                     العمولات
                 </a>
             </nav>

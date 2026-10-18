@@ -230,14 +230,19 @@
                                         >
                                             <x-icon name="eye" size="16" />
                                         </a>
-                                        <a 
-                                            href="{{ route('purchase-returns.print', $return) }}" 
+                                        <button type="button" 
+                                            data-action="open-print-modal"
+                                            data-print-title="مرتجع مشتريات: {{ $return->return_number }}"
+                                            data-url-a4="{{ route('purchase-returns.print', [$return, 'format' => 'a4']) }}"
+                                            data-url-a5="{{ route('purchase-returns.print', [$return, 'format' => 'a5']) }}"
+                                            data-url-thermal="{{ route('purchase-returns.print', [$return, 'format' => 'thermal_80mm']) }}"
+                                            data-direct-url-a4="{{ route('purchase-returns.direct-print', [$return, 'format' => 'a4']) }}"
+                                            data-direct-url-a5="{{ route('purchase-returns.direct-print', [$return, 'format' => 'a5']) }}"
+                                            data-direct-url-thermal="{{ route('purchase-returns.direct-print', [$return, 'format' => 'thermal_80mm']) }}"
                                             class="erp-btn erp-btn-ghost p-1.5" 
-                                            title="طباعة إذن المرتجع" 
-                                            target="_blank"
-                                        >
+                                            title="خيارات الطباعة (A4, A5, حراري)">
                                             <x-icon name="printer" size="16" />
-                                        </a>
+                                        </button>
                                     </div>
                                 </td>
                             </tr>

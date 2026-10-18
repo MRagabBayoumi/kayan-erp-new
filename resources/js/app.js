@@ -48,6 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initDirectPythonPrint();
     initPortalPage();
     initSalesRepsPage();
+    initPwaInstallation();
 });
 
 /**
@@ -424,4 +425,48 @@ function initDirectPythonPrint() {
         }
     });
 }
+
+/**
+ * PWA & Desktop App Installation Manager
+ */
+function initPwaInstallation() {
+    // 1. Register Service Worker
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js').catch((err) => {
+                console.debug('[PWA] Service Worker registration note:', err);
+            });
+        });
+    }
+
+    // 2. Handle beforeinstallprompt event for desktop installation
+    let deferredPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+
+        const installBtns = document.querySelectorAll('[data-action="install-pwa-app"]');
+        installBtns.forEach(btn => {
+            btn.style.display = 'inline-flex';
+            btn.addEventListener('click', async () => {
+                if (!deferredPrompt) return;
+                deferredPrompt.prompt();
+                const choice = await deferredPrompt.userChoice;
+                if (choice.outcome === 'accepted') {
+                    console.log('[PWA] User accepted the installation');
+                }
+                deferredPrompt = null;
+            });
+        });
+    });
+
+    window.addEventListener('appinstalled', () => {
+        console.log('[PWA] Kayan ERP desktop app installed');
+        const installBtns = document.querySelectorAll('[data-action="install-pwa-app"]');
+        installBtns.forEach(btn => {
+            btn.style.display = 'none';
+        });
+    });
+}
+
 

@@ -10,6 +10,15 @@
     @if(!empty($globalCompanySetting?->logo_url))
         <link rel="apple-touch-icon" href="{{ $globalCompanySetting->logo_url }}">
     @endif
+    <!-- PWA & Desktop App Settings -->
+    <link rel="manifest" href="{{ asset('manifest.json') }}">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="كيان ERP">
+    <link rel="apple-touch-icon" href="{{ asset('icon-192.png') }}">
+
     <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
     <link rel="alternate icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">

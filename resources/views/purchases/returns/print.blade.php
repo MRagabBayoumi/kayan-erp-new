@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    @vite(['resources/css/print/invoice-document.css'])
+    @vite(['resources/css/print/invoice-document.css', 'resources/js/app.js'])
     <style>
         body { font-family: 'Cairo', sans-serif; background: #f1f5f9; margin: 0; padding: 20px; color: #1e293b; }
         .print-card { max-width: 800px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
@@ -25,13 +25,23 @@
     </style>
 </head>
 <body>
-    <div class="no-print" style="max-width: 800px; margin: 0 auto 15px; text-align: left;">
-        <button onclick="window.print()" style="padding: 8px 16px; background: #0284c7; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; font-weight: bold;">
-            طباعة الإذن
-        </button>
-        <button onclick="window.close()" style="padding: 8px 16px; background: #64748b; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-family: inherit;">
-            إغلاق
-        </button>
+    <div class="no-print" style="max-width: 800px; margin: 0 auto 15px; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;">
+        <div style="display: flex; gap: 5px;">
+            <a href="{{ request()->fullUrlWithQuery(['format' => 'a4']) }}" style="padding: 6px 12px; border-radius: 4px; font-size: 12px; text-decoration: none; font-weight: bold; background: {{ ($format ?? 'a4') === 'a4' ? '#0284c7; color: #fff;' : '#e2e8f0; color: #334155;' }}">A4 قياسي</a>
+            <a href="{{ request()->fullUrlWithQuery(['format' => 'a5']) }}" style="padding: 6px 12px; border-radius: 4px; font-size: 12px; text-decoration: none; font-weight: bold; background: {{ ($format ?? 'a4') === 'a5' ? '#0284c7; color: #fff;' : '#e2e8f0; color: #334155;' }}">A5 وسط</a>
+            <a href="{{ request()->fullUrlWithQuery(['format' => 'thermal_80mm']) }}" style="padding: 6px 12px; border-radius: 4px; font-size: 12px; text-decoration: none; font-weight: bold; background: {{ ($format ?? 'a4') === 'thermal_80mm' ? '#0284c7; color: #fff;' : '#e2e8f0; color: #334155;' }}">80 مم حراري</a>
+        </div>
+        <div style="display: flex; gap: 8px;">
+            <button type="button" data-action="python-direct-print" data-url="{{ route('purchase-returns.direct-print', [$return, 'format' => $format ?? 'a4']) }}" style="padding: 8px 16px; background: #059669; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; font-weight: bold;">
+                {{ ($format ?? 'a4') === 'thermal_80mm' ? 'طباعة فورية (XP-80C) ⚡' : 'طباعة بايثون المباشرة' }}
+            </button>
+            <button onclick="window.print()" style="padding: 8px 16px; background: #0284c7; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; font-weight: bold;">
+                طباعة المتصفح
+            </button>
+            <button onclick="window.close()" style="padding: 8px 16px; background: #64748b; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-family: inherit;">
+                إغلاق
+            </button>
+        </div>
     </div>
 
     <div class="print-card">

@@ -295,3 +295,49 @@ test('cannot return more stock than available in warehouse', function () {
     // Ensure no return was posted
     expect(PurchaseReturn::where('status', PurchaseReturn::STATUS_POSTED)->count())->toBe(0);
 });
+
+test('purchase return print page and direct print API work correctly with formats', function () {
+    $inventoryService = app(InventoryService::class);
+    $inventoryService->addStock(
+        productId: $this->product->id,
+        warehouseId: $this->warehouse->id,
+        quantity: 20,
+        costPrice: 10.00
+    );
+
+    $this->post(route('purchase-returns.store'), [
+        'action' => 'post',
+        'supplier_id' => $this->supplier->id,
+        'warehouse_id' => $this->warehouse->id,
+        'return_date' => '2026-10-18',
+        'settlement_type' => PurchaseReturn::SETTLEMENT_DEDUCT_BALANCE,
+        'items' => [
+            [
+                'product_id' => $this->product->id,
+                'unit_id' => $this->pieceUnit->id,
+                'quantity' => 5,
+                'unit_cost' => 10.00,
+            ],
+        ],
+    ]);
+
+    $purchaseReturn = PurchaseReturn::first();
+
+    // 1. Web preview route for a4, a5, thermal_80mm
+    $responseA4 = $this->get(route('purchase-returns.print', [$purchaseReturn, 'format' => 'a4']));
+    $responseA4->assertStatus(200);
+    $responseA4->assertSee('مرتجع مشتريات');
+
+    $responseThermal = $this->get(route('purchase-returns.print', [$purchaseReturn, 'format' => 'thermal_80mm']));
+    $responseThermal->assertStatus(200);
+
+    // 2. Direct print via Python route
+    $responseDirect = $this->postJson(route('purchase-returns.direct-print', [$purchaseReturn, 'format' => 'thermal_80mm']));
+    $responseDirect->assertStatus(200);
+    $responseDirect->assertJson(['success' => true]);
+
+    // 3. Show page contains universal print button
+    $responseShow = $this->get(route('purchase-returns.show', $purchaseReturn));
+    $responseShow->assertStatus(200);
+    $responseShow->assertSee('data-action="open-print-modal"', false);
+});

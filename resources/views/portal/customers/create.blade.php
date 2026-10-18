@@ -19,7 +19,7 @@
     </div>
 
     <!-- Registration Form -->
-    <form method="POST" action="{{ route('portal.customers.store') }}" class="erp-card mb-0 p-4 sm:p-6 space-y-4">
+    <form method="POST" action="{{ route('portal.customers.store') }}" enctype="multipart/form-data" class="erp-card mb-0 p-4 sm:p-6 space-y-4">
         @csrf
 
         <!-- Name & Company -->
@@ -55,32 +55,19 @@
             </div>
         </div>
 
-        <!-- Pricing Tier -->
-        <div>
-            <label class="erp-form-label font-bold text-xs mb-1.5">
-                فئة السعر المعتمدة للعميل <span class="required">*</span>
-            </label>
-            <div class="grid grid-cols-3 gap-2">
-                <label class="flex flex-col items-center justify-center p-2.5 rounded border border-[var(--border-color)] bg-[var(--bg-hover)] hover:bg-white cursor-pointer transition-all text-center select-none has-checked:border-[var(--primary)] has-checked:bg-[var(--primary-soft)] has-checked:text-[var(--primary)]">
-                    <input type="radio" name="pricing_tier" value="retail" class="sr-only" {{ old('pricing_tier', 'retail') === 'retail' ? 'checked' : '' }}>
-                    <span class="text-xs font-bold">تجزئة</span>
-                    <span class="text-[10px] text-[var(--text-muted)]">قطاعي عادي</span>
-                </label>
-                <label class="flex flex-col items-center justify-center p-2.5 rounded border border-[var(--border-color)] bg-[var(--bg-hover)] hover:bg-white cursor-pointer transition-all text-center select-none has-checked:border-[var(--primary)] has-checked:bg-[var(--primary-soft)] has-checked:text-[var(--primary)]">
-                    <input type="radio" name="pricing_tier" value="wholesale" class="sr-only" {{ old('pricing_tier') === 'wholesale' ? 'checked' : '' }}>
-                    <span class="text-xs font-bold">جملة</span>
-                    <span class="text-[10px] text-[var(--text-muted)]">سعر تجار</span>
-                </label>
-                <label class="flex flex-col items-center justify-center p-2.5 rounded border border-[var(--border-color)] bg-[var(--bg-hover)] hover:bg-white cursor-pointer transition-all text-center select-none has-checked:border-[var(--primary)] has-checked:bg-[var(--primary-soft)] has-checked:text-[var(--primary)]">
-                    <input type="radio" name="pricing_tier" value="distributor" class="sr-only" {{ old('pricing_tier') === 'distributor' ? 'checked' : '' }}>
-                    <span class="text-xs font-bold">موزع</span>
-                    <span class="text-[10px] text-[var(--text-muted)]">كبار الموزعين</span>
-                </label>
+        <!-- Pricing Tier & Manager Approval Notice -->
+        <div class="p-3 rounded-lg border border-blue-200 bg-blue-50/70 dark:border-blue-900/40 dark:bg-blue-950/20 text-xs text-blue-900 dark:text-blue-300 space-y-1">
+            <div class="flex items-center justify-between">
+                <span class="font-bold flex items-center gap-1.5">
+                    <x-icon name="tag" size="14" class="text-blue-600 dark:text-blue-400" />
+                    <span>فئة التسعير التلقائية للمندوب:</span>
+                </span>
+                <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-600 text-white">سعر الجملة</span>
             </div>
-            <input type="hidden" name="customer_type" id="customerTypeInput" value="{{ old('pricing_tier', 'retail') }}">
+            <p class="text-[11px] text-blue-700 dark:text-blue-400">يتم إرسال الطلب لإدارة النظام لاعتماده وتحديد الحد الائتماني أو تعديل فئة التسعير إن رغب المدير في ذلك.</p>
         </div>
 
-        <!-- City & Credit Limit -->
+        <!-- City & Address -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
                 <label class="erp-form-label font-bold text-xs mb-1">المدينة / المنطقة</label>
@@ -88,31 +75,46 @@
                     class="erp-input text-xs sm:text-sm">
             </div>
             <div>
-                <label class="erp-form-label font-bold text-xs mb-1">حد الائتمان (الآجل)</label>
-                <input type="number" step="0.01" min="0" name="credit_limit" value="{{ old('credit_limit', 0) }}" placeholder="0.00"
-                    class="erp-input text-xs sm:text-sm font-numeric">
+                <label class="erp-form-label font-bold text-xs mb-1">العنوان التفصيلي / معالم مميزة</label>
+                <input type="text" name="address" value="{{ old('address') }}" placeholder="الشارع، رقم المبنى، علامة مميزة"
+                    class="erp-input text-xs sm:text-sm">
             </div>
         </div>
 
-        <div>
-            <label class="erp-form-label font-bold text-xs mb-1">العنوان التفصيلي / معالم مميزة</label>
-            <input type="text" name="address" value="{{ old('address') }}" placeholder="الشارع، رقم المبنى، علامة مميزة"
-                class="erp-input text-xs sm:text-sm">
+        <!-- Store Images Upload (Required/Recommended with camera) -->
+        <div class="p-3.5 rounded-lg border border-[var(--border-color)] bg-[var(--bg-hover)] space-y-2.5">
+            <div class="flex items-center justify-between">
+                <span class="erp-form-label font-bold text-xs flex items-center gap-1.5 mb-0 text-[var(--text-main)]">
+                    <x-icon name="camera" size="14" class="text-[var(--primary)]" />
+                    <span>صور مكان / واجهة المحل للمراجعة</span>
+                </span>
+                <span class="text-[10px] text-[var(--text-muted)]">التقاط أو رفع حتى 5 صور</span>
+            </div>
+
+            <label class="flex flex-col items-center justify-center p-4 border-2 border-dashed border-[var(--border-color)] rounded-lg bg-white dark:bg-gray-900 cursor-pointer hover:border-[var(--primary)] transition-all text-center">
+                <x-icon name="upload-cloud" size="24" class="text-[var(--primary)] mb-1" />
+                <span class="text-xs font-bold text-[var(--text-main)]">اضغط لالتقاط صور من الكاميرا أو اختيار ملفات</span>
+                <span class="text-[10px] text-[var(--text-muted)] mt-0.5">JPG, PNG, WebP (بحد أقصى 5 ميجابايت للصورة)</span>
+                <input type="file" name="store_images[]" id="storeImagesInput" multiple accept="image/*" class="sr-only">
+            </label>
+
+            <!-- Preview Container -->
+            <div id="imagePreviewContainer" class="hidden grid grid-cols-3 sm:grid-cols-5 gap-2 pt-2"></div>
         </div>
 
         <!-- Geolocation GPS Button -->
-        <div class="p-3.5 rounded bg-[var(--bg-hover)] border border-[var(--border-color)] space-y-2">
+        <div class="p-3.5 rounded-lg bg-[var(--bg-hover)] border border-[var(--border-color)] space-y-2">
             <div class="flex items-center justify-between">
                 <span class="erp-form-label font-bold text-xs flex items-center gap-1.5 mb-0">
                     <x-icon name="map-pin" size="14" class="text-rose-500" />
-                    <span>الموقع الجغرافي للعميل (GPS)</span>
+                    <span>الموقع الجغرافي للمحل (GPS)</span>
                 </span>
                 <span id="gpsStatusText" class="text-[10px] text-[var(--text-muted)] font-medium">غير محدد</span>
             </div>
 
             <button type="button" id="gpsBtn" class="erp-btn erp-btn-secondary w-full py-2 text-xs font-bold justify-center">
                 <x-icon name="navigation" size="14" class="text-[var(--primary)]" />
-                <span>التقاط موقع العميل الحالي من الهاتف</span>
+                <span>التقاط موقع المحل الحالي من الـ GPS</span>
             </button>
 
             <input type="hidden" name="latitude" id="latitudeInput" value="{{ old('latitude') }}">
@@ -120,16 +122,16 @@
         </div>
 
         <div>
-            <label class="erp-form-label font-bold text-xs mb-1">ملاحظات إضافية عن العميل</label>
-            <textarea name="notes" rows="2" placeholder="مواعيد التواجد، تفضيلات البضاعة، طريقة السداد..."
+            <label class="erp-form-label font-bold text-xs mb-1">ملاحظات إضافية عن العميل والمكان</label>
+            <textarea name="notes" rows="2" placeholder="مواعيد التواجد، تفضيلات البضاعة، طريقة السداد، ملاحظات المندوب..."
                 class="erp-textarea text-xs sm:text-sm">{{ old('notes') }}</textarea>
         </div>
 
         <!-- Submit Button -->
         <div class="pt-2">
             <button type="submit" class="erp-btn erp-btn-primary w-full py-3 text-sm font-bold justify-center shadow-xs">
-                <x-icon name="check-circle" size="16" />
-                <span>حفظ بيانات العميل والبدء في الطلب</span>
+                <x-icon name="send" size="16" />
+                <span>إرسال طلب تسجيل العميل للاعتماد</span>
             </button>
         </div>
     </form>
@@ -177,6 +179,39 @@
                     },
                     { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
                 );
+            });
+        }
+
+        // Store Images Preview
+        const storeImagesInput = document.getElementById('storeImagesInput');
+        const previewContainer = document.getElementById('imagePreviewContainer');
+
+        if (storeImagesInput && previewContainer) {
+            storeImagesInput.addEventListener('change', function(e) {
+                previewContainer.innerHTML = '';
+                const files = Array.from(e.target.files);
+
+                if (files.length === 0) {
+                    previewContainer.classList.add('hidden');
+                    return;
+                }
+
+                previewContainer.classList.remove('hidden');
+
+                files.forEach((file, index) => {
+                    if (!file.type.startsWith('image/')) return;
+                    const reader = new FileReader();
+                    reader.onload = function(evt) {
+                        const div = document.createElement('div');
+                        div.className = 'relative aspect-square rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-100 shadow-xs group';
+                        div.innerHTML = `
+                            <img src="${evt.target.result}" alt="صورة ${index + 1}" class="w-full h-full object-cover">
+                            <span class="absolute bottom-1 right-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-black/60 text-white">${index + 1}</span>
+                        `;
+                        previewContainer.appendChild(div);
+                    };
+                    reader.readAsDataURL(file);
+                });
             });
         }
     });

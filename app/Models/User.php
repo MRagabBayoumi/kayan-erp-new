@@ -168,6 +168,40 @@ class User extends Authenticatable
     }
 
     /**
+     * Attendance records for field sales rep.
+     */
+    public function attendances(): HasMany
+    {
+        return $this->hasMany(SalesRepAttendance::class, 'sales_rep_id');
+    }
+
+    /**
+     * Field visits conducted by this sales rep.
+     */
+    public function visits(): HasMany
+    {
+        return $this->hasMany(SalesRepVisit::class, 'sales_rep_id');
+    }
+
+    /**
+     * Today's active attendance session.
+     */
+    public function todayAttendance()
+    {
+        return $this->hasOne(SalesRepAttendance::class, 'sales_rep_id')
+            ->whereDate('date', now()->format('Y-m-d'))
+            ->latest('id');
+    }
+
+    /**
+     * Scope query to only active users.
+     */
+    public function scopeActive(Builder $query): Builder
+    {
+        return $query->where('is_active', true);
+    }
+
+    /**
      * Scope query to only sales representatives.
      */
     public function scopeSalesReps(Builder $query): Builder

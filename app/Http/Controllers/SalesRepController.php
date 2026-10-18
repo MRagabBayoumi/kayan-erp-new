@@ -65,6 +65,9 @@ class SalesRepController extends Controller
         $totalCommissions = (float) SalesCommission::sum('commission_amount');
         $pendingCommissions = (float) SalesCommission::pending()->sum('commission_amount');
         $paidCommissions = (float) SalesCommission::where('status', SalesCommission::STATUS_PAID)->sum('commission_amount');
+        $pendingCustomerRequestsCount = Customer::whereNotNull('sales_rep_id')
+            ->where('approval_status', Customer::APPROVAL_PENDING)
+            ->count();
 
         $warehouses = Warehouse::active()->orderBy('name')->get();
 
@@ -80,6 +83,7 @@ class SalesRepController extends Controller
                 'total_commissions' => $totalCommissions,
                 'pending_commissions' => $pendingCommissions,
                 'paid_commissions' => $paidCommissions,
+                'pending_customer_requests' => $pendingCustomerRequestsCount,
             ],
             'currentSearch' => $request->input('search'),
             'currentStatus' => $request->input('status'),

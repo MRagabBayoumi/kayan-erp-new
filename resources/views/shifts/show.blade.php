@@ -3,36 +3,20 @@
 @section('control_panel')
     <x-control-panel title="تفاصيل الوردية: {{ $shift->shift_number }}" :breadcrumbs="['المبيعات' => route('sales.index'), 'ورديات الكاشير' => route('shifts.index'), $shift->shift_number => '#']">
         <x-slot:actions>
-            <!-- Compact Print Menu -->
-            <div class="erp-dropdown">
-                <button type="button" class="erp-btn erp-btn-secondary" data-dropdown-toggle="shiftPrintMenu" title="خيارات ونماذج الطباعة">
-                    <x-icon name="printer" size="16" />
-                    <span>طباعة التقرير</span>
-                    <x-icon name="chevron-down" size="12" class="opacity-80" />
-                </button>
-                <div id="shiftPrintMenu" class="erp-dropdown-menu w-[220px] left-0">
-                    <div class="erp-dropdown-header">
-                        <strong class="text-xs text-[var(--text-main)]">نماذج الطباعة المتاحة</strong>
-                    </div>
-                    <button type="button" data-action="python-direct-print" data-url="{{ route('shifts.direct-print', $shift) }}" class="erp-dropdown-item text-[var(--primary)] font-semibold" title="طباعة فورية مباشرة عبر خادم الطباعة">
-                        <x-icon name="zap" size="14" />
-                        <span>طباعة فورية (Instant Print)</span>
-                    </button>
-                    <div class="erp-dropdown-divider"></div>
-                    <a href="{{ route('shifts.print', [$shift, 'format' => 'a4']) }}" target="_blank" class="erp-dropdown-item" title="طباعة تقرير A4">
-                        <x-icon name="file-text" size="14" />
-                        <span>تقرير قياسي (A4)</span>
-                    </a>
-                    <a href="{{ route('shifts.print', [$shift, 'format' => 'a5']) }}" target="_blank" class="erp-dropdown-item" title="طباعة تقرير A5">
-                        <x-icon name="file" size="14" />
-                        <span>تقرير مدمج (A5)</span>
-                    </a>
-                    <a href="{{ route('shifts.print', [$shift, 'format' => 'thermal_80mm']) }}" target="_blank" class="erp-dropdown-item" title="طباعة إيصال حراري 80 مم">
-                        <x-icon name="printer" size="14" />
-                        <span>إيصال حراري (80 مم)</span>
-                    </a>
-                </div>
-            </div>
+            <!-- Universal Print Trigger -->
+            <button type="button" class="erp-btn erp-btn-secondary" 
+                data-action="open-print-modal"
+                data-print-title="تقرير الوردية: {{ $shift->shift_number }}"
+                data-url-a4="{{ route('shifts.print', [$shift, 'format' => 'a4']) }}"
+                data-url-a5="{{ route('shifts.print', [$shift, 'format' => 'a5']) }}"
+                data-url-thermal="{{ route('shifts.print', [$shift, 'format' => 'thermal_80mm']) }}"
+                data-direct-url-a4="{{ route('shifts.direct-print', [$shift, 'format' => 'a4']) }}"
+                data-direct-url-a5="{{ route('shifts.direct-print', [$shift, 'format' => 'a5']) }}"
+                data-direct-url-thermal="{{ route('shifts.direct-print', [$shift, 'format' => 'thermal_80mm']) }}"
+                title="خيارات الطباعة (A4, A5, حراري 80مم)">
+                <x-icon name="printer" size="16" />
+                <span>طباعة التقرير</span>
+            </button>
             @if($shift->status === 'open' && (auth()->id() === $shift->user_id || auth()->user()->isAdmin()))
                 <button type="button" id="closeThisShiftBtn" class="erp-btn erp-btn-danger close-shift-trigger-btn"
                     data-shift-id="{{ $shift->id }}"

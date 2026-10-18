@@ -8,6 +8,8 @@ use App\Models\Product;
 use App\Models\SalesCommission;
 use App\Models\SalesInvoice;
 use App\Models\SalesInvoiceItem;
+use App\Models\SalesRepAttendance;
+use App\Models\SalesRepVisit;
 use App\Models\Unit;
 use App\Models\Warehouse;
 use App\Services\CommissionService;
@@ -48,6 +50,19 @@ class PortalController extends Controller
 
         $myCustomersCount = Customer::where('sales_rep_id', $user->id)->count();
 
+        $pendingCustomerRequestsCount = Customer::where('sales_rep_id', $user->id)
+            ->where('approval_status', Customer::APPROVAL_PENDING)
+            ->count();
+
+        $todayAttendance = SalesRepAttendance::where('sales_rep_id', $user->id)
+            ->whereDate('date', $today)
+            ->latest('id')
+            ->first();
+
+        $todayVisitsCount = SalesRepVisit::where('sales_rep_id', $user->id)
+            ->whereDate('visit_date', $today)
+            ->count();
+
         $recentOrders = (clone $invoicesQuery)
             ->with(['customer', 'commission'])
             ->latest('id')
@@ -66,6 +81,9 @@ class PortalController extends Controller
             'monthCommissions' => $monthCommissions,
             'pendingCommissions' => $pendingCommissions,
             'myCustomersCount' => $myCustomersCount,
+            'pendingCustomerRequestsCount' => $pendingCustomerRequestsCount,
+            'todayAttendance' => $todayAttendance,
+            'todayVisitsCount' => $todayVisitsCount,
             'recentOrders' => $recentOrders,
             'recentCustomers' => $recentCustomers,
         ]);
@@ -126,12 +144,23 @@ class PortalController extends Controller
             $query->search($request->input('search'));
         }
 
-        $customers = $query->orderBy('name')->paginate(20)->withQueryString();
+        if ($request->filled('approval_status')) {
+            $query->where('approval_status', $request->input('approval_status'));
+        }
+
+        $customers = $query->latest('id')->paginate(20)->withQueryString();
+
+        $totalMyCustomers = Customer::where('sales_rep_id', $user->id)->count();
+        $pendingCount = Customer::where('sales_rep_id', $user->id)->where('approval_status', Customer::APPROVAL_PENDING)->count();
+        $approvedCount = Customer::where('sales_rep_id', $user->id)->where('approval_status', Customer::APPROVAL_APPROVED)->count();
 
         return view('portal.customers.index', [
             'customers' => $customers,
             'search' => $request->input('search'),
-            'totalMyCustomers' => Customer::where('sales_rep_id', $user->id)->count(),
+            'currentApprovalStatus' => $request->input('approval_status'),
+            'totalMyCustomers' => $totalMyCustomers,
+            'pendingCount' => $pendingCount,
+            'approvedCount' => $approvedCount,
         ]);
     }
 
@@ -140,17 +169,11 @@ class PortalController extends Controller
      */
     public function createCustomer(): View
     {
-        return view('portal.customers.create', [
-            'pricingTiers' => [
-                'retail' => 'تجزئة (قطاعي)',
-                'wholesale' => 'جملة',
-                'distributor' => 'موزع كبير',
-            ],
-        ]);
+        return view('portal.customers.create');
     }
 
     /**
-     * Store new customer registered from field with GPS location.
+     * Store new customer registered from field with GPS location and store images.
      */
     public function storeCustomer(Request $request): RedirectResponse
     {
@@ -165,16 +188,24 @@ class PortalController extends Controller
             'address' => ['nullable', 'string', 'max:255'],
             'latitude' => ['nullable', 'numeric'],
             'longitude' => ['nullable', 'numeric'],
-            'customer_type' => ['required', 'in:wholesale,retail,distributor'],
-            'pricing_tier' => ['required', 'in:wholesale,retail,distributor'],
-            'credit_limit' => ['nullable', 'numeric', 'min:0'],
             'notes' => ['nullable', 'string', 'max:1000'],
+            'store_images' => ['nullable', 'array', 'max:5'],
+            'store_images.*' => ['image', 'mimes:jpeg,png,jpg,webp', 'max:5120'],
         ], [
             'name.required' => 'اسم العميل مطلوب.',
             'phone.required' => 'رقم هاتف العميل مطلوب.',
-            'customer_type.required' => 'نوع العميل مطلوب.',
-            'pricing_tier.required' => 'فئة السعر مطلوبة.',
+            'store_images.*.image' => 'يجب أن يكون الملف المرفوع صورة صحيحة.',
+            'store_images.*.max' => 'أقصى حجم مسموح به للصورة الواحدة هو 5 ميجابايت.',
         ]);
+
+        $uploadedImages = [];
+        if ($request->hasFile('store_images')) {
+            foreach ($request->file('store_images') as $file) {
+                if ($file->isValid()) {
+                    $uploadedImages[] = $file->store('customer_stores', 'public');
+                }
+            }
+        }
 
         $customer = Customer::create([
             'name' => trim($validated['name']),
@@ -186,18 +217,20 @@ class PortalController extends Controller
             'latitude' => $validated['latitude'] ?? null,
             'longitude' => $validated['longitude'] ?? null,
             'sales_rep_id' => $user->id,
-            'customer_type' => $validated['customer_type'],
-            'pricing_tier' => $validated['pricing_tier'],
-            'credit_limit' => (float) ($validated['credit_limit'] ?? 0.00),
+            'customer_type' => 'wholesale',
+            'pricing_tier' => 'wholesale',
+            'credit_limit' => 0.00,
             'opening_balance' => 0.00,
             'current_balance' => 0.00,
+            'approval_status' => Customer::APPROVAL_PENDING,
+            'store_images' => $uploadedImages,
             'notes' => filled($validated['notes'] ?? null) ? trim($validated['notes']) : null,
             'is_active' => true,
         ]);
 
-        return redirect()->route('portal.orders.create', ['customer_id' => $customer->id])
+        return redirect()->route('portal.customers.index')
             ->with('status', 'success')
-            ->with('message', 'تم تسجيل العميل بنجاح. يمكنك الآن البدء في إنشاء طلب بيع له.');
+            ->with('message', "تم إرسال طلب تسجيل العميل «{$customer->name}» بنجاح وهو الآن قيد مراجعة واعتماد الإدارة.");
     }
 
     /**
@@ -234,6 +267,7 @@ class PortalController extends Controller
         $isAdmin = $user && ($user->isAdmin() || $user->can('manage-inventory'));
 
         $customers = Customer::active()
+            ->approved()
             ->when(! $user->isAdmin(), fn ($q) => $q->where('sales_rep_id', $user->id))
             ->orderBy('name')
             ->get();
@@ -313,6 +347,14 @@ class PortalController extends Controller
             'warehouse_id.required' => 'يرجى اختيار المستودع.',
             'items.required' => 'يجب إضافة صنف واحد على الأقل.',
         ]);
+
+        $customer = Customer::findOrFail($validated['customer_id']);
+        if (! $customer->isApproved()) {
+            return redirect()->back()
+                ->withInput()
+                ->with('status', 'danger')
+                ->with('message', 'لا يمكن تحرير طلب بيع لعميل ما زال قيد المراجعة أو مرفوض. يجب اعتماد العميل أولاً من إدارة النظام.');
+        }
 
         try {
             $invoice = DB::transaction(function () use ($validated, $user, $inventoryService) {
