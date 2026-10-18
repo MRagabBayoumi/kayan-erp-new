@@ -2,6 +2,7 @@
 
 use App\Models\Category;
 use App\Models\Customer;
+use App\Models\InventoryBatch;
 use App\Models\Product;
 use App\Models\SalesInvoice;
 use App\Models\StockBalance;
@@ -86,22 +87,20 @@ test('product formatStockBreakdown accurately computes dozens and pieces', funct
 
     expect($product->unit_factor)->toBe(12.0);
 
-    // Initial stock 55 dozens
-    expect($product->formatStockBreakdown(55.0))->toBe('55 دستة (660 قطعة)');
+    // Initial stock 55 dozens = 660 base pieces
+    expect($product->formatStockBreakdown(660.0))->toBe('55 دستة (660 قطعة)');
 
-    // 1 piece deducted: 55 - 1/12 = 54.916667 dozens -> 54 dozens and 11 pieces
-    $stockAfterOnePiece = 55.0 - (1 / 12);
-    expect($product->formatStockBreakdown($stockAfterOnePiece))->toBe('54 دستة و 11 قطعة (659 قطعة)');
+    // 1 piece deducted: 660 - 1 = 659 pieces -> 54 dozens and 11 pieces
+    expect($product->formatStockBreakdown(659.0))->toBe('54 دستة و 11 قطعة (659 قطعة)');
 
-    // 2 pieces deducted: 54 dozens and 10 pieces (658 pieces)
-    $stockAfterTwoPieces = 55.0 - (2 / 12);
-    expect($product->formatStockBreakdown($stockAfterTwoPieces))->toBe('54 دستة و 10 قطعة (658 قطعة)');
+    // 2 pieces deducted: 660 - 2 = 658 pieces -> 54 dozens and 10 pieces
+    expect($product->formatStockBreakdown(658.0))->toBe('54 دستة و 10 قطعة (658 قطعة)');
 
-    // 1 dozen deducted: 54 dozens
-    expect($product->formatStockBreakdown(54.0))->toBe('54 دستة (648 قطعة)');
+    // 1 dozen deducted: 660 - 12 = 648 pieces -> 54 dozens
+    expect($product->formatStockBreakdown(648.0))->toBe('54 دستة (648 قطعة)');
 
     // 5 pieces only
-    expect($product->formatStockBreakdown(5 / 12))->toBe('5 قطعة');
+    expect($product->formatStockBreakdown(5.0))->toBe('5 قطعة');
 
     // 0 stock
     expect($product->formatStockBreakdown(0.0))->toBe('0 دستة');
@@ -151,19 +150,19 @@ test('selling 1 dozen of a dozen-based product deducts 1 dozen from stock', func
         'is_active' => true,
     ]);
 
-    // Add initial stock: 55 dozens
+    // Add initial stock: 55 dozens = 660 base pieces!
     $inventoryService->addStock(
         productId: $product->id,
         warehouseId: $this->warehouse->id,
-        quantity: 55.00,
-        costPrice: 18.00,
+        quantity: 660.00,
+        costPrice: 1.50, // 18.00 / 12 = 1.50 per piece
         retailPrice: 50.00,
         referenceType: 'opening_balance'
     );
 
-    expect((float) StockBalance::where('product_id', $product->id)->value('quantity'))->toBe(55.0);
+    expect((float) StockBalance::where('product_id', $product->id)->value('quantity'))->toBe(660.0);
 
-    // Sell 1 Dozen
+    // Sell 1 Dozen (12 pieces) at 50 EGP for the dozen
     $response = $this->post(route('sales.store'), [
         'customer_id' => $this->customer->id,
         'warehouse_id' => $this->warehouse->id,
@@ -186,11 +185,11 @@ test('selling 1 dozen of a dozen-based product deducts 1 dozen from stock', func
     expect($invoice->status)->toBe(SalesInvoice::STATUS_POSTED);
 
     $balance = StockBalance::where('product_id', $product->id)->value('quantity');
-    expect((float) $balance)->toBe(54.0);
+    expect((float) $balance)->toBe(648.0); // 660 - 12 = 648 pieces = 54 dozens
     expect($product->fresh()->formatStockBreakdown())->toBe('54 دستة (648 قطعة)');
 });
 
-test('selling 1 piece of a dozen-based product deducts 1/12 dozen from stock', function () {
+test('selling 1 piece of a dozen-based product deducts 1 piece from stock', function () {
     $inventoryService = app(InventoryService::class);
 
     $product = Product::create([
@@ -205,17 +204,17 @@ test('selling 1 piece of a dozen-based product deducts 1/12 dozen from stock', f
         'is_active' => true,
     ]);
 
-    // Initial stock: 55 dozens (660 pieces)
+    // Initial stock: 55 dozens = 660 pieces
     $inventoryService->addStock(
         productId: $product->id,
         warehouseId: $this->warehouse->id,
-        quantity: 55.00,
-        costPrice: 18.00,
+        quantity: 660.00,
+        costPrice: 1.50,
         retailPrice: 50.00,
         referenceType: 'opening_balance'
     );
 
-    // Sell 1 Piece at 4.17 EGP
+    // Sell 1 Piece at 4.17 EGP (50 / 12)
     $response = $this->post(route('sales.store'), [
         'customer_id' => $this->customer->id,
         'warehouse_id' => $this->warehouse->id,
@@ -238,8 +237,8 @@ test('selling 1 piece of a dozen-based product deducts 1/12 dozen from stock', f
     expect($invoice->status)->toBe(SalesInvoice::STATUS_POSTED);
 
     $balance = (float) StockBalance::where('product_id', $product->id)->value('quantity');
-    // 55 - 1/12 = 54.9167 dozens
-    expect($balance)->toBeGreaterThan(54.91)->toBeLessThan(54.92);
+    // 660 - 1 = 659 pieces
+    expect($balance)->toBe(659.0);
 
     // Compound stock breakdown must say: "54 دستة و 11 قطعة (659 قطعة)"
     expect($product->fresh()->formatStockBreakdown())->toBe('54 دستة و 11 قطعة (659 قطعة)');
@@ -291,4 +290,107 @@ test('selling a piece-based product in dozens correctly deducts 12 pieces from s
     $response->assertSessionHasNoErrors();
     $balance = (float) StockBalance::where('product_id', $product->id)->value('quantity');
     expect($balance)->toBe(88.0); // 100 - 12 = 88 pieces
+});
+
+test('mathematical stress test: product registered as dozen with 3 dozens opening balance converts accurately and calculates FIFO cogs and profit for piece and dozen sales', function () {
+    // 1. Create product via ProductController::store with unit='دستة', opening_quantity=3, cost_price=60, retail_price=120
+    $response = $this->post(route('products.store'), [
+        'sku' => 'DOZ-PROD-001',
+        'name' => 'صنف دستة اختباري',
+        'category_id' => $this->category->id,
+        'cost_price' => 60.00, // 60 EGP per dozen
+        'retail_price' => 120.00, // 120 EGP per dozen -> 10 EGP per piece
+        'wholesale_price' => 96.00,
+        'unit' => 'دستة',
+        'pieces_per_package' => 12,
+        'min_stock_alert' => 5,
+        'opening_quantity' => 3, // 3 dozens
+        'opening_cost' => 60.00,
+        'opening_warehouse_id' => $this->warehouse->id,
+    ]);
+
+    $response->assertRedirect(route('products.index'));
+
+    $product = Product::where('sku', 'DOZ-PROD-001')->firstOrFail();
+    expect($product->unit_factor)->toBe(12.0);
+
+    // Initial stock in database must be 36 base pieces (3 dozens * 12)
+    $stockBalance = StockBalance::where('product_id', $product->id)
+        ->where('warehouse_id', $this->warehouse->id)
+        ->first();
+    expect((float) $stockBalance->quantity)->toBe(36.0);
+    expect($product->formatStockBreakdown())->toBe('3 دستة (36 قطعة)');
+
+    // FIFO Batch must have 36 pieces at cost 5.00 EGP (60 / 12)
+    $batch = InventoryBatch::where('product_id', $product->id)->firstOrFail();
+    expect((float) $batch->initial_quantity)->toBe(36.0);
+    expect((float) $batch->remaining_quantity)->toBe(36.0);
+    expect((float) $batch->cost_price)->toBe(5.0);
+    expect((float) $batch->total_initial_cost)->toBe(180.0);
+
+    // 2. Sell 1 Dozen (12 pieces) at 120 EGP
+    // FIFO should deduct 12 pieces @ 5 EGP = 60 EGP COGS
+    // Profit = 120 - 60 = 60 EGP
+    // Remaining stock = 24 pieces (2 dozens)
+    $this->post(route('sales.store'), [
+        'customer_id' => $this->customer->id,
+        'warehouse_id' => $this->warehouse->id,
+        'invoice_date' => now()->toDateString(),
+        'price_tier' => 'retail',
+        'action' => 'post',
+        'items' => [
+            [
+                'product_id' => $product->id,
+                'unit_id' => $this->unitDozen->id,
+                'conversion_factor' => 12.0,
+                'quantity' => 1,
+                'unit_price' => 120.00, // 1 dozen price
+            ],
+        ],
+    ])->assertRedirect();
+
+    $inv1 = SalesInvoice::latest('id')->first();
+    expect($inv1->status)->toBe(SalesInvoice::STATUS_POSTED);
+    expect((float) $inv1->total_cogs)->toBe(60.0);
+    expect((float) $inv1->total_profit)->toBe(60.0);
+
+    $batch->refresh();
+    expect((float) $batch->remaining_quantity)->toBe(24.0);
+
+    $stockBalance->refresh();
+    expect((float) $stockBalance->quantity)->toBe(24.0);
+    expect($product->fresh()->formatStockBreakdown())->toBe('2 دستة (24 قطعة)');
+
+    // 3. Sell 1 Piece at 10 EGP (120 / 12)
+    // FIFO should deduct 1 piece @ 5 EGP = 5 EGP COGS
+    // Profit = 10 - 5 = 5 EGP
+    // Remaining stock = 23 pieces (1 dozen and 11 pieces)
+    $this->post(route('sales.store'), [
+        'customer_id' => $this->customer->id,
+        'warehouse_id' => $this->warehouse->id,
+        'invoice_date' => now()->toDateString(),
+        'price_tier' => 'retail',
+        'action' => 'post',
+        'items' => [
+            [
+                'product_id' => $product->id,
+                'unit_id' => $this->unitPiece->id,
+                'conversion_factor' => 1.0,
+                'quantity' => 1,
+                'unit_price' => 10.00, // 1 piece price
+            ],
+        ],
+    ])->assertRedirect();
+
+    $inv2 = SalesInvoice::latest('id')->first();
+    expect($inv2->status)->toBe(SalesInvoice::STATUS_POSTED);
+    expect((float) $inv2->total_cogs)->toBe(5.0);
+    expect((float) $inv2->total_profit)->toBe(5.0);
+
+    $batch->refresh();
+    expect((float) $batch->remaining_quantity)->toBe(23.0);
+
+    $stockBalance->refresh();
+    expect((float) $stockBalance->quantity)->toBe(23.0);
+    expect($product->fresh()->formatStockBreakdown())->toBe('1 دستة و 11 قطعة (23 قطعة)');
 });

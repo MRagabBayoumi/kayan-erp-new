@@ -109,20 +109,23 @@ function initSalesPOS(posPage = null) {
     function getProductPriceForTier(product, tier = null, targetUnitFactor = null) {
         if (!product) return 0.00;
         const currentTier = tier || (priceTierSelect ? priceTierSelect.value : 'retail');
-        let basePrice = 0.00;
+        let registeredPrice = 0.00;
         if (currentTier === 'distributor') {
-            basePrice = parseFloat(product.distributor_price ?? product.wholesale_price ?? product.retail_price ?? 0);
+            registeredPrice = parseFloat(product.distributor_price ?? product.wholesale_price ?? product.retail_price ?? 0);
         } else if (currentTier === 'wholesale') {
-            basePrice = parseFloat(product.wholesale_price ?? product.retail_price ?? 0);
+            registeredPrice = parseFloat(product.wholesale_price ?? product.retail_price ?? 0);
         } else {
-            basePrice = parseFloat(product.retail_price ?? 0);
+            registeredPrice = parseFloat(product.retail_price ?? 0);
         }
 
-        if (targetUnitFactor !== null && targetUnitFactor !== undefined && targetUnitFactor > 1.0) {
-            return basePrice * targetUnitFactor;
+        const prodFactor = parseFloat(product.unit_factor || 1.0) || 1.0;
+        const basePiecePrice = registeredPrice / prodFactor;
+
+        if (targetUnitFactor !== null && targetUnitFactor !== undefined && targetUnitFactor > 0) {
+            return basePiecePrice * targetUnitFactor;
         }
 
-        return basePrice;
+        return registeredPrice;
     }
 
     // Helper: Format stock quantity into compound breakdown (e.g. 54 دستة و 11 قطعة)
@@ -223,7 +226,7 @@ function initSalesPOS(posPage = null) {
         if (!quickUnitSelect) return;
         const pId = quickProductId ? parseInt(quickProductId.value, 10) : null;
         const prod = productsData.find(p => p.id === pId);
-        const pkgFactor = prod ? (parseFloat(prod.package_factor || prod.pieces_per_package || 12.0) || 12.0) : 12.0;
+        const pkgFactor = prod ? (parseFloat(prod.package_factor || prod.pieces_per_package || prod.unit_factor || 12.0) || 12.0) : 12.0;
 
         let matched = false;
         for (let i = 0; i < quickUnitSelect.options.length; i++) {
@@ -508,7 +511,7 @@ function initSalesPOS(posPage = null) {
         if (quickProductId) quickProductId.value = product.id;
         if (quickProductInput) quickProductInput.value = `${product.name} (${product.sku})`;
 
-        const pkgFactor = parseInt(product.package_factor || product.pieces_per_package || 12, 10);
+        const pkgFactor = parseInt(product.package_factor || product.pieces_per_package || product.unit_factor || 12, 10);
         if (quickUnitDozenLabel) {
             quickUnitDozenLabel.textContent = `دستة (* ${pkgFactor})`;
         }

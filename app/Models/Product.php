@@ -135,6 +135,14 @@ class Product extends Model
             return (float) $unitModel->conversion_factor;
         }
 
+        if ($this->pieces_per_package && $this->pieces_per_package > 1) {
+            return (float) $this->pieces_per_package;
+        }
+
+        if (str_contains($cleanUnit, 'دست')) {
+            return 12.0;
+        }
+
         return 1.0;
     }
 
@@ -192,17 +200,20 @@ class Product extends Model
      */
     public function getPriceForUnit(string $tier = 'retail', ?float $targetUnitFactor = null): float
     {
-        $basePrice = match ($tier) {
+        $registeredPrice = match ($tier) {
             'wholesale' => (float) ($this->wholesale_price ?? $this->retail_price ?? 0),
             'distributor' => (float) ($this->distributor_price ?? $this->wholesale_price ?? $this->retail_price ?? 0),
             default => (float) ($this->retail_price ?? 0),
         };
 
-        if ($targetUnitFactor === null || $targetUnitFactor <= 1.0) {
-            return $basePrice;
+        if ($targetUnitFactor === null) {
+            return round($registeredPrice, 2);
         }
 
-        return round($basePrice * $targetUnitFactor, 2);
+        $prodFactor = (float) ($this->unit_factor > 0 ? $this->unit_factor : 1.0);
+        $basePiecePrice = $registeredPrice / $prodFactor;
+
+        return round($basePiecePrice * $targetUnitFactor, 2);
     }
 
     /**

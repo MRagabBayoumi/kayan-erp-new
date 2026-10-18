@@ -822,24 +822,29 @@ class ProductImportService
             $warehouseId = $wh->id;
         }
 
-        $retailPrice = ! is_null($product->retail_price) ? (float) $product->retail_price : null;
-        $wholesalePrice = ! is_null($product->wholesale_price) ? (float) $product->wholesale_price : null;
-        $distributorPrice = ! is_null($product->distributor_price) ? (float) $product->distributor_price : $wholesalePrice;
+        $unitFactor = (float) ($product->unit_factor > 0 ? $product->unit_factor : 1.0);
+        $baseQuantity = round($quantity * $unitFactor, 4);
+        $baseCostPrice = round($costPrice / $unitFactor, 4);
+
+        $retailPrice = ! is_null($product->retail_price) ? round((float) $product->retail_price / $unitFactor, 4) : null;
+        $wholesalePrice = ! is_null($product->wholesale_price) ? round((float) $product->wholesale_price / $unitFactor, 4) : null;
+        $distributorPrice = ! is_null($product->distributor_price) ? round((float) $product->distributor_price / $unitFactor, 4) : $wholesalePrice;
 
         $service = $this->inventoryService ?? app(InventoryService::class);
         $service->addStock(
             productId: $product->id,
             warehouseId: $warehouseId,
-            quantity: $quantity,
-            costPrice: $costPrice,
-            notes: 'رصيد افتتاحي مسجل من استيراد الإكسيل: '.$product->name,
+            quantity: $baseQuantity,
+            costPrice: $baseCostPrice,
+            notes: 'رصيد افتتاحي مسجل من استيراد الإكسيل: '.$product->name.($unitFactor > 1 ? " ({$quantity} {$product->unit} = {$baseQuantity} قطعة)" : ''),
             referenceType: 'opening_balance',
             referenceId: $product->id,
             userId: auth()->id(),
             receivedAt: Carbon::parse($receivedDate),
             retailPrice: $retailPrice,
             wholesalePrice: $wholesalePrice,
-            distributorPrice: $distributorPrice
+            distributorPrice: $distributorPrice,
+            totalInitialCost: round($quantity * $costPrice, 2)
         );
     }
 }

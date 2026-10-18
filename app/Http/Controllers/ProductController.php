@@ -224,19 +224,26 @@ class ProductController extends Controller
                 $openingCost = (float) $validated['opening_cost'];
                 $receivedDate = Carbon::parse($validated['opening_balance_date']);
 
+                $unitFactor = (float) ($product->unit_factor > 0 ? $product->unit_factor : 1.0);
+                $baseOpeningQty = round($openingQty * $unitFactor, 4);
+                $baseOpeningCost = round($openingCost / $unitFactor, 4);
+                $baseRetailPrice = ! is_null($product->retail_price) ? round((float) $product->retail_price / $unitFactor, 4) : null;
+                $baseWholesalePrice = ! is_null($product->wholesale_price) ? round((float) $product->wholesale_price / $unitFactor, 4) : null;
+                $baseDistributorPrice = ! is_null($product->distributor_price) ? round((float) $product->distributor_price / $unitFactor, 4) : (! is_null($product->wholesale_price) ? round((float) $product->wholesale_price / $unitFactor, 4) : null);
+
                 $inventoryService->addStock(
                     productId: $product->id,
                     warehouseId: $warehouseId,
-                    quantity: $openingQty,
-                    costPrice: $openingCost,
-                    notes: 'رصيد افتتاحي عند تعريف الصنف: '.$product->name,
+                    quantity: $baseOpeningQty,
+                    costPrice: $baseOpeningCost,
+                    notes: 'رصيد افتتاحي عند تعريف الصنف: '.$product->name.($unitFactor > 1 ? " ({$openingQty} {$product->unit} = {$baseOpeningQty} قطعة)" : ''),
                     referenceType: 'opening_balance',
                     referenceId: $product->id,
                     userId: auth()->id(),
                     receivedAt: $receivedDate,
-                    retailPrice: ! is_null($product->retail_price) ? (float) $product->retail_price : null,
-                    wholesalePrice: ! is_null($product->wholesale_price) ? (float) $product->wholesale_price : null,
-                    distributorPrice: ! is_null($product->distributor_price) ? (float) $product->distributor_price : (! is_null($product->wholesale_price) ? (float) $product->wholesale_price : null),
+                    retailPrice: $baseRetailPrice,
+                    wholesalePrice: $baseWholesalePrice,
+                    distributorPrice: $baseDistributorPrice,
                     totalInitialCost: round($openingQty * $openingCost, 2),
                     sourceType: 'opening_balance',
                     sourceId: $product->id
