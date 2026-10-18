@@ -93,6 +93,18 @@ class AuthController extends Controller
         RateLimiter::clear($throttleKey);
         $request->session()->regenerate();
 
+        if (Auth::user()->isSalesRep()) {
+            return redirect()->intended(route('portal.index'))
+                ->with('status', 'success')
+                ->with('message', 'مرحباً بك مجدداً، '.Auth::user()->name);
+        }
+
+        if (Auth::user()->isCashier()) {
+            return redirect()->intended(route('sales.create'))
+                ->with('status', 'success')
+                ->with('message', 'مرحباً بك مجدداً، '.Auth::user()->name);
+        }
+
         return redirect()->intended(route('dashboard'))
             ->with('status', 'success')
             ->with('message', 'مرحباً بك مجدداً، '.Auth::user()->name);

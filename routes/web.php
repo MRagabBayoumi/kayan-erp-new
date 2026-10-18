@@ -17,6 +17,7 @@ use App\Http\Controllers\ProductImportController;
 use App\Http\Controllers\PurchaseInvoiceController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SalesInvoiceController;
+use App\Http\Controllers\SalesRepController;
 use App\Http\Controllers\ShippingOfficeController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\SupplierPaymentController;
@@ -262,6 +263,15 @@ Route::middleware('auth')->group(function () {
         Route::get('/expenses/{expense}/voucher', [ExpenseController::class, 'voucher'])->name('expenses.voucher');
         Route::delete('/expenses/{expense}', [ExpenseController::class, 'destroy'])->name('expenses.destroy');
         Route::post('/expense-categories', [ExpenseController::class, 'storeCategory'])->name('expense-categories.store');
+    });
+
+    // Sales Representatives Management & Performance Analytics (Admin)
+    Route::middleware('can:manage-sales-reps')->group(function () {
+        Route::get('/sales-reps', [SalesRepController::class, 'index'])->name('sales-reps.index');
+        Route::post('/sales-reps', [SalesRepController::class, 'store'])->name('sales-reps.store');
+        Route::get('/sales-reps/{rep}', [SalesRepController::class, 'show'])->name('sales-reps.show');
+        Route::put('/sales-reps/{rep}', [SalesRepController::class, 'update'])->name('sales-reps.update');
+        Route::post('/sales-reps/commissions/{commission}/pay', [SalesRepController::class, 'payCommission'])->name('sales-reps.commissions.pay');
     });
 
     // Sales Representative & Field Agent Mobile Portal

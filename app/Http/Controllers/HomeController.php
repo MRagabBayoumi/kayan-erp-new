@@ -37,6 +37,10 @@ class HomeController extends Controller
     {
         $user = auth()->user();
 
+        if ($user->isSalesRep()) {
+            return redirect()->route('portal.index');
+        }
+
         if ($user->isCashier() || ! Gate::allows('access-dashboard')) {
             return redirect()->route('home')->with('error', 'لوحة التحكم الإحصائية مخصصة للإدارة فقط.');
         }

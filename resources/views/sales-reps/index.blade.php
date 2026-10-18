@@ -1,0 +1,478 @@
+@extends('layouts.app')
+
+@section('control_panel')
+    <x-control-panel title="إدارة وتحليل أداء مناديب المبيعات" :breadcrumbs="['المبيعات' => route('sales.index'), 'المناديب والمبيعات الميدانية' => '#']">
+        <x-slot:actions>
+            <button type="button" data-action="open-add-rep-modal" class="erp-btn erp-btn-primary">
+                <x-icon name="user-plus" size="16" />
+                <span>إضافة مندوب مبيعات جديد</span>
+            </button>
+            <a href="{{ route('portal.index') }}" target="_blank" class="erp-btn erp-btn-secondary" title="معاينة بوابة المندوب الميداني">
+                <x-icon name="smartphone" size="16" class="text-sky-600" />
+                <span>فتح بوابة المندوب</span>
+            </a>
+        </x-slot:actions>
+
+        <x-slot:extra>
+            <span class="erp-badge erp-badge-neutral font-numeric px-2.5 py-1 text-xs">
+                <span>إجمالي المناديب:</span>
+                <strong>{{ $metrics['total_reps'] }}</strong>
+                <span>(نشط: {{ $metrics['active_reps'] }})</span>
+            </span>
+        </x-slot:extra>
+    </x-control-panel>
+@endsection
+
+@section('content')
+<div class="space-y-4" data-page="sales-reps">
+
+    @if(session('success'))
+        <div class="erp-alert erp-alert-success mb-4" role="alert">
+            <x-icon name="check-circle" size="18" />
+            <div>{{ session('success') }}</div>
+        </div>
+    @endif
+
+    @if(session('error'))
+        <div class="erp-alert erp-alert-danger mb-4" role="alert">
+            <x-icon name="alert-triangle" size="18" />
+            <div>{{ session('error') }}</div>
+        </div>
+    @endif
+
+    @if($errors->any())
+        <div class="erp-alert erp-alert-danger mb-4" role="alert">
+            <x-icon name="alert-circle" size="18" />
+            <div>
+                <strong>يرجى مراجعة الأخطاء التالية:</strong>
+                <ul class="list-disc list-inside mt-1 text-xs">
+                    @foreach($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        </div>
+    @endif
+
+    <!-- Global Reps Aggregate KPI Summary Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <!-- 1. Total Sales Volume -->
+        <div class="erp-card p-3.5 mb-0 flex flex-col justify-between">
+            <span class="text-xs text-[var(--text-muted)] block font-medium">مبيعات المناديب</span>
+            <div class="text-sm sm:text-base font-extrabold text-[var(--text-main)] font-numeric mt-1">
+                {{ number_format($metrics['total_sales_volume'], 2) }}
+            </div>
+            <span class="text-[10px] text-[var(--text-muted)]">ج.م (فواتير معتمدة)</span>
+        </div>
+
+        <!-- 2. Total Invoices -->
+        <div class="erp-card p-3.5 mb-0 flex flex-col justify-between">
+            <span class="text-xs text-[var(--text-muted)] block font-medium">عدد الفواتير</span>
+            <div class="text-sm sm:text-base font-extrabold text-[var(--primary)] font-numeric mt-1">
+                {{ number_format($metrics['total_invoices_count']) }}
+            </div>
+            <span class="text-[10px] text-[var(--text-muted)]">فاتورة ميدانية</span>
+        </div>
+
+        <!-- 3. Total Commissions -->
+        <div class="erp-card p-3.5 mb-0 flex flex-col justify-between">
+            <span class="text-xs text-[var(--text-muted)] block font-medium">إجمالي العمولات</span>
+            <div class="text-sm sm:text-base font-extrabold text-indigo-700 font-numeric mt-1">
+                {{ number_format($metrics['total_commissions'], 2) }}
+            </div>
+            <span class="text-[10px] text-indigo-600">ج.م مستحقة</span>
+        </div>
+
+        <!-- 4. Pending Commissions -->
+        <div class="erp-card p-3.5 mb-0 flex flex-col justify-between">
+            <span class="text-xs text-amber-700 block font-medium">عمولات معلقة</span>
+            <div class="text-sm sm:text-base font-extrabold text-amber-700 font-numeric mt-1">
+                {{ number_format($metrics['pending_commissions'], 2) }}
+            </div>
+            <span class="text-[10px] text-amber-600">ج.م قيد الصرف</span>
+        </div>
+
+        <!-- 5. Paid Commissions -->
+        <div class="erp-card p-3.5 mb-0 flex flex-col justify-between">
+            <span class="text-xs text-emerald-700 block font-medium">عمولات تم صرفها</span>
+            <div class="text-sm sm:text-base font-extrabold text-emerald-700 font-numeric mt-1">
+                {{ number_format($metrics['paid_commissions'], 2) }}
+            </div>
+            <span class="text-[10px] text-emerald-600">ج.م مدفوعة</span>
+        </div>
+
+        <!-- 6. Active Reps -->
+        <div class="erp-card p-3.5 mb-0 flex flex-col justify-between">
+            <span class="text-xs text-[var(--text-muted)] block font-medium">المناديب النشطون</span>
+            <div class="text-sm sm:text-base font-extrabold text-[var(--text-main)] font-numeric mt-1">
+                {{ $metrics['active_reps'] }} / {{ $metrics['total_reps'] }}
+            </div>
+            <span class="text-[10px] text-emerald-600">حسابات نشطة</span>
+        </div>
+    </div>
+
+    <!-- Search & Filter Bar -->
+    <div class="erp-card p-4 mb-0">
+        <form method="GET" action="{{ route('sales-reps.index') }}" class="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+            <div class="sm:col-span-8 lg:col-span-9 relative">
+                <input type="search" name="search" value="{{ $currentSearch }}" placeholder="ابحث باسم المندوب، رقم الهاتف، أو البريد الإلكتروني..."
+                    class="erp-input pr-9 text-xs sm:text-sm">
+                <div class="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none">
+                    <x-icon name="search" size="15" />
+                </div>
+            </div>
+
+            <div class="sm:col-span-2 lg:col-span-2">
+                <select name="status" class="erp-select text-xs">
+                    <option value="">كافة الحالات</option>
+                    <option value="active" {{ $currentStatus === 'active' ? 'selected' : '' }}>نشط فقط</option>
+                    <option value="inactive" {{ $currentStatus === 'inactive' ? 'selected' : '' }}>معطل</option>
+                </select>
+            </div>
+
+            <div class="sm:col-span-2 lg:col-span-1 flex items-center gap-1.5">
+                <button type="submit" class="erp-btn erp-btn-primary w-full text-xs h-[38px] justify-center">
+                    <span>بحث</span>
+                </button>
+                @if($currentSearch || $currentStatus)
+                    <a href="{{ route('sales-reps.index') }}" class="erp-btn erp-btn-secondary px-2.5 h-[38px]" title="إعادة تعيين">
+                        <x-icon name="rotate-ccw" size="14" />
+                    </a>
+                @endif
+            </div>
+        </form>
+    </div>
+
+    <!-- Reps Comparison & Performance Table -->
+    <div class="erp-card mb-0 overflow-hidden">
+        <div class="erp-card-header">
+            <h2 class="erp-card-title text-sm">
+                <x-icon name="users" size="16" class="text-[var(--primary)]" />
+                <span>قائمة مناديب المبيعات ومؤشرات الأداء</span>
+            </h2>
+            <span class="text-xs text-[var(--text-muted)] font-numeric">إجمالي المعروض: {{ $salesReps->total() }}</span>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="erp-table w-full text-right">
+                <thead>
+                    <tr>
+                        <th class="w-12">#</th>
+                        <th>المندوب</th>
+                        <th>المستودع / الفرع</th>
+                        <th>نسبة العمولة</th>
+                        <th>العملاء</th>
+                        <th>الفواتير</th>
+                        <th>إجمالي المبيعات</th>
+                        <th>إجمالي العمولات</th>
+                        <th>الحالة</th>
+                        <th class="w-48 text-center">الإجراءات والتحليل</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-[var(--border-light)]">
+                    @forelse($salesReps as $rep)
+                        <tr class="hover:bg-[var(--bg-hover)] transition-colors">
+                            <td class="font-numeric text-xs text-[var(--text-muted)]">{{ $rep->id }}</td>
+                            <td>
+                                <div class="font-bold text-xs sm:text-sm text-[var(--text-main)]">{{ $rep->name }}</div>
+                                <div class="text-[11px] text-[var(--text-muted)] font-numeric flex items-center gap-2 mt-0.5">
+                                    <span>{{ $rep->phone ?? 'بدون هاتف' }}</span>
+                                    <span>·</span>
+                                    <span>{{ $rep->email }}</span>
+                                </div>
+                            </td>
+                            <td class="text-xs text-[var(--text-secondary)]">
+                                {{ $rep->warehouse?->name ?? 'كافة الفروع' }}
+                            </td>
+                            <td>
+                                <span class="erp-badge erp-badge-primary font-numeric text-xs font-bold">
+                                    {{ (float) $rep->commission_rate }}{{ $rep->commission_type === 'percentage' ? '%' : ' ج.م' }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="font-bold font-numeric text-xs text-[var(--text-main)]">{{ $rep->assigned_customers_count }}</span>
+                                <span class="text-[10px] text-[var(--text-muted)]">عميل</span>
+                            </td>
+                            <td>
+                                <span class="font-bold font-numeric text-xs text-[var(--text-main)]">{{ $rep->posted_invoices_count }}</span>
+                                <span class="text-[10px] text-[var(--text-muted)]">فاتورة</span>
+                            </td>
+                            <td class="font-numeric font-bold text-xs sm:text-sm text-[var(--text-main)]">
+                                {{ number_format((float) ($rep->total_sales_volume ?? 0), 2) }} <span class="text-[10px] text-[var(--text-muted)]">ج.م</span>
+                            </td>
+                            <td class="font-numeric font-bold text-xs text-emerald-700">
+                                {{ number_format((float) ($rep->total_commissions_earned ?? 0), 2) }} <span class="text-[10px] text-emerald-600">ج.م</span>
+                            </td>
+                            <td>
+                                @if($rep->is_active)
+                                    <span class="erp-badge erp-badge-success text-[10px]">نشط</span>
+                                @else
+                                    <span class="erp-badge erp-badge-danger text-[10px]">معطل</span>
+                                @endif
+                            </td>
+                            <td class="text-center">
+                                <div class="inline-flex items-center gap-1.5">
+                                    <!-- Performance Analytics Dashboard Link -->
+                                    <a href="{{ route('sales-reps.show', $rep) }}" class="erp-btn erp-btn-sm erp-btn-primary text-xs py-1 px-2.5" title="تحليل وتقارير أداء المندوب">
+                                        <x-icon name="bar-chart-2" size="13" />
+                                        <span>تحليل الأداء</span>
+                                    </a>
+
+                                    <!-- Edit Rep Button -->
+                                    <button type="button" 
+                                        data-action="open-edit-rep-modal" 
+                                        data-rep-id="{{ $rep->id }}"
+                                        data-rep-name="{{ $rep->name }}"
+                                        data-rep-email="{{ $rep->email }}"
+                                        data-rep-phone="{{ $rep->phone }}"
+                                        data-rep-commission-rate="{{ (float) $rep->commission_rate }}"
+                                        data-rep-commission-type="{{ $rep->commission_type }}"
+                                        data-rep-warehouse-id="{{ $rep->warehouse_id }}"
+                                        data-rep-active="{{ $rep->is_active ? '1' : '0' }}"
+                                        class="erp-btn erp-btn-sm erp-btn-secondary p-1.5" 
+                                        title="تعديل بيانات المندوب">
+                                        <x-icon name="edit-3" size="13" />
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="10" class="text-center py-12 text-[var(--text-muted)]">
+                                <x-icon name="users" size="36" class="text-slate-300 mx-auto mb-2" />
+                                <div class="text-sm font-bold text-[var(--text-main)]">لا يوجد مناديب مسجلين مطابقين للبحث</div>
+                                <div class="text-xs text-[var(--text-muted)] mt-1">اضغط على «إضافة مندوب مبيعات جديد» لبدء تفعيل المناديب الميدانيين.</div>
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+
+        @if($salesReps->hasPages())
+            <div class="p-3 border-t border-[var(--border-light)]">
+                {{ $salesReps->links() }}
+            </div>
+        @endif
+    </div>
+
+</div>
+
+<!-- Modal: Add New Sales Representative -->
+<div id="addRepModal" class="erp-modal-overlay hidden fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="erp-card w-full max-w-lg mb-0 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div class="erp-card-header bg-[var(--bg-hover)]">
+            <h3 class="erp-card-title text-sm font-bold">
+                <x-icon name="user-plus" size="16" class="text-[var(--primary)]" />
+                <span>إضافة مندوب مبيعات ميداني جديد</span>
+            </h3>
+            <button type="button" data-action="close-modal" data-target="addRepModal" class="p-1 text-slate-400 hover:text-slate-600 rounded">
+                <x-icon name="x" size="16" />
+            </button>
+        </div>
+
+        <form method="POST" action="{{ route('sales-reps.store') }}" class="p-5 space-y-3.5">
+            @csrf
+
+            <!-- Name -->
+            <div class="erp-form-group mb-0">
+                <label class="erp-form-label">اسم المندوب الرباعي <span class="required">*</span></label>
+                <input type="text" name="name" required placeholder="مثال: أحمد محمود إبراهيم" class="erp-input text-xs sm:text-sm">
+            </div>
+
+            <!-- Phone & Email -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="erp-form-group mb-0">
+                    <label class="erp-form-label">رقم الهاتف (للتواصل وتسجيل الدخول) <span class="required">*</span></label>
+                    <input type="tel" name="phone" required placeholder="مثال: 01012345678" class="erp-input text-xs sm:text-sm font-numeric">
+                </div>
+
+                <div class="erp-form-group mb-0">
+                    <label class="erp-form-label">البريد الإلكتروني <span class="required">*</span></label>
+                    <input type="email" name="email" required placeholder="rep@company.com" class="erp-input text-xs sm:text-sm">
+                </div>
+            </div>
+
+            <!-- Password -->
+            <div class="erp-form-group mb-0">
+                <label class="erp-form-label">كلمة المرور للدخول للبوابة <span class="required">*</span></label>
+                <input type="password" name="password" required minlength="6" placeholder="لا تقل عن 6 أحرف أو أرقام" class="erp-input text-xs sm:text-sm">
+            </div>
+
+            <!-- Commission Rate & Type -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="erp-form-group mb-0">
+                    <label class="erp-form-label">نوع احتساب العمولة <span class="required">*</span></label>
+                    <select name="commission_type" required class="erp-select text-xs">
+                        <option value="percentage">نسبة مئوية (%) من قيمة الفاتورة</option>
+                        <option value="fixed">مبلغ ثابت (ج.م) لكل فاتورة</option>
+                    </select>
+                </div>
+
+                <div class="erp-form-group mb-0">
+                    <label class="erp-form-label">قيمة أو نسبة العمولة <span class="required">*</span></label>
+                    <div class="relative">
+                        <input type="number" step="0.01" min="0" name="commission_rate" required placeholder="مثال: 5 أو 50" class="erp-input text-xs font-numeric">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Warehouse Assignment -->
+            <div class="erp-form-group mb-0">
+                <label class="erp-form-label">المستودع أو الفرع التابع له المندوب</label>
+                <select name="warehouse_id" class="erp-select text-xs">
+                    <option value="">-- كافة المستودعات والفروع --</option>
+                    @foreach($warehouses as $wh)
+                        <option value="{{ $wh->id }}">{{ $wh->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <!-- Active Checkbox -->
+            <div class="pt-1">
+                <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+                    <input type="checkbox" name="is_active" value="1" checked class="rounded border-[var(--border-color)] text-[var(--primary)] focus:ring-[var(--primary)]">
+                    <span class="text-xs font-semibold text-[var(--text-main)]">الحساب نشط ويحق له تسجيل الدخول لبوابة المندوب الميداني</span>
+                </label>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex items-center justify-end gap-2 pt-3 border-t border-[var(--border-light)]">
+                <button type="button" data-action="close-modal" data-target="addRepModal" class="erp-btn erp-btn-secondary text-xs">إلغاء</button>
+                <button type="submit" class="erp-btn erp-btn-primary text-xs">
+                    <x-icon name="check" size="14" />
+                    <span>حفظ وإنشاء حساب المندوب</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Edit Sales Representative -->
+<div id="editRepModal" class="erp-modal-overlay hidden fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="erp-card w-full max-w-lg mb-0 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div class="erp-card-header bg-[var(--bg-hover)]">
+            <h3 class="erp-card-title text-sm font-bold">
+                <x-icon name="edit" size="16" class="text-[var(--primary)]" />
+                <span>تعديل بيانات المندوب ونسبة العمولة</span>
+            </h3>
+            <button type="button" data-action="close-modal" data-target="editRepModal" class="p-1 text-slate-400 hover:text-slate-600 rounded">
+                <x-icon name="x" size="16" />
+            </button>
+        </div>
+
+        <form id="editRepForm" method="POST" action="" class="p-5 space-y-3.5">
+            @csrf
+            @method('PUT')
+
+            <!-- Name -->
+            <div class="erp-form-group mb-0">
+                <label class="erp-form-label">اسم المندوب <span class="required">*</span></label>
+                <input type="text" id="editRepName" name="name" required class="erp-input text-xs sm:text-sm">
+            </div>
+
+            <!-- Phone & Email -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="erp-form-group mb-0">
+                    <label class="erp-form-label">رقم الهاتف <span class="required">*</span></label>
+                    <input type="tel" id="editRepPhone" name="phone" required class="erp-input text-xs sm:text-sm font-numeric">
+                </div>
+
+                <div class="erp-form-group mb-0">
+                    <label class="erp-form-label">البريد الإلكتروني <span class="required">*</span></label>
+                    <input type="email" id="editRepEmail" name="email" required class="erp-input text-xs sm:text-sm">
+                </div>
+            </div>
+
+            <!-- Password Change (Optional) -->
+            <div class="erp-form-group mb-0">
+                <label class="erp-form-label">تغيير كلمة المرور (اتركه فارغاً للإبقاء على الحالية)</label>
+                <input type="password" name="password" minlength="6" placeholder="كلمة مرور جديدة (اختياري)" class="erp-input text-xs sm:text-sm">
+            </div>
+
+            <!-- Commission Rate & Type -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="erp-form-group mb-0">
+                    <label class="erp-form-label">نوع العمولة <span class="required">*</span></label>
+                    <select id="editRepCommissionType" name="commission_type" required class="erp-select text-xs">
+                        <option value="percentage">نسبة مئوية (%)</option>
+                        <option value="fixed">مبلغ ثابت (ج.م)</option>
+                    </select>
+                </div>
+
+                <div class="erp-form-group mb-0">
+                    <label class="erp-form-label">نسبة أو قيمة العمولة <span class="required">*</span></label>
+                    <input type="number" step="0.01" min="0" id="editRepCommissionRate" name="commission_rate" required class="erp-input text-xs font-numeric">
+                </div>
+            </div>
+
+            <!-- Warehouse Assignment -->
+            <div class="erp-form-group mb-0">
+                <label class="erp-form-label">المستودع / الفرع</label>
+                <select id="editRepWarehouseId" name="warehouse_id" class="erp-select text-xs">
+                    <option value="">-- كافة المستودعات والفروع --</option>
+                    @foreach($warehouses as $wh)
+                        <option value="{{ $wh->id }}">{{ $wh->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <!-- Active Checkbox -->
+            <div class="pt-1">
+                <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+                    <input type="checkbox" id="editRepActive" name="is_active" value="1" class="rounded border-[var(--border-color)] text-[var(--primary)] focus:ring-[var(--primary)]">
+                    <span class="text-xs font-semibold text-[var(--text-main)]">الحساب نشط ويحق له استخدام النظام</span>
+                </label>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex items-center justify-end gap-2 pt-3 border-t border-[var(--border-light)]">
+                <button type="button" data-action="close-modal" data-target="editRepModal" class="erp-btn erp-btn-secondary text-xs">إلغاء</button>
+                <button type="submit" class="erp-btn erp-btn-primary text-xs">
+                    <x-icon name="check" size="14" />
+                    <span>تحديث بيانات المندوب</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Modal toggles
+        document.querySelectorAll('[data-action="open-add-rep-modal"]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.getElementById('addRepModal').classList.remove('hidden');
+            });
+        });
+
+        document.querySelectorAll('[data-action="close-modal"]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const target = document.getElementById(btn.getAttribute('data-target'));
+                if (target) target.classList.add('hidden');
+            });
+        });
+
+        // Edit Modal population
+        document.querySelectorAll('[data-action="open-edit-rep-modal"]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const repId = btn.getAttribute('data-rep-id');
+                const form = document.getElementById('editRepForm');
+                form.action = `/sales-reps/${repId}`;
+
+                document.getElementById('editRepName').value = btn.getAttribute('data-rep-name') || '';
+                document.getElementById('editRepEmail').value = btn.getAttribute('data-rep-email') || '';
+                document.getElementById('editRepPhone').value = btn.getAttribute('data-rep-phone') || '';
+                document.getElementById('editRepCommissionRate').value = btn.getAttribute('data-rep-commission-rate') || 0;
+                document.getElementById('editRepCommissionType').value = btn.getAttribute('data-rep-commission-type') || 'percentage';
+                document.getElementById('editRepWarehouseId').value = btn.getAttribute('data-rep-warehouse-id') || '';
+                document.getElementById('editRepActive').checked = btn.getAttribute('data-rep-active') === '1';
+
+                document.getElementById('editRepModal').classList.remove('hidden');
+            });
+        });
+    });
+</script>
+@endpush
+@endsection

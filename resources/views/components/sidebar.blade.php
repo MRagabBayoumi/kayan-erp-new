@@ -83,18 +83,28 @@
         </div>
         @endcan
 
-        <!-- Sales Representatives Field Portal -->
-        @can('access-sales-portal')
+        <!-- Sales Representatives Field Portal & Analytics -->
+        @if(auth()->user()->isAdmin() || auth()->user()->isSalesRep())
         <div class="erp-nav-section">
             <div class="erp-nav-section-title">مندوبو المبيعات</div>
+            @can('manage-sales-reps')
+            <a href="{{ route('sales-reps.index') }}" class="erp-nav-item {{ request()->is('sales-reps*') ? 'active' : '' }}" title="إدارة وتحليل أداء المناديب">
+                <div class="erp-nav-content">
+                    <span class="erp-nav-icon"><x-icon name="user-check" size="18" class="text-indigo-600" /></span>
+                    <span class="erp-nav-label font-bold">إدارة وتحليل المناديب</span>
+                </div>
+            </a>
+            @endcan
+            @can('access-sales-portal')
             <a href="{{ route('portal.index') }}" class="erp-nav-item {{ request()->is('portal*') ? 'active' : '' }}" title="بوابة المندوب الميداني">
                 <div class="erp-nav-content">
                     <span class="erp-nav-icon"><x-icon name="smartphone" size="18" class="text-sky-500" /></span>
                     <span class="erp-nav-label font-bold text-sky-600">بوابة المندوب (الموبايل)</span>
                 </div>
             </a>
+            @endcan
         </div>
-        @endcan
+        @endif
 
         <!-- Purchases -->
         @can('access-purchases')

@@ -3,10 +3,10 @@
 @section('control_panel')
     <x-control-panel title="دليل عملاء الجملة والتجزئة" :breadcrumbs="['العملاء والموردون' => route('customers.index'), 'العملاء' => route('customers.index')]">
         <x-slot:actions>
-            <button type="button" data-action="open-add-customer" class="erp-btn erp-btn-primary">
+            <a href="{{ route('customers.create') }}" class="erp-btn erp-btn-primary">
                 <x-icon name="plus" size="16" />
                 <span>إضافة عميل جديد</span>
-            </button>
+            </a>
             <a href="{{ route('suppliers.index') }}" class="erp-btn erp-btn-secondary">
                 <x-icon name="truck" size="16" />
                 <span>الموردون ومصانع الصين</span>

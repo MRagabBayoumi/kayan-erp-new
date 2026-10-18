@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\CompanySetting;
 use App\Models\Customer;
 use App\Models\SalesInvoice;
+use App\Models\User;
 use App\Services\StatementService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -59,6 +60,16 @@ class CustomerController extends Controller
             'customers' => $customers,
             'metrics' => $metrics,
             'cities' => $cities,
+            'salesReps' => $salesReps,
+        ]);
+    }
+
+    public function create(): View
+    {
+        $salesReps = User::salesReps()->where('is_active', true)->orderBy('name')->get();
+
+        return view('customers.create', [
+            'title' => 'إضافة عميل جديد',
             'salesReps' => $salesReps,
         ]);
     }

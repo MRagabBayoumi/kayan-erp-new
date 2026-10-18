@@ -89,6 +89,7 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::define('view-products', fn (User $user) => $user->hasPermission('view-products') || $user->hasRole([User::ROLE_ADMIN, User::ROLE_WAREHOUSE, User::ROLE_CASHIER]));
         Gate::define('access-sales-portal', fn (User $user) => $user->isSalesRep() || $user->isAdmin() || $user->hasPermission('access-sales-portal'));
+        Gate::define('manage-sales-reps', fn (User $user) => $user->isAdmin() || $user->hasPermission('manage-sales-reps'));
 
         // Auto copy backup zip to optional custom folder
         Event::listen(

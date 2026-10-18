@@ -284,6 +284,28 @@
             </div>
             @endcan
 
+            <!-- Sales Representatives Management & Performance Analytics -->
+            @can('manage-sales-reps')
+            <div class="app-card app-card-indigo">
+                <div class="app-card-header">
+                    <div class="app-icon-box bg-indigo-500/10 text-indigo-600">
+                        <x-icon name="user-check" size="28" />
+                    </div>
+                    <span class="app-badge badge-indigo">إدارة وتحليل المناديب</span>
+                </div>
+                <div class="app-card-body">
+                    <h3 class="app-title">إدارة وتحليل أداء مناديب المبيعات</h3>
+                    <p class="app-desc">إضافة المناديب الجدد، ضبط نسب العمولات، متابعة مبيعات كل مندوب، فواتيره، عملائه، وصرف المستحقات المالية.</p>
+                </div>
+                <div class="app-card-footer">
+                    <a href="{{ route('sales-reps.index') }}" class="erp-btn erp-btn-secondary w-full justify-center">
+                        <x-icon name="bar-chart-2" size="16" />
+                        <span>لوحة أداء المناديب</span>
+                    </a>
+                </div>
+            </div>
+            @endcan
+
             <!-- Sales Representative Field Mobile Portal -->
             @can('access-sales-portal')
             <div class="app-card app-card-sky">
