@@ -244,12 +244,20 @@ function initPurchaseCreate() {
         activeSuggestionIndex = -1;
     }
 
+    function updateQuickCostByUnit(product) {
+        if (!product || !quickUnitSelect || !quickCostInput) return;
+        const prodFactor = parseFloat(product.unit_factor) || 1.0;
+        const baseCost = (parseFloat(product.cost_price) || 0) / prodFactor;
+        const selectedOpt = quickUnitSelect.options[quickUnitSelect.selectedIndex];
+        const targetFactor = parseFloat(selectedOpt?.dataset?.factor) || 1.0;
+        quickCostInput.value = (baseCost * targetFactor).toFixed(2);
+    }
+
     function selectProduct(product) {
         if (!product) return;
 
         if (quickProductId) quickProductId.value = product.id;
         if (quickProductInput) quickProductInput.value = `${product.name} (${product.sku})`;
-        if (quickCostInput) quickCostInput.value = (product.cost_price || 0).toFixed(2);
         if (selectedProductBadge) selectedProductBadge.classList.remove('hidden');
 
         // Select unit matching product's unit
@@ -267,6 +275,9 @@ function initPurchaseCreate() {
             if (!matchedOption && quickUnitSelect.options.length > 0) {
                 quickUnitSelect.selectedIndex = 0;
             }
+            updateQuickCostByUnit(product);
+        } else if (quickCostInput) {
+            quickCostInput.value = (product.cost_price || 0).toFixed(2);
         }
 
         // Hide suggestions
@@ -362,6 +373,18 @@ function initPurchaseCreate() {
 
     // Keyboard Flow: Unit -> Tab -> Quantity
     if (quickUnitSelect) {
+        quickUnitSelect.addEventListener('change', () => {
+            let pId = quickProductId ? parseInt(quickProductId.value, 10) : null;
+            let product = productsData.find(p => p.id === pId);
+            if (!product) {
+                const term = (quickProductInput ? quickProductInput.value : '').trim();
+                product = findProductByTerm(term, searchModeSelect ? searchModeSelect.value : 'barcode');
+            }
+            if (product) {
+                updateQuickCostByUnit(product);
+            }
+        });
+
         quickUnitSelect.addEventListener('keydown', (e) => {
             if (e.key === 'Tab' && !e.shiftKey) {
                 e.preventDefault();

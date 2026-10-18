@@ -19,7 +19,8 @@ class UserController extends Controller
      */
     public function index(): View
     {
-        $users = User::with(['roleRelation', 'warehouse'])
+        $users = User::where('role', '!=', User::ROLE_SALES_REP)
+            ->with(['roleRelation', 'warehouse'])
             ->orderBy('id')
             ->paginate(15);
 
@@ -35,7 +36,7 @@ class UserController extends Controller
      */
     public function create(): View
     {
-        $roles = Role::orderBy('id')->get();
+        $roles = Role::where('slug', '!=', User::ROLE_SALES_REP)->orderBy('id')->get();
         $warehouses = Warehouse::active()->orderBy('name')->get();
 
         return view('users.create', [
@@ -58,8 +59,6 @@ class UserController extends Controller
             'role_id' => ['required', 'exists:roles,id'],
             'warehouse_id' => ['nullable', 'exists:warehouses,id'],
             'phone' => ['nullable', 'string', 'max:35'],
-            'commission_rate' => ['nullable', 'numeric', 'min:0'],
-            'commission_type' => ['nullable', 'string', 'in:percentage,fixed'],
             'can_access_all_warehouses' => ['sometimes', 'boolean'],
             'is_active' => ['sometimes', 'boolean'],
         ], [
@@ -75,6 +74,11 @@ class UserController extends Controller
         ]);
 
         $role = Role::findOrFail($validated['role_id']);
+
+        if ($role->slug === User::ROLE_SALES_REP) {
+            return redirect()->route('sales-reps.create')
+                ->with('info', 'تسجيل وإدارة حسابات مناديب المبيعات يتم بشكل مخصص ومستقل عبر صفحة مناديب المبيعات.');
+        }
 
         $username = filled($request->input('username'))
             ? Str::slug($request->input('username'), '_')
@@ -97,8 +101,8 @@ class UserController extends Controller
             'role_id' => $role->id,
             'role' => $role->slug, // Keep synced for backward compatibility
             'warehouse_id' => $validated['warehouse_id'] ?? null,
-            'commission_rate' => (float) ($validated['commission_rate'] ?? 0.00),
-            'commission_type' => $validated['commission_type'] ?? 'percentage',
+            'commission_rate' => 0.00,
+            'commission_type' => 'percentage',
             'can_access_all_warehouses' => $request->boolean('can_access_all_warehouses', false),
             'is_active' => $request->boolean('is_active', true),
         ]);
@@ -113,7 +117,7 @@ class UserController extends Controller
      */
     public function edit(User $user): View
     {
-        $roles = Role::orderBy('id')->get();
+        $roles = Role::where('slug', '!=', User::ROLE_SALES_REP)->orderBy('id')->get();
         $warehouses = Warehouse::active()->orderBy('name')->get();
 
         return view('users.edit', [
@@ -137,8 +141,6 @@ class UserController extends Controller
             'role_id' => ['required', 'exists:roles,id'],
             'warehouse_id' => ['nullable', 'exists:warehouses,id'],
             'phone' => ['nullable', 'string', 'max:35'],
-            'commission_rate' => ['nullable', 'numeric', 'min:0'],
-            'commission_type' => ['nullable', 'string', 'in:percentage,fixed'],
             'can_access_all_warehouses' => ['sometimes', 'boolean'],
             'is_active' => ['sometimes', 'boolean'],
         ], [
@@ -151,6 +153,11 @@ class UserController extends Controller
         ]);
 
         $role = Role::findOrFail($validated['role_id']);
+
+        if ($role->slug === User::ROLE_SALES_REP) {
+            return redirect()->route('sales-reps.index')
+                ->with('info', 'مناديب المبيعات يتم تعديلهم وحساب عمولاتهم من صفحة إدارة المناديب.');
+        }
 
         $updateData = [
             'name' => $validated['name'],

@@ -42,6 +42,18 @@
                         </a>
                     </div>
 
+                    @if($customers->isEmpty())
+                        <div class="p-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-md text-xs flex items-center justify-between gap-2">
+                            <div class="flex items-center gap-2">
+                                <x-icon name="alert-triangle" size="16" class="text-amber-600 shrink-0" />
+                                <span>لا يوجد عملاء تابعين لك مسجلين حتى الآن. يرجى تسجيل بيانات العميل أولاً للمتابعة.</span>
+                            </div>
+                            <a href="{{ route('portal.customers.create') }}" class="erp-btn erp-btn-sm erp-btn-primary shrink-0 text-xs">
+                                <span>+ تسجيل عميل</span>
+                            </a>
+                        </div>
+                    @endif
+
                     <select name="customer_id" x-model="customerId" @change="onCustomerChange()" required
                         class="erp-select text-xs sm:text-sm">
                         <option value="">-- اختر العميل من القائمة --</option>

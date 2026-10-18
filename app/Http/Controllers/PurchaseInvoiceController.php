@@ -96,6 +96,7 @@ class PurchaseInvoiceController extends Controller
             'barcode' => (string) ($p->barcode ?? ''),
             'cost_price' => (float) $p->cost_price,
             'unit' => $p->unit ?? 'قطعة',
+            'unit_factor' => (float) ($p->unit_factor ?? 1.0),
         ])->values();
 
         $unitsJson = $units->map(fn ($u) => [
@@ -293,7 +294,7 @@ class PurchaseInvoiceController extends Controller
      */
     public function show(PurchaseInvoice $purchase): View
     {
-        $purchase->load(['supplier', 'warehouse', 'creator', 'items.product.category', 'batches', 'payments.creator', 'payments.treasury']);
+        $purchase->load(['supplier', 'warehouse', 'creator', 'items.product.category', 'batches', 'payments.creator', 'payments.treasury', 'returns.creator']);
         $treasuries = Treasury::where('is_active', true)->orderBy('name')->get();
 
         return view('purchases.show', [
@@ -302,6 +303,210 @@ class PurchaseInvoiceController extends Controller
             'invoice' => $purchase,
             'treasuries' => $treasuries,
         ]);
+    }
+
+    /**
+     * Show the form for editing an existing draft purchase invoice.
+     */
+    public function edit(PurchaseInvoice $purchase): View|RedirectResponse
+    {
+        if ($purchase->status !== PurchaseInvoice::STATUS_DRAFT) {
+            return redirect()->route('purchases.show', $purchase)
+                ->with('error', 'لا يمكن تعديل الفاتورة لأنها ليست في حالة مسودة.');
+        }
+
+        $purchase->load(['items.product', 'items.unit']);
+        $suppliers = Supplier::active()->orderBy('name')->get();
+        $warehouses = Warehouse::active()->orderBy('name')->get();
+        $products = Product::active()->orderBy('name')->get();
+        $units = class_exists(Unit::class) ? Unit::active()->orderBy('is_default', 'desc')->orderBy('name')->get() : collect();
+
+        $productsJson = $products->map(fn ($p) => [
+            'id' => $p->id,
+            'name' => $p->name,
+            'sku' => $p->sku,
+            'barcode' => (string) ($p->barcode ?? ''),
+            'cost_price' => (float) $p->cost_price,
+            'unit' => $p->unit ?? 'قطعة',
+            'unit_factor' => (float) ($p->unit_factor ?? 1.0),
+        ])->values();
+
+        $unitsJson = $units->map(fn ($u) => [
+            'id' => $u->id,
+            'name' => $u->name,
+            'code' => $u->code,
+            'factor' => (float) ($u->conversion_factor ?? 1.0),
+            'is_default' => (bool) ($u->is_default ?? false),
+        ])->values();
+
+        return view('purchases.edit', [
+            'title' => 'تعديل فاتورة شراء: '.$purchase->invoice_number,
+            'moduleName' => 'المشتريات والموردين',
+            'invoice' => $purchase,
+            'suppliers' => $suppliers,
+            'warehouses' => $warehouses,
+            'products' => $products,
+            'units' => $units,
+            'productsJson' => $productsJson,
+            'unitsJson' => $unitsJson,
+        ]);
+    }
+
+    /**
+     * Update the specified draft purchase invoice in storage.
+     */
+    public function update(Request $request, PurchaseInvoice $purchase, InventoryService $inventoryService): RedirectResponse
+    {
+        if ($purchase->status !== PurchaseInvoice::STATUS_DRAFT) {
+            return redirect()->route('purchases.show', $purchase)
+                ->with('error', 'لا يمكن تعديل الفاتورة لأنها ليست في حالة مسودة.');
+        }
+
+        $validated = $request->validate([
+            'supplier_id' => ['required', 'exists:suppliers,id'],
+            'warehouse_id' => ['required', 'exists:warehouses,id'],
+            'invoice_date' => ['required', 'date'],
+            'payment_type' => ['nullable', 'string', 'in:cash,credit,partial'],
+            'paid_amount' => ['nullable', 'numeric', 'min:0'],
+            'due_date' => ['nullable', 'date'],
+            'shipping_cost' => ['nullable', 'numeric', 'min:0'],
+            'discount_type' => ['nullable', 'string', 'in:fixed,percentage'],
+            'discount_value' => ['nullable', 'numeric', 'min:0'],
+            'notes' => ['nullable', 'string', 'max:1000'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.product_id' => ['required', 'exists:products,id'],
+            'items.*.unit_id' => ['nullable', 'exists:units,id'],
+            'items.*.unit_name' => ['nullable', 'string', 'max:50'],
+            'items.*.conversion_factor' => ['nullable', 'numeric', 'min:0.0001'],
+            'items.*.quantity' => ['required', 'numeric', 'min:0.01'],
+            'items.*.unit_cost' => ['required', 'numeric', 'min:0'],
+            'items.*.notes' => ['nullable', 'string', 'max:255'],
+        ], [
+            'supplier_id.required' => 'يرجى اختيار المورد.',
+            'warehouse_id.required' => 'يرجى تحديد مستودع الاستلام.',
+            'invoice_date.required' => 'تاريخ الفاتورة مطلوب.',
+            'items.required' => 'يجب إضافة صنف واحد على الأقل في الفاتورة.',
+            'items.*.product_id.required' => 'يرجى اختيار الصنف.',
+            'items.*.quantity.required' => 'الكمية مطلوبة.',
+            'items.*.unit_cost.required' => 'سعر التكلفة مطلوب.',
+        ]);
+
+        $shippingCost = (float) ($validated['shipping_cost'] ?? 0.00);
+        $discountType = $validated['discount_type'] ?? 'fixed';
+        $discountValue = (float) ($validated['discount_value'] ?? 0.00);
+
+        DB::transaction(function () use ($purchase, $validated, $shippingCost, $discountType, $discountValue, $request, $inventoryService) {
+            $subtotal = 0.00;
+            $itemsData = [];
+
+            foreach ($validated['items'] as $itemInput) {
+                $qty = (float) $itemInput['quantity'];
+                $cost = (float) $itemInput['unit_cost'];
+                $lineSubtotal = round($qty * $cost, 2);
+                $subtotal += $lineSubtotal;
+
+                $unitId = ! empty($itemInput['unit_id']) ? (int) $itemInput['unit_id'] : null;
+                $factor = 1.0000;
+
+                if (! empty($itemInput['conversion_factor']) && (float) $itemInput['conversion_factor'] > 0) {
+                    $factor = (float) $itemInput['conversion_factor'];
+                } elseif ($unitId) {
+                    $unit = Unit::find($unitId);
+                    if ($unit && (float) $unit->conversion_factor > 0) {
+                        $factor = (float) $unit->conversion_factor;
+                    }
+                } elseif (! empty($itemInput['unit_name'])) {
+                    $unit = Unit::where('name', trim($itemInput['unit_name']))->first();
+                    if ($unit) {
+                        $unitId = $unit->id;
+                        $factor = (float) $unit->conversion_factor > 0 ? (float) $unit->conversion_factor : 1.0000;
+                    }
+                }
+
+                $baseQty = round($qty * $factor, 4);
+
+                $itemsData[] = [
+                    'purchase_invoice_id' => $purchase->id,
+                    'product_id' => (int) $itemInput['product_id'],
+                    'unit_id' => $unitId,
+                    'conversion_factor' => $factor,
+                    'quantity' => $qty,
+                    'base_quantity' => $baseQty,
+                    'unit_cost' => $cost,
+                    'subtotal' => $lineSubtotal,
+                    'notes' => $itemInput['notes'] ?? null,
+                ];
+            }
+
+            $discountAmount = 0.00;
+            if ($discountValue > 0) {
+                if ($discountType === 'percentage') {
+                    $discountAmount = round(($subtotal * min(100, $discountValue)) / 100, 2);
+                } else {
+                    $discountAmount = min($subtotal, $discountValue);
+                }
+            }
+
+            $totalAmount = max(0, round($subtotal - $discountAmount + $shippingCost, 2));
+
+            $paymentType = $validated['payment_type'] ?? PurchaseInvoice::PAYMENT_CASH;
+            if ($paymentType === PurchaseInvoice::PAYMENT_CASH) {
+                $paidAmount = $totalAmount;
+                $remainingAmount = 0.00;
+            } elseif ($paymentType === PurchaseInvoice::PAYMENT_CREDIT) {
+                $paidAmount = 0.00;
+                $remainingAmount = $totalAmount;
+            } else {
+                $paidAmount = min($totalAmount, max(0.00, (float) ($validated['paid_amount'] ?? 0.00)));
+                $remainingAmount = max(0.00, round($totalAmount - $paidAmount, 2));
+            }
+            $dueDate = filled($validated['due_date'] ?? null) ? $validated['due_date'] : null;
+
+            $notes = $validated['notes'] ?? null;
+            if ($discountAmount > 0) {
+                $discountNote = $discountType === 'percentage'
+                    ? " [خصم: {$discountValue}% بقيمة {$discountAmount} ج.م]"
+                    : " [خصم نقدي: {$discountAmount} ج.م]";
+                $notes = trim(($notes ? $notes.' | ' : '').$discountNote);
+            }
+
+            $purchase->update([
+                'supplier_id' => (int) $validated['supplier_id'],
+                'warehouse_id' => (int) $validated['warehouse_id'],
+                'invoice_date' => $validated['invoice_date'],
+                'payment_type' => $paymentType,
+                'subtotal' => $subtotal,
+                'shipping_cost' => $shippingCost,
+                'total_amount' => $totalAmount,
+                'paid_amount' => $paidAmount,
+                'remaining_amount' => $remainingAmount,
+                'due_date' => $dueDate,
+                'notes' => $notes,
+            ]);
+
+            $purchase->items()->delete();
+            foreach ($itemsData as $row) {
+                PurchaseInvoiceItem::create($row);
+            }
+
+            if ($request->input('action') === 'post') {
+                $this->executePosting($purchase, $inventoryService);
+            }
+        });
+
+        if ($request->input('action') === 'review_pricing') {
+            return redirect()->route('purchases.pricing-review', $purchase)
+                ->with('status', 'info')
+                ->with('message', 'تم تحديث المسودة بنجاح. يرجى مراجعة واعتماد أسعار البيع.');
+        }
+
+        $msg = $purchase->status === PurchaseInvoice::STATUS_POSTED
+            ? 'تم تحديث فاتورة الشراء وترحيل أصنافها للمخازن بنجاح.'
+            : 'تم تحديث مسودة فاتورة الشراء بنجاح.';
+
+        return redirect()->route('purchases.show', $purchase)
+            ->with('status', 'success')
+            ->with('message', $msg);
     }
 
     /**

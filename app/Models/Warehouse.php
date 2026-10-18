@@ -38,6 +38,11 @@ class Warehouse extends Model
         return $this->hasMany(InventoryBatch::class);
     }
 
+    public function purchaseReturns(): HasMany
+    {
+        return $this->hasMany(PurchaseReturn::class);
+    }
+
     public function movements(): HasMany
     {
         return $this->hasMany(StockMovement::class, 'to_warehouse_id');

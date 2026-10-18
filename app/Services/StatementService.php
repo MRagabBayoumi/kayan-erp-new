@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Customer;
 use App\Models\CustomerPayment;
 use App\Models\PurchaseInvoice;
+use App\Models\PurchaseReturn;
 use App\Models\SalesInvoice;
 use App\Models\SalesInvoiceItem;
 use App\Models\SalesReturn;
@@ -392,6 +393,10 @@ class StatementService
         $paymentsQuery = SupplierPayment::query()
             ->where('supplier_id', $supplier->id)
             ->with(['purchaseInvoice']);
+        $returnsQuery = PurchaseReturn::query()
+            ->where('supplier_id', $supplier->id)
+            ->where('status', PurchaseReturn::STATUS_POSTED)
+            ->with(['warehouse']);
 
         if ($fromDate) {
             $from = Carbon::parse($fromDate)->startOfDay();
@@ -402,7 +407,7 @@ class StatementService
                 $priorSubsequentPayments = SupplierPayment::where('purchase_invoice_id', $p->id)
                     ->where('payment_date', '<', $from)
                     ->sum('amount');
-                $initialDownpayment = max(0.00, (float) $p->total_amount - (float) $p->remaining_amount - (float) $priorSubsequentPayments);
+                $initialDownpayment = max(0.00, (float) $p->paid_amount - (float) $priorSubsequentPayments);
                 $prePeriodBalance += ((float) $p->total_amount - $initialDownpayment);
             }
 
@@ -411,19 +416,29 @@ class StatementService
                 // Payment reduces supplier balance
                 $prePeriodBalance -= (float) $dp->amount;
             }
+
+            $priorReturns = (clone $returnsQuery)->where('return_date', '<', $from)->get();
+            foreach ($priorReturns as $pr) {
+                if ($pr->settlement_type === PurchaseReturn::SETTLEMENT_DEDUCT_BALANCE) {
+                    $prePeriodBalance -= (float) $pr->total_amount;
+                }
+            }
         }
 
         if ($fromDate) {
             $purchasesQuery->where('invoice_date', '>=', Carbon::parse($fromDate)->startOfDay());
             $paymentsQuery->where('payment_date', '>=', Carbon::parse($fromDate)->startOfDay());
+            $returnsQuery->where('return_date', '>=', Carbon::parse($fromDate)->startOfDay());
         }
         if ($toDate) {
             $purchasesQuery->where('invoice_date', '<=', Carbon::parse($toDate)->endOfDay());
             $paymentsQuery->where('payment_date', '<=', Carbon::parse($toDate)->endOfDay());
+            $returnsQuery->where('return_date', '<=', Carbon::parse($toDate)->endOfDay());
         }
 
         $purchases = $purchasesQuery->orderBy('invoice_date')->orderBy('id')->get();
         $payments = $paymentsQuery->orderBy('payment_date')->orderBy('id')->get();
+        $returns = $returnsQuery->orderBy('return_date')->orderBy('id')->get();
 
         $rows = collect();
 
@@ -437,7 +452,7 @@ class StatementService
             };
 
             $subsequentPaymentsForInvoice = (float) SupplierPayment::where('purchase_invoice_id', $p->id)->sum('amount');
-            $initialDownpayment = max(0.00, (float) $p->total_amount - (float) $p->remaining_amount - $subsequentPaymentsForInvoice);
+            $initialDownpayment = max(0.00, (float) $p->paid_amount - $subsequentPaymentsForInvoice);
 
             $rows->push([
                 'id' => 'pur-'.$p->id,
@@ -486,6 +501,35 @@ class StatementService
                 'remaining' => 0.00,
                 'due_date' => null,
                 'url' => route('supplier-payments.receipt', $pay),
+            ]);
+        }
+
+        foreach ($returns as $ret) {
+            $date = $ret->return_date ? Carbon::parse($ret->return_date) : $ret->created_at;
+            $settleLabel = $ret->settlement_type_label;
+            $desc = "مرتجع مشتريات ({$settleLabel}) رقم {$ret->return_number}";
+            if ($ret->notes) {
+                $desc .= " — {$ret->notes}";
+            }
+
+            // Only deduct_balance affects running balance of supplier account.
+            $debit = $ret->settlement_type === PurchaseReturn::SETTLEMENT_DEDUCT_BALANCE ? (float) $ret->total_amount : 0.00;
+
+            $rows->push([
+                'id' => 'pret-'.$ret->id,
+                'raw_date' => $date->toIso8601String(),
+                'date' => $date->format('Y-m-d'),
+                'time' => $date->format('H:i'),
+                'type' => 'return',
+                'type_label' => 'مرتجع مشتريات',
+                'doc_number' => $ret->return_number,
+                'warehouse_name' => $ret->warehouse?->name ?? '—',
+                'description' => $desc,
+                'credit' => 0.00,
+                'debit' => $debit,
+                'remaining' => 0.00,
+                'due_date' => null,
+                'url' => route('purchase-returns.show', $ret),
             ]);
         }
 

@@ -11,11 +11,15 @@
                 <x-icon name="shield" size="16" />
                 <span>الأدوار ومصفوفة الصلاحيات</span>
             </a>
+            <a href="{{ route('sales-reps.index') }}" class="erp-btn erp-btn-secondary" title="إدارة مناديب المبيعات الميدانيين">
+                <x-icon name="users" size="16" class="text-[var(--primary)]" />
+                <span>إدارة مناديب المبيعات</span>
+            </a>
         </x-slot:actions>
 
         <x-slot:extra>
             <span class="erp-badge erp-badge-neutral font-numeric px-2.5 py-1 text-xs">
-                <span>إجمالي المستخدمين:</span>
+                <span>مستخدمو النظام:</span>
                 <strong>{{ $users->total() }}</strong>
             </span>
         </x-slot:extra>
@@ -24,6 +28,13 @@
 
 @section('content')
     <div data-page="users">
+        @if(session('info'))
+            <div class="erp-alert erp-alert-info mb-4" role="alert">
+                <x-icon name="info" size="16" />
+                <div>{{ session('info') }}</div>
+            </div>
+        @endif
+
         @if(session('status') === 'success' && session('message'))
             <div class="erp-alert erp-alert-success mb-4" role="alert">
                 <x-icon name="check" size="16" />
@@ -37,6 +48,16 @@
                 <div>{{ session('message') }}</div>
             </div>
         @endif
+
+        <div class="p-3 mb-4 rounded-md bg-amber-50/70 border border-amber-200 text-amber-900 text-xs flex items-center justify-between flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+                <x-icon name="info" size="16" class="text-amber-600 shrink-0" />
+                <span>هذه الصفحة مخصصة لمستخدمي النظام (المدير، أمناء المخازن، الكاشير). مناديب المبيعات مفصولون تماماً ويدارون من صفحة إدارة المناديب.</span>
+            </div>
+            <a href="{{ route('sales-reps.index') }}" class="font-bold text-[var(--primary)] hover:underline inline-flex items-center gap-1">
+                <span>الانتقال لإدارة المناديب &larr;</span>
+            </a>
+        </div>
 
         <!-- Summary KPI Cards -->
         <div class="users-kpi-grid">

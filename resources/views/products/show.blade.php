@@ -190,7 +190,7 @@
                         <div class="erp-pricing-grid">
                             <!-- Cost Price -->
                             <div class="erp-pricing-card">
-                                <span class="erp-pricing-label">سعر التكلفة (استيراد الصين)</span>
+                                <span class="erp-pricing-label">سعر الشراء</span>
                                 <div class="font-numeric erp-pricing-value">
                                     {{ number_format((float)$product->cost_price, 2) }}
                                     <span class="erp-pricing-unit">ج.م</span>

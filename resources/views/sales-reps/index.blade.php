@@ -158,7 +158,7 @@
         </div>
 
         <div class="overflow-x-auto">
-            <table class="erp-table w-full text-right">
+            <table class="erp-table w-full text-right min-w-[950px]">
                 <thead>
                     <tr>
                         <th class="w-12">#</th>
@@ -271,9 +271,9 @@
 </div>
 
 <!-- Modal: Add New Sales Representative -->
-<div id="addRepModal" class="erp-modal-overlay hidden fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-    <div class="erp-card w-full max-w-lg mb-0 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-        <div class="erp-card-header bg-[var(--bg-hover)]">
+<div id="addRepModal" class="erp-modal-overlay hidden fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+    <div class="erp-card w-full max-w-lg mb-0 shadow-xl overflow-hidden max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-150">
+        <div class="erp-card-header bg-[var(--bg-hover)] shrink-0">
             <h3 class="erp-card-title text-sm font-bold">
                 <x-icon name="user-plus" size="16" class="text-[var(--primary)]" />
                 <span>إضافة مندوب مبيعات ميداني جديد</span>
@@ -283,7 +283,7 @@
             </button>
         </div>
 
-        <form method="POST" action="{{ route('sales-reps.store') }}" class="p-5 space-y-3.5">
+        <form method="POST" action="{{ route('sales-reps.store') }}" class="p-5 space-y-3.5 overflow-y-auto">
             @csrf
 
             @if($errors->any())
@@ -379,9 +379,9 @@
 </div>
 
 <!-- Modal: Edit Sales Representative -->
-<div id="editRepModal" class="erp-modal-overlay hidden fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
-    <div class="erp-card w-full max-w-lg mb-0 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-        <div class="erp-card-header bg-[var(--bg-hover)]">
+<div id="editRepModal" class="erp-modal-overlay hidden fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+    <div class="erp-card w-full max-w-lg mb-0 shadow-xl overflow-hidden max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-150">
+        <div class="erp-card-header bg-[var(--bg-hover)] shrink-0">
             <h3 class="erp-card-title text-sm font-bold">
                 <x-icon name="edit" size="16" class="text-[var(--primary)]" />
                 <span>تعديل بيانات المندوب ونسبة العمولة</span>
@@ -391,7 +391,7 @@
             </button>
         </div>
 
-        <form id="editRepForm" method="POST" action="" class="p-5 space-y-3.5">
+        <form id="editRepForm" method="POST" action="" class="p-5 space-y-3.5 overflow-y-auto">
             @csrf
             @method('PUT')
 

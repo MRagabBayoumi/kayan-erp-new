@@ -121,52 +121,7 @@
                         </div>
                     </div>
 
-                    <!-- Row 2.5: Sales Rep Commission Settings -->
-                    <div class="user-status-card mb-4" id="salesRepCommissionCard">
-                        <div class="w-full">
-                            <div class="font-bold text-sm text-[var(--text-main)] flex items-center gap-1.5 mb-1">
-                                <x-icon name="percent" size="16" class="text-amber-500" />
-                                <span>إعدادات المندوب الميداني وعمولة المبيعات</span>
-                            </div>
-                            <div class="text-xs text-[var(--text-muted)] mb-3">
-                                حدد نسبة أو قيمة العمولة التلقائية التي يستحقها المندوب على الفواتير الصادرة لعملائه.
-                            </div>
 
-                            <div class="erp-form-row-2col">
-                                <div class="erp-form-group mb-0">
-                                    <label for="commissionRate" class="erp-form-label text-xs font-semibold">
-                                        قيمة / نسبة العمولة
-                                    </label>
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
-                                        id="commissionRate"
-                                        name="commission_rate"
-                                        value="{{ old('commission_rate', '0.00') }}"
-                                        class="erp-input font-numeric"
-                                        placeholder="مثال: 5.00"
-                                    >
-                                    <small class="text-[11px] text-[var(--text-muted)] mt-1">النسبة المئوية (%) أو المبلغ الثابت (ج.م) لكل فاتورة</small>
-                                </div>
-
-                                <div class="erp-form-group mb-0">
-                                    <label for="commissionType" class="erp-form-label text-xs font-semibold">
-                                        طريقة احتساب العمولة
-                                    </label>
-                                    <select id="commissionType" name="commission_type" class="erp-input">
-                                        <option value="percentage" {{ old('commission_type', 'percentage') === 'percentage' ? 'selected' : '' }}>
-                                            نسبة مئوية من إجمالي الفاتورة (%)
-                                        </option>
-                                        <option value="fixed" {{ old('commission_type') === 'fixed' ? 'selected' : '' }}>
-                                            مبلغ ثابت مقطوع لكل فاتورة (ج.م)
-                                        </option>
-                                    </select>
-                                    <small class="text-[11px] text-[var(--text-muted)] mt-1">تُسجل العمولة تلقائياً فور ترحيل أي فاتورة تابعة للمندوب</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
 
                     <!-- Row 3: Workplace & Warehouse Access Permissions -->
                     <div class="user-status-card mb-4">

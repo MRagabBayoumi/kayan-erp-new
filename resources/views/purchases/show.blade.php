@@ -4,6 +4,11 @@
     <x-control-panel title="فاتورة شراء: {{ $invoice->invoice_number }}" :breadcrumbs="['المشتريات والموردين' => route('purchases.index'), $invoice->invoice_number => '#']">
         <x-slot:actions>
             @if($invoice->status === 'draft')
+                <a href="{{ route('purchases.edit', $invoice) }}" class="erp-btn erp-btn-secondary">
+                    <x-icon name="edit" size="16" />
+                    <span>تعديل الفاتورة</span>
+                </a>
+
                 <a href="{{ route('purchases.pricing-review', $invoice) }}" class="erp-btn erp-btn-warning">
                     <x-icon name="tag" size="16" />
                     <span>مراجعة الأسعار والترحيل</span>
@@ -24,6 +29,11 @@
                         <span>إلغاء الفاتورة</span>
                     </button>
                 </form>
+            @elseif($invoice->status === 'posted')
+                <a href="{{ route('purchase-returns.create', ['purchase_invoice_id' => $invoice->id]) }}" class="erp-btn erp-btn-secondary text-[var(--danger)] border-[var(--danger)] hover:bg-rose-50" title="تسجيل مرتجع أصناف من هذه الفاتورة إلى المورد">
+                    <x-icon name="rotate-ccw" size="16" />
+                    <span>مرتجع مشتريات</span>
+                </a>
             @endif
 
             <button type="button" data-action="python-direct-print" data-url="{{ route('purchases.direct-print', $invoice) }}" class="erp-btn erp-btn-primary" title="طباعة مباشرة بطابعة الإيصالات عبر بايثون">
@@ -394,6 +404,67 @@
                         </table>
                     </div>
                 @endif
+            </div>
+        @endif
+
+        <!-- Linked Returns Section -->
+        @if($invoice->returns && $invoice->returns->isNotEmpty())
+            <div class="erp-card mb-4">
+                <div class="erp-card-header flex items-center justify-between">
+                    <div class="erp-card-title flex items-center gap-2">
+                        <x-icon name="rotate-ccw" size="18" class="text-[var(--danger)]" />
+                        <span>سجل المرتجعات المسجلة على هذه الفاتورة</span>
+                    </div>
+                    <a href="{{ route('purchase-returns.create', ['purchase_invoice_id' => $invoice->id]) }}" class="erp-btn erp-btn-sm erp-btn-secondary text-[var(--danger)]">
+                        <x-icon name="plus" size="14" />
+                        <span>تسجيل مرتجع إضافي</span>
+                    </a>
+                </div>
+
+                <div class="erp-table-responsive">
+                    <table class="erp-table">
+                        <thead>
+                            <tr>
+                                <th>رقم المرتجع</th>
+                                <th>تاريخ المرتجع</th>
+                                <th>طريقة التسوية</th>
+                                <th>عدد الأصناف</th>
+                                <th>إجمالي المرتجع</th>
+                                <th>الحالة</th>
+                                <th class="text-center">إجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($invoice->returns as $ret)
+                                <tr>
+                                    <td>
+                                        <a href="{{ route('purchase-returns.show', $ret) }}" class="font-bold text-[var(--primary)] hover:underline font-mono">
+                                            {{ $ret->return_number }}
+                                        </a>
+                                    </td>
+                                    <td class="font-numeric text-xs">{{ $ret->return_date ? $ret->return_date->format('Y-m-d') : '—' }}</td>
+                                    <td>
+                                        <span class="erp-badge {{ $ret->settlement_type === 'cash_refund' ? 'erp-badge-info' : 'erp-badge-neutral' }} text-[11px]">
+                                            {{ $ret->settlement_type_label }}
+                                        </span>
+                                    </td>
+                                    <td class="font-numeric text-xs">{{ $ret->items->count() }} صنف</td>
+                                    <td class="font-numeric font-bold text-xs text-[var(--danger)]">{{ number_format((float)$ret->total_amount, 2) }} ج.م</td>
+                                    <td>
+                                        <span class="erp-badge {{ $ret->status_badge_class }} text-[11px]">
+                                            {{ $ret->status_label }}
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        <a href="{{ route('purchase-returns.show', $ret) }}" class="erp-btn erp-btn-ghost erp-btn-sm p-1">
+                                            <x-icon name="eye" size="15" />
+                                        </a>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
             </div>
         @endif
     </div>

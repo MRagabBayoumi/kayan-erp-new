@@ -15,6 +15,7 @@ use App\Http\Controllers\PrintTemplateController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductImportController;
 use App\Http\Controllers\PurchaseInvoiceController;
+use App\Http\Controllers\PurchaseReturnController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SalesInvoiceController;
 use App\Http\Controllers\SalesRepController;
@@ -143,7 +144,14 @@ Route::middleware('auth')->group(function () {
 
         Route::post('/purchases/{purchase}/direct-print', [PurchaseInvoiceController::class, 'directPrint'])->name('purchases.direct-print');
         Route::get('/purchases/{purchase}/print', [PurchaseInvoiceController::class, 'print'])->name('purchases.print');
-        Route::resource('purchases', PurchaseInvoiceController::class)->except(['edit', 'update', 'destroy']);
+        Route::resource('purchases', PurchaseInvoiceController::class)->except(['destroy']);
+
+        // Purchase Returns (مرتجعات المشتريات والتوريد)
+        Route::get('/purchase-returns/{purchase_return}/print', [PurchaseReturnController::class, 'print'])->name('purchase-returns.print');
+        Route::post('/purchase-returns/{purchase_return}/post', [PurchaseReturnController::class, 'post'])
+            ->middleware('can:post-purchase-invoice')
+            ->name('purchase-returns.post');
+        Route::resource('purchase-returns', PurchaseReturnController::class)->except(['edit', 'update', 'destroy']);
     });
 
     // Sales & Outgoing Invoices (FIFO Costing & Dynamic Pricing)

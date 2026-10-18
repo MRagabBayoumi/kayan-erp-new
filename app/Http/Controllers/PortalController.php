@@ -117,8 +117,8 @@ class PortalController extends Controller
         $user = auth()->user();
         $query = Customer::query();
 
-        // Scope to assigned customers unless search is requested
-        if (! $request->filled('search') && ! $user->isAdmin()) {
+        // Always strictly scope to customers belonging to this sales rep
+        if (! $user->isAdmin()) {
             $query->where('sales_rep_id', $user->id);
         }
 
@@ -237,11 +237,6 @@ class PortalController extends Controller
             ->orderBy('name')
             ->get();
 
-        // If rep has no assigned customers yet, allow choosing from all active
-        if ($customers->isEmpty()) {
-            $customers = Customer::active()->orderBy('name')->take(50)->get();
-        }
-
         $warehouses = $user->getAllowedWarehouses();
         $selectedCustomerId = $request->input('customer_id');
 
@@ -344,6 +339,10 @@ class PortalController extends Controller
                 }
 
                 $customer = Customer::findOrFail((int) $validated['customer_id']);
+
+                if (! $user->isAdmin() && (int) $customer->sales_rep_id !== (int) $user->id) {
+                    abort(403, 'غير مصرح لك بإنشاء فواتير لعميل غير مسجل ومربوط باسمك.');
+                }
 
                 $invoice = SalesInvoice::create([
                     'invoice_number' => SalesInvoice::generateInvoiceNumber(),

@@ -116,6 +116,12 @@
                     <span class="erp-nav-label">فواتير الشراء والتوريد</span>
                 </div>
             </a>
+            <a href="{{ route('purchase-returns.index') }}" class="erp-nav-item {{ request()->is('purchase-returns*') ? 'active' : '' }}" title="مرتجعات المشتريات">
+                <div class="erp-nav-content">
+                    <span class="erp-nav-icon"><x-icon name="rotate-ccw" size="18" /></span>
+                    <span class="erp-nav-label">مرتجعات المشتريات</span>
+                </div>
+            </a>
             <a href="{{ route('suppliers.index') }}" class="erp-nav-item {{ request()->is('suppliers*') || request()->is('shipping-offices*') ? 'active' : '' }}" title="الموردون ومكاتب الشحن">
                 <div class="erp-nav-content">
                     <span class="erp-nav-icon"><x-icon name="factory" size="18" /></span>

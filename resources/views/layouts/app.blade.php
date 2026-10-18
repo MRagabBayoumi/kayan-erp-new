@@ -33,6 +33,8 @@
                 $activeModuleName = 'المنتجات والأصناف';
             } elseif (request()->is('settings*')) {
                 $activeModuleName = 'إعدادات النظام';
+            } elseif (request()->is('sales-reps*')) {
+                $activeModuleName = 'إدارة مناديب المبيعات';
             } elseif (request()->is('customers*')) {
                 $activeModuleName = 'المبيعات والعملاء';
             } elseif (request()->is('suppliers*') || request()->is('shipping-offices*')) {

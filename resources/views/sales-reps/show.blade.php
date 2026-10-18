@@ -160,8 +160,8 @@
 
     <!-- Navigation Tabs for Deep Inspection -->
     <div class="erp-card mb-0 overflow-hidden">
-        <div class="erp-card-header bg-[var(--bg-hover)] flex items-center justify-between border-b border-[var(--border-light)]">
-            <div class="flex items-center gap-2">
+        <div class="erp-card-header bg-[var(--bg-hover)] border-b border-[var(--border-light)] overflow-x-auto py-2">
+            <div class="flex items-center gap-2 min-w-max">
                 <a href="{{ route('sales-reps.show', ['rep' => $rep->id, 'range' => $currentRange, 'from_date' => $fromDate, 'to_date' => $toDate, 'tab' => 'invoices']) }}"
                    class="px-3.5 py-2 text-xs font-bold rounded-t border-b-2 transition-all flex items-center gap-1.5 {{ $activeTab === 'invoices' ? 'border-[var(--primary)] text-[var(--primary)] bg-white shadow-xs' : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]' }}">
                     <x-icon name="shopping-bag" size="14" />
@@ -185,7 +185,7 @@
         <!-- TAB 1: Invoices and Orders -->
         @if($activeTab === 'invoices')
             <div class="overflow-x-auto">
-                <table class="erp-table w-full text-right">
+                <table class="erp-table w-full text-right min-w-[920px]">
                     <thead>
                         <tr>
                             <th>رقم الفاتورة</th>
@@ -277,7 +277,7 @@
         <!-- TAB 2: Assigned Customers -->
         @if($activeTab === 'customers')
             <div class="overflow-x-auto">
-                <table class="erp-table w-full text-right">
+                <table class="erp-table w-full text-right min-w-[920px]">
                     <thead>
                         <tr>
                             <th>العميل</th>
@@ -357,7 +357,7 @@
         <!-- TAB 3: Commissions Ledger -->
         @if($activeTab === 'commissions')
             <div class="overflow-x-auto">
-                <table class="erp-table w-full text-right">
+                <table class="erp-table w-full text-right min-w-[920px]">
                     <thead>
                         <tr>
                             <th>رقم الفاتورة</th>

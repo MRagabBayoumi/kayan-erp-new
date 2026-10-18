@@ -7,7 +7,11 @@
                 <x-icon name="plus" size="16" />
                 <span>فاتورة شراء جديدة</span>
             </a>
-            <a href="{{ route('suppliers.index') }}" class="erp-btn erp-btn-secondary">
+            <a href="{{ route('purchase-returns.create') }}" class="erp-btn erp-btn-secondary">
+                <x-icon name="rotate-ccw" size="16" />
+                <span>تسجيل مرتجع مشتريات</span>
+            </a>
+            <a href="{{ route('suppliers.index') }}" class="erp-btn erp-btn-ghost">
                 <x-icon name="factory" size="16" />
                 <span>دليل الموردين</span>
             </a>
@@ -24,6 +28,19 @@
 
 @section('content')
     <div data-page="purchases-index">
+        <!-- Module Tabs Navigation -->
+        <div class="flex items-center gap-2 border-b border-[var(--border-color)] mb-4 pb-2">
+            <a href="{{ route('purchases.index') }}" class="px-4 py-2 rounded text-sm font-bold bg-[var(--primary)] text-white flex items-center gap-2 shadow-sm">
+                <x-icon name="shopping-bag" size="16" />
+                <span>فواتير الشراء والتوريد</span>
+                <span class="bg-white/20 text-white text-xs px-2 py-0.5 rounded-full font-numeric">{{ $metrics['total_count'] }}</span>
+            </a>
+            <a href="{{ route('purchase-returns.index') }}" class="px-4 py-2 rounded text-sm font-semibold text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--surface-muted)] transition-colors flex items-center gap-2">
+                <x-icon name="rotate-ccw" size="16" />
+                <span>مرتجعات المشتريات</span>
+            </a>
+        </div>
+
         <!-- Status Alerts -->
         @if(session('status') === 'success')
             <div class="erp-alert erp-alert-success mb-4" role="alert">

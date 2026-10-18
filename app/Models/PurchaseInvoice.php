@@ -101,6 +101,11 @@ class PurchaseInvoice extends Model
         return $this->hasMany(InventoryBatch::class, 'purchase_invoice_id');
     }
 
+    public function returns(): HasMany
+    {
+        return $this->hasMany(PurchaseReturn::class, 'purchase_invoice_id');
+    }
+
     public function payments(): HasMany
     {
         return $this->hasMany(SupplierPayment::class)->latest('payment_date');

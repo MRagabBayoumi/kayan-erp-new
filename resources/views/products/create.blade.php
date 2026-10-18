@@ -200,7 +200,7 @@
                                 class="erp-input font-numeric @error('cost_price') erp-input-error @enderror" 
                                 required
                             >
-                            <small class="text-[10px] text-[var(--text-muted)]">تكلفة الصين والشحن</small>
+                            <small class="text-[10px] text-[var(--text-muted)]">سعر الشراء من المورد</small>
                         </div>
 
                         <div class="erp-form-group">
