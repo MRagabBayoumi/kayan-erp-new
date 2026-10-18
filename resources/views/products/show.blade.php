@@ -198,16 +198,23 @@
                             </div>
 
                             <!-- Retail Price -->
-                            <div class="erp-pricing-card">
+                            <div class="erp-pricing-card erp-pricing-card-retail">
                                 <span class="erp-pricing-label">سعر بيع التجزئة (القطاعي)</span>
                                 <div class="font-numeric erp-pricing-value">
                                     {{ number_format((float)$product->retail_price, 2) }}
                                     <span class="erp-pricing-unit">ج.م</span>
                                 </div>
+                                @php
+                                    $retailProfit = (float)$product->retail_price - (float)$product->cost_price;
+                                    $retailMargin = (float)$product->cost_price > 0 ? ($retailProfit / (float)$product->cost_price) * 100 : 0;
+                                @endphp
+                                <small class="font-numeric block mt-1 text-[11px] text-[var(--danger-text)]">
+                                    هامش الربح: +{{ number_format($retailProfit, 2) }} ج.م ({{ number_format($retailMargin, 1) }}%)
+                                </small>
                             </div>
 
                             <!-- Wholesale Price -->
-                            <div class="erp-pricing-card erp-pricing-card-highlight">
+                            <div class="erp-pricing-card erp-pricing-card-highlight erp-pricing-card-wholesale">
                                 <span class="erp-pricing-label">سعر الجملة لتجار الإكسسوارات</span>
                                 <div class="font-numeric erp-pricing-value">
                                     {{ number_format((float)$product->wholesale_price, 2) }}
@@ -223,7 +230,7 @@
                             </div>
 
                             <!-- Distributor Price -->
-                            <div class="erp-pricing-card">
+                            <div class="erp-pricing-card erp-pricing-card-distributor">
                                 <span class="erp-pricing-label">سعر الموزع والوكيل</span>
                                 <div class="font-numeric erp-pricing-value">
                                     @if($product->distributor_price)
@@ -233,6 +240,15 @@
                                         <span class="text-sm font-normal text-[var(--text-muted)]">—</span>
                                     @endif
                                 </div>
+                                @if($product->distributor_price)
+                                    @php
+                                        $distributorProfit = (float)$product->distributor_price - (float)$product->cost_price;
+                                        $distributorMargin = (float)$product->cost_price > 0 ? ($distributorProfit / (float)$product->cost_price) * 100 : 0;
+                                    @endphp
+                                    <small class="font-numeric block mt-1 text-[11px] text-[var(--info-text)]">
+                                        هامش الربح: +{{ number_format($distributorProfit, 2) }} ج.م ({{ number_format($distributorMargin, 1) }}%)
+                                    </small>
+                                @endif
                             </div>
                         </div>
                     </div>

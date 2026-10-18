@@ -322,13 +322,13 @@
                                                                     {{ $alloc->batch->batch_number ?? '#' . $alloc->inventory_batch_id }}
                                                                 </td>
                                                                 <td>{{ $alloc->batch->warehouse->name ?? 'المخزن' }}</td>
-                                                                <td class="font-numeric font-semibold">{{ (float)$alloc->quantity }} {{ $item->product->unit ?? 'قطعة' }}</td>
-                                                                <td class="font-numeric">{{ number_format((float)$alloc->unit_price, 2) }} ج.م</td>
+                                                                <td class="font-numeric font-semibold">{{ (float)($alloc->quantity_base ?? $alloc->quantity) }} {{ $item->product->unit ?? 'قطعة' }}</td>
+                                                                <td class="font-numeric">{{ number_format((float)($alloc->actual_selling_price_base ?? $alloc->unit_price), 2) }} ج.م</td>
                                                                 @if($canViewCogs)
-                                                                <td class="font-numeric text-[var(--text-muted)]">{{ number_format((float)$alloc->unit_cost, 4) }} ج.م</td>
+                                                                <td class="font-numeric text-[var(--text-muted)]">{{ number_format((float)($alloc->unit_cost_base ?? $alloc->unit_cost), 4) }} ج.م</td>
                                                                 <td class="font-numeric">{{ number_format((float)$alloc->total_cogs, 2) }} ج.م</td>
-                                                                <td class="font-numeric font-bold {{ (float)$alloc->profit >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]' }}">
-                                                                    {{ number_format((float)$alloc->profit, 2) }} ج.م
+                                                                <td class="font-numeric font-bold {{ (float)($alloc->profit_margin ?? $alloc->profit) >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]' }}">
+                                                                    {{ number_format((float)($alloc->profit_margin ?? $alloc->profit), 2) }} ج.م
                                                                 </td>
                                                                 @endif
                                                                 <td>

@@ -353,3 +353,34 @@ test('unposting a deferred credit invoice with customer and active shift reverts
     $invoice->refresh();
     expect($invoice->status)->toBe(SalesInvoice::STATUS_DRAFT);
 });
+
+test('sales invoice show page correctly renders non-zero FIFO batch allocation details', function () {
+    $response = $this->post(route('sales.store'), [
+        'customer_id' => $this->customer->id,
+        'warehouse_id' => $this->warehouse->id,
+        'invoice_date' => now()->toDateString(),
+        'price_tier' => 'retail',
+        'payment_type' => 'cash',
+        'action' => 'post',
+        'items' => [
+            [
+                'product_id' => $this->product->id,
+                'unit_id' => $this->unitPiece->id,
+                'conversion_factor' => 1.0,
+                'quantity' => 5,
+                'unit_price' => 35.00,
+                'line_discount' => 0,
+            ],
+        ],
+    ]);
+
+    $invoice = SalesInvoice::latest('id')->first();
+    expect($invoice->status)->toBe(SalesInvoice::STATUS_POSTED);
+
+    $showResponse = $this->get(route('sales.show', $invoice));
+    $showResponse->assertOk();
+    $showResponse->assertSee('تفاصيل توزيع دفعات المخزن (FIFO Batch Allocation):');
+    $showResponse->assertSee('5 قطعة');
+    $showResponse->assertSee('35.00 ج.م');
+    $showResponse->assertSee('سارٍ ومصروف');
+});

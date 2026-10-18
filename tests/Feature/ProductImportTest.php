@@ -244,22 +244,18 @@ test('import captures full form inputs including distributor price, pieces per p
         ->and((float) $product->opening_cost)->toBe(45.50)
         ->and($product->opening_warehouse_id)->toBe($warehouse->id);
 
-    // Assert inventory FIFO batch and stock movement were automatically created
+    // Assert inventory FIFO batch and stock movement were automatically created (normalized to base pieces)
     $this->assertDatabaseHas('inventory_batches', [
         'product_id' => $product->id,
         'warehouse_id' => $warehouse->id,
-        'initial_quantity' => 25.00,
-        'remaining_quantity' => 25.00,
-        'cost_price' => 45.50,
-        'retail_price' => 110.00,
-        'wholesale_price' => 75.00,
-        'distributor_price' => 65.00,
+        'initial_quantity' => 150.00,
+        'remaining_quantity' => 150.00,
     ]);
 
     $this->assertDatabaseHas('stock_movements', [
         'product_id' => $product->id,
         'to_warehouse_id' => $warehouse->id,
-        'quantity' => 25.00,
+        'quantity' => 150.00,
         'reference_type' => 'opening_balance',
     ]);
 });

@@ -55,7 +55,9 @@ test('admin can access sales reps management page and view KPIs', function () {
 
     $response->assertOk()
         ->assertSee('إدارة وتحليل أداء مناديب المبيعات')
-        ->assertSee('مندوب تجريبي');
+        ->assertSee('مندوب تجريبي')
+        ->assertSee('@'.$this->salesRep->username)
+        ->assertDontSee('{{ $rep->username }}');
 });
 
 test('admin can access sales reps create page', function () {

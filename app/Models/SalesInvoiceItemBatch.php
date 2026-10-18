@@ -48,4 +48,24 @@ class SalesInvoiceItemBatch extends Model
     {
         return $this->belongsTo(InventoryBatch::class, 'inventory_batch_id');
     }
+
+    public function getQuantityAttribute(): float
+    {
+        return (float) $this->quantity_base;
+    }
+
+    public function getUnitPriceAttribute(): float
+    {
+        return (float) $this->actual_selling_price_base;
+    }
+
+    public function getUnitCostAttribute(): float
+    {
+        return (float) $this->unit_cost_base;
+    }
+
+    public function getProfitAttribute(): float
+    {
+        return (float) $this->profit_margin;
+    }
 }
