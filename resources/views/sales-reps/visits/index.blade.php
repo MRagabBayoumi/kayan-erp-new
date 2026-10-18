@@ -37,35 +37,44 @@
     <!-- Enterprise Sub-Navigation Tabs -->
     <x-sales-reps-nav-tabs active="visits" />
 
-    <!-- Quick Metrics Cards -->
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div class="erp-card mb-0 p-4 border-r-4 border-r-sky-500 flex items-center justify-between">
-            <div>
-                <span class="text-xs text-[var(--text-muted)] font-medium">إجمالي زيارات اليوم</span>
-                <div class="text-xl font-bold font-numeric text-[var(--text-main)] mt-0.5">{{ $todayVisitsCount }} زيارة</div>
+    <!-- Quick Metrics Cards (Faithful to Kayan ERP Design System) -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+        <div class="kpi-card flex flex-col justify-between mb-0">
+            <div class="kpi-header mb-1">
+                <span class="kpi-label">إجمالي زيارات اليوم</span>
+                <span class="kpi-icon text-sky-600"><x-icon name="map-pin" size="18" /></span>
             </div>
-            <div class="w-10 h-10 rounded-full bg-sky-50 text-sky-600 flex items-center justify-center">
-                <x-icon name="map-pin" size="20" />
+            <div class="kpi-value font-numeric text-xl font-black text-[var(--text-main)]">
+                {{ $todayVisitsCount }} <span class="text-xs font-normal text-[var(--text-muted)]">زيارة</span>
             </div>
-        </div>
-
-        <div class="erp-card mb-0 p-4 border-r-4 border-r-emerald-500 flex items-center justify-between">
-            <div>
-                <span class="text-xs text-[var(--text-muted)] font-medium">طلبات بيع محققة من الزيارات</span>
-                <div class="text-xl font-bold font-numeric text-emerald-600 mt-0.5">{{ $todayOrdersPlacedCount }} طلب</div>
-            </div>
-            <div class="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                <x-icon name="shopping-bag" size="20" />
+            <div class="kpi-note text-xs text-[var(--text-muted)]">
+                <span>زيارات ميدانية موثقة اليوم</span>
             </div>
         </div>
 
-        <div class="erp-card mb-0 p-4 border-r-4 border-r-amber-500 flex items-center justify-between">
-            <div>
-                <span class="text-xs text-[var(--text-muted)] font-medium">زيارات قيد التنفيذ الآن</span>
-                <div class="text-xl font-bold font-numeric text-amber-600 mt-0.5">{{ $activeVisitsCount }} زيارة</div>
+        <div class="kpi-card flex flex-col justify-between mb-0 border-emerald-200 bg-emerald-50/40">
+            <div class="kpi-header mb-1">
+                <span class="kpi-label text-emerald-900 font-bold">طلبات بيع محققة من الزيارات</span>
+                <span class="kpi-icon text-emerald-600"><x-icon name="shopping-bag" size="18" /></span>
             </div>
-            <div class="w-10 h-10 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">
-                <x-icon name="activity" size="20" />
+            <div class="kpi-value font-numeric text-xl font-black text-emerald-800">
+                {{ $todayOrdersPlacedCount }} <span class="text-xs font-bold text-emerald-700">طلب</span>
+            </div>
+            <div class="kpi-note text-emerald-700 text-xs font-medium">
+                <span>فواتير ناتجة عن زيارات</span>
+            </div>
+        </div>
+
+        <div class="kpi-card flex flex-col justify-between mb-0 border-amber-200 bg-amber-50/40">
+            <div class="kpi-header mb-1">
+                <span class="kpi-label text-amber-900 font-bold">زيارات قيد التنفيذ الآن</span>
+                <span class="kpi-icon text-amber-600"><x-icon name="activity" size="18" /></span>
+            </div>
+            <div class="kpi-value font-numeric text-xl font-black text-amber-800">
+                {{ $activeVisitsCount }} <span class="text-xs font-bold text-amber-700">زيارة</span>
+            </div>
+            <div class="kpi-note text-amber-700 text-xs font-medium">
+                <span>المندوب متواجد بالموقع الآن</span>
             </div>
         </div>
     </div>

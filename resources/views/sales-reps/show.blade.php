@@ -114,77 +114,99 @@
         <!-- Analytical Performance Metrics (10 Deep KPIs) -->
         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 pt-4">
             <!-- 1. Total Sales Volume -->
-            <div class="p-3 bg-[var(--bg-hover)] rounded border border-[var(--border-light)]">
-                <span class="text-[11px] text-[var(--text-muted)] block font-semibold">إجمالي المبيعات المعتمدة</span>
-                <div class="text-base sm:text-lg font-extrabold text-[var(--text-main)] font-numeric mt-1">
-                    {{ number_format($analytics['total_sales'], 2) }}
+            <div class="kpi-card flex flex-col justify-between mb-0">
+                <div class="kpi-header mb-1">
+                    <span class="kpi-label">إجمالي المبيعات</span>
+                    <span class="kpi-icon text-[var(--primary)]"><x-icon name="trending-up" size="16" /></span>
                 </div>
-                <span class="text-[10px] text-[var(--text-muted)] font-numeric">ج.م في الفترة</span>
+                <div class="kpi-value font-numeric text-base sm:text-lg font-black text-[var(--text-main)]">
+                    {{ number_format($analytics['total_sales'], 2) }} <span class="text-xs font-normal text-[var(--text-muted)]">ج.م</span>
+                </div>
+                <div class="kpi-note font-numeric text-xs text-[var(--text-muted)]">
+                    <span>فواتير معتمدة في الفترة</span>
+                </div>
             </div>
 
             <!-- 2. Orders Count & Avg Order -->
-            <div class="p-3 bg-[var(--bg-hover)] rounded border border-[var(--border-light)]">
-                <span class="text-[11px] text-[var(--text-muted)] block font-semibold">عدد الطلبات والمتوسط</span>
-                <div class="text-base sm:text-lg font-extrabold text-[var(--primary)] font-numeric mt-1">
+            <div class="kpi-card flex flex-col justify-between mb-0">
+                <div class="kpi-header mb-1">
+                    <span class="kpi-label">الطلبات والمتوسط</span>
+                    <span class="kpi-icon text-sky-600"><x-icon name="shopping-bag" size="16" /></span>
+                </div>
+                <div class="kpi-value font-numeric text-base sm:text-lg font-black text-[var(--primary)]">
                     {{ $analytics['invoices_count'] }} <span class="text-xs font-normal text-[var(--text-muted)]">طلب</span>
                 </div>
-                <span class="text-[10px] text-[var(--text-muted)] font-numeric">متوسط: {{ number_format($analytics['avg_order_value'], 2) }} ج.م</span>
+                <div class="kpi-note font-numeric text-xs text-[var(--text-muted)]">
+                    <span>متوسط: {{ number_format($analytics['avg_order_value'], 2) }} ج.م</span>
+                </div>
             </div>
 
             <!-- 3. Total Earned Commissions -->
-            <div class="p-3 bg-[var(--bg-hover)] rounded border border-[var(--border-light)]">
-                <span class="text-[11px] text-indigo-700 block font-semibold">إجمالي العمولات المستحقة</span>
-                <div class="text-base sm:text-lg font-extrabold text-indigo-700 font-numeric mt-1">
-                    {{ number_format($analytics['total_commissions'], 2) }}
+            <div class="kpi-card flex flex-col justify-between mb-0">
+                <div class="kpi-header mb-1">
+                    <span class="kpi-label text-indigo-900 font-semibold">إجمالي العمولات</span>
+                    <span class="kpi-icon text-indigo-600"><x-icon name="dollar-sign" size="16" /></span>
                 </div>
-                <span class="text-[10px] text-indigo-600 font-numeric">نسبة: {{ (float)$rep->commission_rate }}{{ $rep->commission_type === 'percentage' ? '%' : ' ج.م' }}</span>
+                <div class="kpi-value font-numeric text-base sm:text-lg font-black text-indigo-700">
+                    {{ number_format($analytics['total_commissions'], 2) }} <span class="text-xs font-normal text-indigo-600">ج.م</span>
+                </div>
+                <div class="kpi-note font-numeric text-xs text-indigo-600">
+                    <span>نسبة: {{ (float)$rep->commission_rate }}{{ $rep->commission_type === 'percentage' ? '%' : ' ج.م' }}</span>
+                </div>
             </div>
 
             <!-- 4. Paid vs Pending Commissions -->
-            <div class="p-3 bg-[var(--bg-hover)] rounded border border-[var(--border-light)]">
-                <span class="text-[11px] text-emerald-700 block font-semibold">المصروف والمعلق</span>
-                <div class="text-sm font-extrabold text-emerald-700 font-numeric mt-1">
-                    صُرف: {{ number_format($analytics['paid_commissions'], 2) }} ج.م
+            <div class="kpi-card flex flex-col justify-between mb-0 border-amber-200 bg-amber-50/30">
+                <div class="kpi-header mb-1">
+                    <span class="kpi-label text-amber-900 font-bold">المصروف والمعلق</span>
+                    <span class="kpi-icon text-amber-600"><x-icon name="clock" size="16" /></span>
                 </div>
-                <div class="text-[10px] text-amber-600 font-numeric font-semibold">
-                    معلق: {{ number_format($analytics['pending_commissions'], 2) }} ج.م
+                <div class="kpi-value font-numeric text-sm sm:text-base font-black text-emerald-700">
+                    صُرف: {{ number_format($analytics['paid_commissions'], 2) }} <span class="text-[11px] font-normal text-emerald-600">ج.م</span>
+                </div>
+                <div class="kpi-note font-numeric text-xs font-bold text-amber-700">
+                    <span>معلق: {{ number_format($analytics['pending_commissions'], 2) }} ج.م</span>
                 </div>
             </div>
 
             <!-- 5. Customers Count & Debt -->
-            <div class="p-3 bg-[var(--bg-hover)] rounded border border-[var(--border-light)]">
-                <span class="text-[11px] text-[var(--text-muted)] block font-semibold">العملاء التابعين للمندوب</span>
-                <div class="text-base sm:text-lg font-extrabold text-[var(--text-main)] font-numeric mt-1">
+            <div class="kpi-card flex flex-col justify-between mb-0">
+                <div class="kpi-header mb-1">
+                    <span class="kpi-label">العملاء التابعين</span>
+                    <span class="kpi-icon text-[var(--primary)]"><x-icon name="users" size="16" /></span>
+                </div>
+                <div class="kpi-value font-numeric text-base sm:text-lg font-black text-[var(--text-main)]">
                     {{ $analytics['customers_count'] }} <span class="text-xs font-normal text-[var(--text-muted)]">عميل</span>
                 </div>
-                <span class="text-[10px] text-rose-600 font-numeric">مديونيات: {{ number_format($analytics['customers_debt'], 2) }} ج.م</span>
+                <div class="kpi-note font-numeric text-xs text-rose-600 font-medium">
+                    <span>مديونيات: {{ number_format($analytics['customers_debt'], 2) }} ج.م</span>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Navigation Tabs for Deep Inspection -->
-    <div class="erp-card mb-0 overflow-hidden">
-        <div class="erp-card-header bg-[var(--bg-hover)] border-b border-[var(--border-light)] overflow-x-auto py-2">
-            <div class="flex items-center gap-2 min-w-max">
-                <a href="{{ route('sales-reps.show', ['rep' => $rep->id, 'range' => $currentRange, 'from_date' => $fromDate, 'to_date' => $toDate, 'tab' => 'invoices']) }}"
-                   class="px-3.5 py-2 text-xs font-bold rounded-t border-b-2 transition-all flex items-center gap-1.5 {{ $activeTab === 'invoices' ? 'border-[var(--primary)] text-[var(--primary)] bg-white shadow-xs' : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]' }}">
-                    <x-icon name="shopping-bag" size="14" />
-                    <span>فواتير ومبيعات المندوب ({{ $invoices->total() }})</span>
-                </a>
+    <!-- Navigation Tabs for Deep Inspection (Faithful to Kayan ERP Design System) -->
+    <div class="erp-card erp-tab-nav-card mb-4">
+        <nav class="erp-tab-bar">
+            <a href="{{ route('sales-reps.show', ['rep' => $rep->id, 'range' => $currentRange, 'from_date' => $fromDate, 'to_date' => $toDate, 'tab' => 'invoices']) }}"
+               class="erp-tab-link {{ $activeTab === 'invoices' ? 'active' : '' }}">
+                <x-icon name="shopping-bag" size="16" />
+                <span>فواتير ومبيعات المندوب ({{ $invoices->total() }})</span>
+            </a>
 
-                <a href="{{ route('sales-reps.show', ['rep' => $rep->id, 'range' => $currentRange, 'from_date' => $fromDate, 'to_date' => $toDate, 'tab' => 'customers']) }}"
-                   class="px-3.5 py-2 text-xs font-bold rounded-t border-b-2 transition-all flex items-center gap-1.5 {{ $activeTab === 'customers' ? 'border-[var(--primary)] text-[var(--primary)] bg-white shadow-xs' : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]' }}">
-                    <x-icon name="users" size="14" />
-                    <span>عملاء المندوب التابعين ({{ $customers->total() }})</span>
-                </a>
+            <a href="{{ route('sales-reps.show', ['rep' => $rep->id, 'range' => $currentRange, 'from_date' => $fromDate, 'to_date' => $toDate, 'tab' => 'customers']) }}"
+               class="erp-tab-link {{ $activeTab === 'customers' ? 'active' : '' }}">
+                <x-icon name="users" size="16" />
+                <span>عملاء المندوب التابعين ({{ $customers->total() }})</span>
+            </a>
 
-                <a href="{{ route('sales-reps.show', ['rep' => $rep->id, 'range' => $currentRange, 'from_date' => $fromDate, 'to_date' => $toDate, 'tab' => 'commissions']) }}"
-                   class="px-3.5 py-2 text-xs font-bold rounded-t border-b-2 transition-all flex items-center gap-1.5 {{ $activeTab === 'commissions' ? 'border-[var(--primary)] text-[var(--primary)] bg-white shadow-xs' : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-main)]' }}">
-                    <x-icon name="dollar-sign" size="14" />
-                    <span>سجل العمولات والصرف ({{ $commissions->total() }})</span>
-                </a>
-            </div>
-        </div>
+            <a href="{{ route('sales-reps.show', ['rep' => $rep->id, 'range' => $currentRange, 'from_date' => $fromDate, 'to_date' => $toDate, 'tab' => 'commissions']) }}"
+               class="erp-tab-link {{ $activeTab === 'commissions' ? 'active' : '' }}">
+                <x-icon name="dollar-sign" size="16" />
+                <span>سجل العمولات والصرف ({{ $commissions->total() }})</span>
+            </a>
+        </nav>
+    </div>
 
         <!-- TAB 1: Invoices and Orders -->
         @if($activeTab === 'invoices')

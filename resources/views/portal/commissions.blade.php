@@ -20,33 +20,48 @@
         </div>
     </div>
 
-    <!-- Financial KPIs (Odoo ERP Cards) -->
-    <div class="grid grid-cols-3 gap-3 sm:gap-4">
+    <!-- Financial KPIs (Faithful to Kayan ERP Design System) -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         <!-- Total Earned -->
-        <div class="erp-card mb-0 p-3.5 sm:p-4 text-center">
-            <span class="text-xs text-[var(--text-muted)] block font-medium">إجمالي الأرباح</span>
-            <div class="text-base sm:text-xl font-extrabold text-[var(--text-main)] font-numeric mt-1">
-                {{ number_format($totalEarned, 2) }}
+        <div class="kpi-card flex flex-col justify-between">
+            <div class="kpi-header mb-1">
+                <span class="kpi-label">إجمالي الأرباح المستحقة</span>
+                <span class="kpi-icon text-[var(--primary)]"><x-icon name="dollar-sign" size="18" /></span>
             </div>
-            <span class="text-[10px] text-[var(--text-muted)]">ج.م</span>
+            <div class="kpi-value font-numeric text-lg sm:text-xl font-black text-[var(--text-main)]">
+                {{ number_format($totalEarned, 2) }} <span class="text-xs font-normal text-[var(--text-muted)]">ج.م</span>
+            </div>
+            <div class="kpi-note font-numeric text-xs text-[var(--text-muted)]">
+                <span>عن فواتير البيع المعتمدة</span>
+            </div>
         </div>
 
         <!-- Pending -->
-        <div class="erp-card mb-0 p-3.5 sm:p-4 text-center">
-            <span class="text-xs text-amber-700 block font-medium">قيد الانتظار</span>
-            <div class="text-base sm:text-xl font-extrabold text-amber-700 font-numeric mt-1">
-                {{ number_format($pendingAmount, 2) }}
+        <div class="kpi-card flex flex-col justify-between border-amber-200 bg-amber-50/40">
+            <div class="kpi-header mb-1">
+                <span class="kpi-label text-amber-900 font-bold">عمولات معلقة (قيد الانتظار)</span>
+                <span class="kpi-icon text-amber-600"><x-icon name="clock" size="18" /></span>
             </div>
-            <span class="text-[10px] text-amber-600">ج.م</span>
+            <div class="kpi-value font-numeric text-lg sm:text-xl font-black text-amber-800">
+                {{ number_format($pendingAmount, 2) }} <span class="text-xs font-bold text-amber-700">ج.م</span>
+            </div>
+            <div class="kpi-note text-amber-700 text-xs font-medium">
+                <span>بانتظار الصرف من الإدارة</span>
+            </div>
         </div>
 
         <!-- Paid -->
-        <div class="erp-card mb-0 p-3.5 sm:p-4 text-center">
-            <span class="text-xs text-emerald-700 block font-medium">تم صرفها</span>
-            <div class="text-base sm:text-xl font-extrabold text-emerald-700 font-numeric mt-1">
-                {{ number_format($paidAmount, 2) }}
+        <div class="kpi-card flex flex-col justify-between border-emerald-200 bg-emerald-50/40">
+            <div class="kpi-header mb-1">
+                <span class="kpi-label text-emerald-900 font-bold">عمولات تم صرفها</span>
+                <span class="kpi-icon text-emerald-600"><x-icon name="check-circle" size="18" /></span>
             </div>
-            <span class="text-[10px] text-emerald-600">ج.م</span>
+            <div class="kpi-value font-numeric text-lg sm:text-xl font-black text-emerald-800">
+                {{ number_format($paidAmount, 2) }} <span class="text-xs font-bold text-emerald-700">ج.م</span>
+            </div>
+            <div class="kpi-note text-emerald-700 text-xs font-medium">
+                <span>تم استلامها في حسابك</span>
+            </div>
         </div>
     </div>
 

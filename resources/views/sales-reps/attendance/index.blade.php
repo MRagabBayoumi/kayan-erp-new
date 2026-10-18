@@ -37,35 +37,44 @@
     <!-- Enterprise Sub-Navigation Tabs -->
     <x-sales-reps-nav-tabs active="attendance" />
 
-    <!-- Quick Metrics Cards -->
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div class="erp-card mb-0 p-4 border-r-4 border-r-sky-500 flex items-center justify-between">
-            <div>
-                <span class="text-xs text-[var(--text-muted)] font-medium">إجمالي مناديب المبيعات النشطين</span>
-                <div class="text-xl font-bold font-numeric text-[var(--text-main)] mt-0.5">{{ $activeRepsCount }} مندوب</div>
+    <!-- Quick Metrics Cards (Faithful to Kayan ERP Design System) -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+        <div class="kpi-card flex flex-col justify-between mb-0">
+            <div class="kpi-header mb-1">
+                <span class="kpi-label">إجمالي المناديب النشطين</span>
+                <span class="kpi-icon text-sky-600"><x-icon name="users" size="18" /></span>
             </div>
-            <div class="w-10 h-10 rounded-full bg-sky-50 text-sky-600 flex items-center justify-center">
-                <x-icon name="users" size="20" />
+            <div class="kpi-value font-numeric text-xl font-black text-[var(--text-main)]">
+                {{ $activeRepsCount }} <span class="text-xs font-normal text-[var(--text-muted)]">مندوب</span>
             </div>
-        </div>
-
-        <div class="erp-card mb-0 p-4 border-r-4 border-r-amber-500 flex items-center justify-between">
-            <div>
-                <span class="text-xs text-[var(--text-muted)] font-medium">على رأس العمل الآن (الميدان)</span>
-                <div class="text-xl font-bold font-numeric text-amber-600 mt-0.5">{{ $presentTodayCount }} مندوب</div>
-            </div>
-            <div class="w-10 h-10 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center">
-                <x-icon name="activity" size="20" />
+            <div class="kpi-note text-xs text-[var(--text-muted)]">
+                <span>مسجلين بالنظام الميداني</span>
             </div>
         </div>
 
-        <div class="erp-card mb-0 p-4 border-r-4 border-r-emerald-500 flex items-center justify-between">
-            <div>
-                <span class="text-xs text-[var(--text-muted)] font-medium">أتموا الانصراف اليوم</span>
-                <div class="text-xl font-bold font-numeric text-emerald-600 mt-0.5">{{ $checkedOutTodayCount }} مندوب</div>
+        <div class="kpi-card flex flex-col justify-between mb-0 border-amber-200 bg-amber-50/40">
+            <div class="kpi-header mb-1">
+                <span class="kpi-label text-amber-900 font-bold">على رأس العمل الآن (الميدان)</span>
+                <span class="kpi-icon text-amber-600"><x-icon name="activity" size="18" /></span>
             </div>
-            <div class="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                <x-icon name="check-circle" size="20" />
+            <div class="kpi-value font-numeric text-xl font-black text-amber-800">
+                {{ $presentTodayCount }} <span class="text-xs font-bold text-amber-700">مندوب</span>
+            </div>
+            <div class="kpi-note text-amber-700 text-xs font-medium">
+                <span>جلسة دوام نشطة حالياً</span>
+            </div>
+        </div>
+
+        <div class="kpi-card flex flex-col justify-between mb-0 border-emerald-200 bg-emerald-50/40">
+            <div class="kpi-header mb-1">
+                <span class="kpi-label text-emerald-900 font-bold">أتموا الانصراف اليوم</span>
+                <span class="kpi-icon text-emerald-600"><x-icon name="check-circle" size="18" /></span>
+            </div>
+            <div class="kpi-value font-numeric text-xl font-black text-emerald-800">
+                {{ $checkedOutTodayCount }} <span class="text-xs font-bold text-emerald-700">مندوب</span>
+            </div>
+            <div class="kpi-note text-emerald-700 text-xs font-medium">
+                <span>انصراف موثق بنجاح</span>
             </div>
         </div>
     </div>

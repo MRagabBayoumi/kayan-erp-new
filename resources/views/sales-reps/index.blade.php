@@ -61,60 +61,90 @@
     <!-- Enterprise Sub-Navigation Tabs -->
     <x-sales-reps-nav-tabs active="reps" :pending-requests-count="$metrics['pending_customer_requests'] ?? 0" />
 
-    <!-- Global Reps Aggregate KPI Summary Cards -->
-    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+    <!-- Global Reps Aggregate KPI Summary Cards (Faithful to Kayan ERP Design System) -->
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
         <!-- 1. Total Sales Volume -->
-        <div class="erp-card p-3.5 mb-0 flex flex-col justify-between">
-            <span class="text-xs text-[var(--text-muted)] block font-medium">مبيعات المناديب</span>
-            <div class="text-sm sm:text-base font-extrabold text-[var(--text-main)] font-numeric mt-1">
-                {{ number_format($metrics['total_sales_volume'], 2) }}
+        <div class="kpi-card flex flex-col justify-between">
+            <div class="kpi-header mb-1">
+                <span class="kpi-label">مبيعات المناديب</span>
+                <span class="kpi-icon text-[var(--primary)]"><x-icon name="trending-up" size="18" /></span>
             </div>
-            <span class="text-[10px] text-[var(--text-muted)]">ج.م (فواتير معتمدة)</span>
+            <div class="kpi-value font-numeric text-base sm:text-lg font-black text-[var(--text-main)]">
+                {{ number_format($metrics['total_sales_volume'], 2) }} <span class="text-xs font-normal text-[var(--text-muted)]">ج.م</span>
+            </div>
+            <div class="kpi-note font-numeric text-xs text-[var(--text-muted)]">
+                <span>فواتير معتمدة</span>
+            </div>
         </div>
 
         <!-- 2. Total Invoices -->
-        <div class="erp-card p-3.5 mb-0 flex flex-col justify-between">
-            <span class="text-xs text-[var(--text-muted)] block font-medium">عدد الفواتير</span>
-            <div class="text-sm sm:text-base font-extrabold text-[var(--primary)] font-numeric mt-1">
-                {{ number_format($metrics['total_invoices_count']) }}
+        <div class="kpi-card flex flex-col justify-between">
+            <div class="kpi-header mb-1">
+                <span class="kpi-label">عدد الفواتير</span>
+                <span class="kpi-icon text-sky-600"><x-icon name="file-text" size="18" /></span>
             </div>
-            <span class="text-[10px] text-[var(--text-muted)]">فاتورة ميدانية</span>
+            <div class="kpi-value font-numeric text-base sm:text-lg font-black text-[var(--primary)]">
+                {{ number_format($metrics['total_invoices_count']) }} <span class="text-xs font-normal text-[var(--text-muted)]">فاتورة</span>
+            </div>
+            <div class="kpi-note text-xs text-[var(--text-muted)]">
+                <span>طلبات محررة</span>
+            </div>
         </div>
 
         <!-- 3. Total Commissions -->
-        <div class="erp-card p-3.5 mb-0 flex flex-col justify-between">
-            <span class="text-xs text-[var(--text-muted)] block font-medium">إجمالي العمولات</span>
-            <div class="text-sm sm:text-base font-extrabold text-indigo-700 font-numeric mt-1">
-                {{ number_format($metrics['total_commissions'], 2) }}
+        <div class="kpi-card flex flex-col justify-between">
+            <div class="kpi-header mb-1">
+                <span class="kpi-label text-indigo-900 font-semibold">إجمالي العمولات</span>
+                <span class="kpi-icon text-indigo-600"><x-icon name="dollar-sign" size="18" /></span>
             </div>
-            <span class="text-[10px] text-indigo-600">ج.م مستحقة</span>
+            <div class="kpi-value font-numeric text-base sm:text-lg font-black text-indigo-700">
+                {{ number_format($metrics['total_commissions'], 2) }} <span class="text-xs font-normal text-indigo-600">ج.م</span>
+            </div>
+            <div class="kpi-note text-indigo-600 text-xs">
+                <span>مستحقات الأداء</span>
+            </div>
         </div>
 
         <!-- 4. Pending Commissions -->
-        <div class="erp-card p-3.5 mb-0 flex flex-col justify-between">
-            <span class="text-xs text-amber-700 block font-medium">عمولات معلقة</span>
-            <div class="text-sm sm:text-base font-extrabold text-amber-700 font-numeric mt-1">
-                {{ number_format($metrics['pending_commissions'], 2) }}
+        <div class="kpi-card flex flex-col justify-between border-amber-200 bg-amber-50/40">
+            <div class="kpi-header mb-1">
+                <span class="kpi-label text-amber-900 font-bold">عمولات معلقة</span>
+                <span class="kpi-icon text-amber-600"><x-icon name="clock" size="18" /></span>
             </div>
-            <span class="text-[10px] text-amber-600">ج.م قيد الصرف</span>
+            <div class="kpi-value font-numeric text-base sm:text-lg font-black text-amber-800">
+                {{ number_format($metrics['pending_commissions'], 2) }} <span class="text-xs font-bold text-amber-700">ج.م</span>
+            </div>
+            <div class="kpi-note text-amber-700 text-xs font-medium">
+                <span>قيد الصرف والاعتماد</span>
+            </div>
         </div>
 
         <!-- 5. Paid Commissions -->
-        <div class="erp-card p-3.5 mb-0 flex flex-col justify-between">
-            <span class="text-xs text-emerald-700 block font-medium">عمولات تم صرفها</span>
-            <div class="text-sm sm:text-base font-extrabold text-emerald-700 font-numeric mt-1">
-                {{ number_format($metrics['paid_commissions'], 2) }}
+        <div class="kpi-card flex flex-col justify-between border-emerald-200 bg-emerald-50/40">
+            <div class="kpi-header mb-1">
+                <span class="kpi-label text-emerald-900 font-bold">عمولات تم صرفها</span>
+                <span class="kpi-icon text-emerald-600"><x-icon name="check-circle" size="18" /></span>
             </div>
-            <span class="text-[10px] text-emerald-600">ج.م مدفوعة</span>
+            <div class="kpi-value font-numeric text-base sm:text-lg font-black text-emerald-800">
+                {{ number_format($metrics['paid_commissions'], 2) }} <span class="text-xs font-bold text-emerald-700">ج.م</span>
+            </div>
+            <div class="kpi-note text-emerald-700 text-xs font-medium">
+                <span>تم تحويلها للمناديب</span>
+            </div>
         </div>
 
         <!-- 6. Active Reps -->
-        <div class="erp-card p-3.5 mb-0 flex flex-col justify-between">
-            <span class="text-xs text-[var(--text-muted)] block font-medium">المناديب النشطون</span>
-            <div class="text-sm sm:text-base font-extrabold text-[var(--text-main)] font-numeric mt-1">
-                {{ $metrics['active_reps'] }} / {{ $metrics['total_reps'] }}
+        <div class="kpi-card flex flex-col justify-between">
+            <div class="kpi-header mb-1">
+                <span class="kpi-label">المناديب النشطون</span>
+                <span class="kpi-icon text-[var(--primary)]"><x-icon name="users" size="18" /></span>
             </div>
-            <span class="text-[10px] text-emerald-600">حسابات نشطة</span>
+            <div class="kpi-value font-numeric text-base sm:text-lg font-black text-[var(--text-main)]">
+                {{ $metrics['active_reps'] }} <span class="text-xs font-normal text-[var(--text-muted)]">من {{ $metrics['total_reps'] }}</span>
+            </div>
+            <div class="kpi-note text-emerald-700 text-xs font-medium">
+                <span>حسابات نشطة تعمل</span>
+            </div>
         </div>
     </div>
 

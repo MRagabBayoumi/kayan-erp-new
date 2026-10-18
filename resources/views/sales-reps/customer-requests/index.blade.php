@@ -44,39 +44,39 @@
     @endif
 
     <!-- Status Tabs & Search Filters Card -->
-    <div class="erp-card mb-0 p-4 sm:p-5 space-y-4 border border-[var(--border-color)] rounded-xl shadow-xs">
+    <div class="erp-card mb-0 p-4 sm:p-5 space-y-4">
         <!-- Row 1: Status Filter Pills -->
-        <div class="flex items-center justify-between gap-2 flex-wrap border-b border-[var(--border-color)] pb-3">
+        <div class="flex items-center justify-between gap-2 flex-wrap border-b border-[var(--border-light)] pb-3">
             <div class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
                 <!-- Pending -->
                 <a href="{{ route('sales-reps.customer-requests.index', array_filter(['status' => 'pending', 'sales_rep_id' => $currentRep, 'search' => $currentSearch])) }}"
-                    class="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-xs sm:text-sm border transition-all shrink-0 {{ $currentStatus === 'pending' ? 'bg-amber-500 text-white border-amber-600 shadow-xs' : 'bg-amber-50/60 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 border-amber-200 hover:bg-amber-100' }}">
-                    <x-icon name="clock" size="15" />
+                    class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded font-bold text-xs border transition-all shrink-0 {{ $currentStatus === 'pending' ? 'bg-amber-600 text-white border-amber-700 shadow-xs' : 'bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100' }}">
+                    <x-icon name="clock" size="14" />
                     <span>قيد المراجعة</span>
-                    <span class="px-2 py-0.5 rounded-full text-xs font-numeric font-black {{ $currentStatus === 'pending' ? 'bg-white text-amber-700' : 'bg-amber-200 text-amber-900' }}">{{ $pendingCount }}</span>
+                    <span class="px-1.5 py-0.5 rounded text-[11px] font-numeric font-black {{ $currentStatus === 'pending' ? 'bg-amber-700 text-white' : 'bg-amber-200 text-amber-900' }}">{{ $pendingCount }}</span>
                 </a>
 
                 <!-- Approved -->
                 <a href="{{ route('sales-reps.customer-requests.index', array_filter(['status' => 'approved', 'sales_rep_id' => $currentRep, 'search' => $currentSearch])) }}"
-                    class="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-xs sm:text-sm border transition-all shrink-0 {{ $currentStatus === 'approved' ? 'bg-emerald-600 text-white border-emerald-700 shadow-xs' : 'bg-emerald-50/60 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 hover:bg-emerald-100' }}">
-                    <x-icon name="check-circle" size="15" />
+                    class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded font-bold text-xs border transition-all shrink-0 {{ $currentStatus === 'approved' ? 'bg-emerald-600 text-white border-emerald-700 shadow-xs' : 'bg-emerald-50 text-emerald-900 border-emerald-300 hover:bg-emerald-100' }}">
+                    <x-icon name="check-circle" size="14" />
                     <span>المعتمدة</span>
-                    <span class="px-2 py-0.5 rounded-full text-xs font-numeric font-black {{ $currentStatus === 'approved' ? 'bg-white text-emerald-800' : 'bg-emerald-200 text-emerald-900' }}">{{ $approvedCount }}</span>
+                    <span class="px-1.5 py-0.5 rounded text-[11px] font-numeric font-black {{ $currentStatus === 'approved' ? 'bg-emerald-700 text-white' : 'bg-emerald-200 text-emerald-900' }}">{{ $approvedCount }}</span>
                 </a>
 
                 <!-- Rejected -->
                 <a href="{{ route('sales-reps.customer-requests.index', array_filter(['status' => 'rejected', 'sales_rep_id' => $currentRep, 'search' => $currentSearch])) }}"
-                    class="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-xs sm:text-sm border transition-all shrink-0 {{ $currentStatus === 'rejected' ? 'bg-rose-600 text-white border-rose-700 shadow-xs' : 'bg-rose-50/60 dark:bg-rose-950/20 text-rose-700 dark:text-rose-400 border-rose-200 hover:bg-rose-100' }}">
-                    <x-icon name="x-circle" size="15" />
+                    class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded font-bold text-xs border transition-all shrink-0 {{ $currentStatus === 'rejected' ? 'bg-rose-600 text-white border-rose-700 shadow-xs' : 'bg-rose-50 text-rose-900 border-rose-300 hover:bg-rose-100' }}">
+                    <x-icon name="x-circle" size="14" />
                     <span>المرفوضة</span>
-                    <span class="px-2 py-0.5 rounded-full text-xs font-numeric font-black {{ $currentStatus === 'rejected' ? 'bg-white text-rose-800' : 'bg-rose-200 text-rose-900' }}">{{ $rejectedCount }}</span>
+                    <span class="px-1.5 py-0.5 rounded text-[11px] font-numeric font-black {{ $currentStatus === 'rejected' ? 'bg-rose-700 text-white' : 'bg-rose-200 text-rose-900' }}">{{ $rejectedCount }}</span>
                 </a>
 
                 <!-- All -->
                 <a href="{{ route('sales-reps.customer-requests.index', array_filter(['status' => 'all', 'sales_rep_id' => $currentRep, 'search' => $currentSearch])) }}"
-                    class="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-xs sm:text-sm border transition-all shrink-0 {{ $currentStatus === 'all' ? 'bg-[var(--primary)] text-white border-[var(--primary)] shadow-xs' : 'bg-[var(--bg-hover)] text-[var(--text-secondary)] border-[var(--border-color)] hover:text-[var(--text-main)]' }}">
+                    class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded font-bold text-xs border transition-all shrink-0 {{ $currentStatus === 'all' ? 'bg-[var(--primary)] text-white border-[var(--primary)] shadow-xs' : 'bg-[var(--bg-hover)] text-[var(--text-secondary)] border-[var(--border-color)] hover:text-[var(--text-main)]' }}">
                     <span>الكل</span>
-                    <span class="px-2 py-0.5 rounded-full text-xs font-numeric font-black {{ $currentStatus === 'all' ? 'bg-white text-[var(--primary)]' : 'bg-slate-200 text-slate-700' }}">{{ $pendingCount + $approvedCount + $rejectedCount }}</span>
+                    <span class="px-1.5 py-0.5 rounded text-[11px] font-numeric font-black {{ $currentStatus === 'all' ? 'bg-[#5e3c55] text-white' : 'bg-slate-200 text-slate-700' }}">{{ $pendingCount + $approvedCount + $rejectedCount }}</span>
                 </a>
             </div>
 
@@ -126,7 +126,7 @@
     </div>
 
     <!-- Requests Table Card -->
-    <div class="erp-card mb-0 overflow-hidden border border-[var(--border-color)] rounded-xl shadow-xs">
+    <div class="erp-card mb-0 overflow-hidden">
         <div class="overflow-x-auto">
             <table class="erp-table w-full">
                 <thead>

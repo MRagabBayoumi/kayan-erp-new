@@ -153,49 +153,61 @@
         </a>
     </div>
 
-    <!-- Rep KPIs & Financial Stats (Odoo ERP Cards) -->
+    <!-- Rep KPIs & Financial Stats (Faithful to Kayan ERP Design System) -->
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         <!-- Today's Sales -->
-        <div class="erp-card p-3 sm:p-4 mb-0 flex flex-col justify-between">
-            <div class="flex items-center justify-between gap-1 text-[var(--text-muted)] mb-1.5">
-                <span class="text-xs font-semibold truncate">مبيعات اليوم</span>
+        <div class="kpi-card flex flex-col justify-between">
+            <div class="kpi-header mb-1">
+                <span class="kpi-label">مبيعات اليوم</span>
                 <span class="erp-badge erp-badge-neutral font-numeric text-[10px] shrink-0">{{ $todaySalesCount }} طلب</span>
             </div>
-            <div class="text-base sm:text-xl font-extrabold text-[var(--text-main)] font-numeric">
+            <div class="kpi-value font-numeric text-base sm:text-xl font-black text-[var(--text-main)]">
                 {{ number_format($todaySalesTotal, 2) }} <span class="text-xs font-normal text-[var(--text-muted)]">ج.م</span>
+            </div>
+            <div class="kpi-note font-numeric text-xs text-[var(--text-muted)]">
+                <span>فواتير منجزة اليوم</span>
             </div>
         </div>
 
         <!-- Month's Commissions -->
-        <div class="erp-card p-3 sm:p-4 mb-0 flex flex-col justify-between">
-            <div class="flex items-center justify-between gap-1 text-[var(--text-muted)] mb-1.5">
-                <span class="text-xs font-semibold truncate">عمولات الشهر</span>
-                <span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+        <div class="kpi-card flex flex-col justify-between border-emerald-200 bg-emerald-50/30">
+            <div class="kpi-header mb-1">
+                <span class="kpi-label text-emerald-900 font-bold">عمولات الشهر</span>
+                <span class="kpi-icon text-emerald-600"><x-icon name="dollar-sign" size="16" /></span>
             </div>
-            <div class="text-base sm:text-xl font-extrabold text-emerald-700 font-numeric">
-                {{ number_format($monthCommissions, 2) }} <span class="text-xs font-normal text-emerald-600">ج.م</span>
+            <div class="kpi-value font-numeric text-base sm:text-xl font-black text-emerald-800">
+                {{ number_format($monthCommissions, 2) }} <span class="text-xs font-bold text-emerald-700">ج.م</span>
+            </div>
+            <div class="kpi-note text-emerald-700 text-xs font-medium">
+                <span>أرباحك المكتسبة</span>
             </div>
         </div>
 
         <!-- Pending Commissions -->
-        <div class="erp-card p-3 sm:p-4 mb-0 flex flex-col justify-between">
-            <div class="flex items-center justify-between gap-1 text-[var(--text-muted)] mb-1.5">
-                <span class="text-xs font-semibold truncate">عمولات معلقة</span>
-                <span class="w-2 h-2 rounded-full bg-amber-500 shrink-0"></span>
+        <div class="kpi-card flex flex-col justify-between border-amber-200 bg-amber-50/30">
+            <div class="kpi-header mb-1">
+                <span class="kpi-label text-amber-900 font-bold">عمولات معلقة</span>
+                <span class="kpi-icon text-amber-600"><x-icon name="clock" size="16" /></span>
             </div>
-            <div class="text-base sm:text-xl font-extrabold text-amber-700 font-numeric">
-                {{ number_format($pendingCommissions, 2) }} <span class="text-xs font-normal text-amber-600">ج.م</span>
+            <div class="kpi-value font-numeric text-base sm:text-xl font-black text-amber-800">
+                {{ number_format($pendingCommissions, 2) }} <span class="text-xs font-bold text-amber-700">ج.م</span>
+            </div>
+            <div class="kpi-note text-amber-700 text-xs font-medium">
+                <span>قيد الصرف والاعتماد</span>
             </div>
         </div>
 
         <!-- My Customers -->
-        <div class="erp-card p-3 sm:p-4 mb-0 flex flex-col justify-between">
-            <div class="flex items-center justify-between gap-1 text-[var(--text-muted)] mb-1.5">
-                <span class="text-xs font-semibold truncate">عملائي المربوطين</span>
-                <x-icon name="users" size="14" class="text-[var(--primary)] shrink-0" />
+        <div class="kpi-card flex flex-col justify-between">
+            <div class="kpi-header mb-1">
+                <span class="kpi-label">عملائي المربوطين</span>
+                <span class="kpi-icon text-[var(--primary)]"><x-icon name="users" size="16" /></span>
             </div>
-            <div class="text-base sm:text-xl font-extrabold text-[var(--primary)] font-numeric">
+            <div class="kpi-value font-numeric text-base sm:text-xl font-black text-[var(--primary)]">
                 {{ $myCustomersCount }} <span class="text-xs font-normal text-[var(--text-muted)]">عميل</span>
+            </div>
+            <div class="kpi-note text-xs text-[var(--text-muted)]">
+                <span>في نطاقك الميداني</span>
             </div>
         </div>
     </div>
