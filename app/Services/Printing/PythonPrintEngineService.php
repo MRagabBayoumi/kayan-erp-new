@@ -7,6 +7,7 @@ use App\Models\CashierShift;
 use App\Models\CompanySetting;
 use App\Models\Product;
 use App\Models\PurchaseInvoice;
+use App\Models\PurchaseReturn;
 use App\Models\SalesInvoice;
 use App\Services\BarcodeGeneratorService;
 use Illuminate\Support\Facades\Auth;
@@ -511,6 +512,80 @@ class PythonPrintEngineService
             'total_amount' => (float) $invoice->total_amount,
             'paid_amount' => (float) ($invoice->paid_amount ?? 0),
             'remaining_amount' => (float) ($invoice->remaining_amount ?? 0),
+            'items' => $items,
+        ];
+
+        $templateId = $isDoc ? 'purchase_invoice_document' : 'purchase_invoice_receipt';
+        $defaultPrinter = $isDoc
+            ? config('printing.default_document_printer', 'TOSHIBA Generic Printer XL')
+            : config('printing.default_receipt_printer', 'XP-80C');
+        $targetPrinter = $printer ?: $defaultPrinter;
+
+        return $this->executeJob($templateId, $data, 1, $targetPrinter, $dryRun);
+    }
+
+    /**
+     * Print a purchase return as an 80mm thermal receipt or A4/A5 office document.
+     */
+    public function printPurchaseReturn(PurchaseReturn $return, mixed $formatOrPrinter = 'thermal_80mm', mixed $printerOrDryRun = null, bool $dryRun = false): array
+    {
+        $format = 'thermal_80mm';
+        $printer = null;
+
+        if (is_bool($printerOrDryRun)) {
+            $dryRun = $printerOrDryRun;
+            if (is_string($formatOrPrinter) && in_array(strtolower($formatOrPrinter), ['thermal_80mm', 'a4', 'a5'], true)) {
+                $format = strtolower($formatOrPrinter);
+            } else {
+                $printer = is_string($formatOrPrinter) ? $formatOrPrinter : null;
+            }
+        } else {
+            if (is_string($formatOrPrinter) && in_array(strtolower($formatOrPrinter), ['thermal_80mm', 'a4', 'a5'], true)) {
+                $format = strtolower($formatOrPrinter);
+            }
+            $printer = is_string($printerOrDryRun) ? $printerOrDryRun : null;
+        }
+
+        $return->loadMissing(['supplier', 'warehouse', 'creator', 'items.product', 'items.unit']);
+        $companySetting = CompanySetting::getSettings();
+        $isDoc = in_array($format, ['a4', 'a5'], true);
+
+        $items = $return->items->map(function ($item) use ($return) {
+            return [
+                'sku' => $item->product?->sku ?? '',
+                'name' => $item->product?->name ?? 'صنف غير محدد',
+                'quantity' => (float) $item->quantity,
+                'unit' => $item->unit?->name ?? $item->product?->unit ?? 'قطعة',
+                'warehouse' => $return->warehouse?->name ?? 'الرئيسي',
+                'price' => (float) $item->unit_cost,
+                'cost_price' => (float) $item->unit_cost,
+                'total' => (float) $item->subtotal,
+            ];
+        })->toArray();
+
+        $formattedDate = $return->return_date ? $return->return_date->format('Y-m-d') : now()->format('Y-m-d');
+
+        $data = [
+            'format' => $format,
+            'company_name' => $companySetting->company_name ?: 'شركة كيان للتجارة والتوزيع',
+            'company_phone' => $companySetting->phone ?: '',
+            'company_address' => $companySetting->address ?: '',
+            'invoice_number' => $return->return_number,
+            'date' => $formattedDate,
+            'invoice_date' => $formattedDate,
+            'supplier_code' => $return->supplier?->code ?? ($return->supplier?->id ? (string) $return->supplier->id : ''),
+            'supplier_name' => $return->supplier?->name ?? 'مورد عام',
+            'supplier_phone' => $return->supplier?->phone ?? '',
+            'supplier_address' => $return->supplier?->address ?? '',
+            'warehouse_name' => $return->warehouse?->name ?? 'المخزن الرئيسي',
+            'creator_name' => $return->creator?->name ?? 'أمين المستودع',
+            'shipping_company' => 'إرجاع بضاعة',
+            'shipping_amount' => 0.0,
+            'notes' => $return->notes ?? '',
+            'subtotal' => (float) $return->total_amount,
+            'total_amount' => (float) $return->total_amount,
+            'paid_amount' => (float) $return->total_amount,
+            'remaining_amount' => 0.0,
             'items' => $items,
         ];
 

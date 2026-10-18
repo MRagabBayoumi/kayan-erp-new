@@ -1,6 +1,7 @@
 """
 Sales Invoice Thermal Receipt Template (80mm POS).
 Renders structured customer sales receipt with item lines, discounts, and payment totals.
+Optimized for 576-dot native thermal print heads (XP-80C / Xprinter 80mm).
 """
 
 from typing import Any, Dict, List
@@ -42,137 +43,192 @@ class SalesInvoiceTemplate(BasePrintTemplate):
     def render(self, data: Dict[str, Any]) -> List[Image.Image]:
         self.validate(data)
 
-        width_mm = float(data.get("width_mm") or 80)
-        dpi = int(data.get("dpi") or 203)
-        width_px = mm_to_px(width_mm, dpi)
+        # Standard 80mm thermal receipt native width is 576 dots (72mm at 203 DPI)
+        width_px = 576
+        margin_x = 16
+        content_right = width_px - margin_x
+        content_left = margin_x
 
         company_name = str(data.get("company_name") or "شركة كيان التجارية")
         company_phone = str(data.get("company_phone") or "")
+        company_address = str(data.get("company_address") or "")
         invoice_number = str(data.get("invoice_number"))
         customer_name = str(data.get("customer_name") or "عميل نقدي")
+        customer_phone = str(data.get("customer_phone") or "")
         cashier_name = str(data.get("cashier_name") or "كاشير")
-        invoice_date = str(data.get("date") or "")
+        invoice_date = str(data.get("date") or data.get("invoice_date") or "")
         items = data.get("items") or []
         subtotal = float(data.get("subtotal") or data.get("total_amount") or 0.0)
         discount_amount = float(data.get("discount_amount") or 0.0)
+        shipping_amount = float(data.get("shipping_amount") or 0.0)
         total_amount = float(data.get("total_amount") or 0.0)
         paid_amount = float(data.get("paid_amount") or total_amount)
         change_amount = float(data.get("change_amount") or 0.0)
+        remaining_amount = float(data.get("remaining_amount") or 0.0)
+        notes = str(data.get("notes") or "").strip()
 
         font_header = get_font('arabic_bold', 20)
         font_sub = get_font('arabic_bold', 14)
-        font_body = get_font('arabic_regular', 13)
-        font_bold = get_font('arabic_bold', 13)
-        font_small = get_font('arabic_regular', 11)
+        font_bold = get_font('arabic_bold', 12)
+        font_body = get_font('arabic_regular', 12)
+        font_small = get_font('arabic_regular', 10)
+
+        def draw_rtl(draw_obj, text, x_right, y_pos, font, fill="black"):
+            shaped = shape_arabic(str(text))
+            bbox = draw_obj.textbbox((0, 0), shaped, font=font)
+            tw = bbox[2] - bbox[0]
+            draw_obj.text((x_right - tw, y_pos), shaped, fill=fill, font=font)
+            return tw
+
+        def draw_center(draw_obj, text, y_pos, font, fill="black"):
+            shaped = shape_arabic(str(text))
+            bbox = draw_obj.textbbox((0, 0), shaped, font=font)
+            tw = bbox[2] - bbox[0]
+            draw_obj.text(((width_px - tw) // 2, y_pos), shaped, fill=fill, font=font)
+            return tw
 
         # Estimate receipt height based on lines
         line_count = len(items)
-        estimated_height = 250 + (line_count * 34) + 180
+        estimated_height = 320 + (line_count * 45) + 300
 
         image = Image.new("RGB", (width_px, estimated_height), "white")
         draw = ImageDraw.Draw(image)
 
         y = 15
 
-        # Header: Company Name
-        comp_text = shape_arabic(company_name)
-        bbox = draw.textbbox((0, 0), comp_text, font=font_header)
-        draw.text(((width_px - (bbox[2] - bbox[0])) // 2, y), comp_text, fill="black", font=font_header)
-        y += (bbox[3] - bbox[1]) + 6
+        # 1. Header: Company Name & Contact Info
+        draw_center(draw, company_name, y, font_header)
+        y += 28
+
+        if company_address:
+            draw_center(draw, company_address, y, font_small)
+            y += 18
 
         if company_phone:
-            phone_text = shape_arabic(f"هاتف: {company_phone}")
-            bbox = draw.textbbox((0, 0), phone_text, font=font_small)
-            draw.text(((width_px - (bbox[2] - bbox[0])) // 2, y), phone_text, fill="black", font=font_small)
-            y += (bbox[3] - bbox[1]) + 6
+            draw_center(draw, f"هاتف: {company_phone}", y, font_small)
+            y += 18
 
-        # Document Subtitle
-        title_text = shape_arabic("فاتورة مبيعات نقدية (POS)")
-        bbox = draw.textbbox((0, 0), title_text, font=font_sub)
-        draw.text(((width_px - (bbox[2] - bbox[0])) // 2, y), title_text, fill="black", font=font_sub)
-        y += (bbox[3] - bbox[1]) + 10
+        # 2. Document Title Pill / Heading
+        draw_center(draw, "فاتورة مبيعات نقدية (POS)", y, font_sub)
+        y += 24
 
-        # Separator Line
-        draw.line([(15, y), (width_px - 15, y)], fill="black", width=2)
-        y += 8
-
-        # Invoice Metadata
-        inv_line = f"رقم الفاتورة: {invoice_number}"
-        cust_line = f"العميل: {customer_name}"
-        cashier_line = f"الكاشير: {cashier_name}"
-
-        draw.text((width_px - 20 - draw.textbbox((0, 0), shape_arabic(inv_line), font=font_body)[2], y), shape_arabic(inv_line), fill="black", font=font_bold)
-        y += 20
-        draw.text((width_px - 20 - draw.textbbox((0, 0), shape_arabic(cust_line), font=font_body)[2], y), shape_arabic(cust_line), fill="black", font=font_body)
-        y += 20
-        draw.text((width_px - 20 - draw.textbbox((0, 0), shape_arabic(cashier_line), font=font_body)[2], y), shape_arabic(cashier_line), fill="black", font=font_body)
-        y += 20
-
-        if invoice_date:
-            date_line = f"التاريخ: {invoice_date}"
-            draw.text((width_px - 20 - draw.textbbox((0, 0), shape_arabic(date_line), font=font_body)[2], y), shape_arabic(date_line), fill="black", font=font_body)
-            y += 20
-
-        # Separator Line
-        draw.line([(15, y), (width_px - 15, y)], fill="black", width=1)
-        y += 8
-
-        # Items Table Header
-        header_text = shape_arabic("الصنف                        الكمية   السعر    الإجمالي")
-        draw.text((20, y), header_text, fill="black", font=font_bold)
-        y += 20
-        draw.line([(15, y), (width_px - 15, y)], fill="black", width=1)
-        y += 8
-
-        # Items List
-        for it in items:
-            name = str(it.get("name") or it.get("product_name") or "")[:18]
-            qty = it.get("quantity") or 1
-            price = float(it.get("unit_price") or it.get("price") or 0.0)
-            total = float(it.get("total") or it.get("subtotal") or (float(qty) * price))
-
-            line_str = f"{name:<18} {qty:>4} {price:>6.1f} {total:>8.1f}"
-            draw.text((20, y), shape_arabic(line_str), fill="black", font=font_body)
-            y += 20
-
-        # Separator Line
-        draw.line([(15, y), (width_px - 15, y)], fill="black", width=2)
+        # Heavy Separator Line
+        draw.line([(content_left, y), (content_right, y)], fill="black", width=2)
         y += 10
 
-        # Totals Breakdown
-        if discount_amount > 0:
-            sub_text = f"المجموع الفرعي: {subtotal:,.2f} ج.م"
-            disc_text = f"الخصم: -{discount_amount:,.2f} ج.م"
-            draw.text((width_px - 25 - draw.textbbox((0, 0), shape_arabic(sub_text), font=font_body)[2], y), shape_arabic(sub_text), fill="black", font=font_body)
+        # 3. Invoice Metadata (Two-column / Key-Value rows)
+        draw_rtl(draw, f"رقم الفاتورة: {invoice_number}", content_right, y, font_bold)
+        if invoice_date:
+            draw.text((content_left, y), invoice_date, fill="black", font=font_small)
+        y += 22
+
+        draw_rtl(draw, f"العميل: {customer_name}", content_right, y, font_body)
+        if customer_phone:
+            draw.text((content_left, y), customer_phone, fill="black", font=font_small)
+        y += 20
+
+        draw_rtl(draw, f"الكاشير: {cashier_name}", content_right, y, font_small)
+        y += 18
+
+        # Separator Line before Table
+        draw.line([(content_left, y), (content_right, y)], fill="black", width=1)
+        y += 8
+
+        # 4. Items Table Header
+        # Column X bounds:
+        # Item Name: from 220 to content_right (560)
+        # Quantity: centered at 180
+        # Price: centered at 115
+        # Total: right-aligned ending at 55 (left margin safe)
+        draw_rtl(draw, "الصنف / البيان", content_right, y, font_bold)
+        draw_center_at = lambda t, cx, py, f: draw.text((cx - (draw.textbbox((0, 0), shape_arabic(t), font=f)[2] - draw.textbbox((0, 0), shape_arabic(t), font=f)[0]) // 2, py), shape_arabic(t), fill="black", font=f)
+        
+        draw_center_at("الكمية", 185, y, font_bold)
+        draw_center_at("السعر", 115, y, font_bold)
+        draw_rtl(draw, "الإجمالي", 60, y, font_bold)
+        y += 20
+
+        draw.line([(content_left, y), (content_right, y)], fill="black", width=1)
+        y += 6
+
+        # 5. Items Table Body
+        for it in items:
+            raw_name = str(it.get("name") or it.get("product_name") or "صنف")
+            unit_name = str(it.get("unit") or "")
+            qty = it.get("quantity") or 1
+            price = float(it.get("unit_price") or it.get("price") or 0.0)
+            line_total = float(it.get("total") or it.get("subtotal") or (float(qty) * price))
+
+            # Truncate or wrap item name if needed (up to 26 characters per line)
+            name_display = raw_name if len(raw_name) <= 26 else raw_name[:24] + ".."
+            draw_rtl(draw, name_display, content_right, y, font_body)
+
+            qty_str = f"{float(qty):g}"
+            draw_center_at(qty_str, 185, y, font_body)
+            draw_center_at(f"{price:,.2f}", 115, y, font_small)
+            draw_rtl(draw, f"{line_total:,.2f}", 60, y, font_bold)
             y += 20
-            draw.text((width_px - 25 - draw.textbbox((0, 0), shape_arabic(disc_text), font=font_body)[2], y), shape_arabic(disc_text), fill="black", font=font_body)
-            y += 22
 
-        # Final Total
-        tot_text = f"الإجمالي النهائي: {total_amount:,.2f} ج.م"
-        draw.text((width_px - 25 - draw.textbbox((0, 0), shape_arabic(tot_text), font=font_header)[2], y), shape_arabic(tot_text), fill="black", font=font_header)
-        y += 32
+            # Sub-line for unit if available and not standard piece
+            if unit_name and unit_name not in ("قطعة", "قطعه"):
+                draw_rtl(draw, f"الوحدة: {unit_name}", content_right - 10, y, font_small, fill="#555555")
+                y += 16
 
-        # Paid & Change
-        paid_text = f"المدفوع: {paid_amount:,.2f} ج.م"
-        draw.text((width_px - 25 - draw.textbbox((0, 0), shape_arabic(paid_text), font=font_bold)[2], y), shape_arabic(paid_text), fill="black", font=font_bold)
+        # Separator Line after Table
+        draw.line([(content_left, y), (content_right, y)], fill="black", width=2)
+        y += 10
+
+        # 6. Totals Breakdown
+        if discount_amount > 0:
+            draw_rtl(draw, "المجموع الفرعي:", content_right, y, font_body)
+            draw_rtl(draw, f"{subtotal:,.2f} ج.م", 120, y, font_body)
+            y += 20
+            draw_rtl(draw, "خصم الفاتورة:", content_right, y, font_body)
+            draw_rtl(draw, f"-{discount_amount:,.2f} ج.م", 120, y, font_bold)
+            y += 20
+
+        if shipping_amount > 0:
+            draw_rtl(draw, "مصاريف التوصيل:", content_right, y, font_body)
+            draw_rtl(draw, f"+{shipping_amount:,.2f} ج.م", 120, y, font_body)
+            y += 20
+
+        # Big Total Highlight Box
+        total_box_top = y
+        total_box_height = 36
+        draw.rectangle([(content_left, total_box_top), (content_right, total_box_top + total_box_height)], fill="#f0f0f0", outline="black", width=1)
+        draw_rtl(draw, "الإجمالي النهائي:", content_right - 10, total_box_top + 7, font_header)
+        draw_rtl(draw, f"{total_amount:,.2f} ج.م", 160, total_box_top + 7, font_header)
+        y += total_box_height + 12
+
+        # Payment details
+        draw_rtl(draw, "المدفوع نقداً:", content_right, y, font_bold)
+        draw_rtl(draw, f"{paid_amount:,.2f} ج.م", 120, y, font_bold)
         y += 20
 
         if change_amount > 0:
-            change_text = f"الباقي: {change_amount:,.2f} ج.م"
-            draw.text((width_px - 25 - draw.textbbox((0, 0), shape_arabic(change_text), font=font_bold)[2], y), shape_arabic(change_text), fill="black", font=font_bold)
-            y += 22
+            draw_rtl(draw, "المتبقي للعميل (باقي):", content_right, y, font_body)
+            draw_rtl(draw, f"{change_amount:,.2f} ج.م", 120, y, font_bold)
+            y += 20
+        elif remaining_amount > 0:
+            draw_rtl(draw, "المتبقي على العميل (آجل):", content_right, y, font_bold)
+            draw_rtl(draw, f"{remaining_amount:,.2f} ج.م", 120, y, font_bold)
+            y += 20
 
-        # Thank You Footer
+        if notes:
+            y += 4
+            draw_rtl(draw, f"ملاحظات: {notes}", content_right, y, font_small)
+            y += 18
+
+        # 7. Thank You Footer
         y += 10
-        draw.line([(15, y), (width_px - 15, y)], fill="black", width=1)
-        y += 8
-        ty_text = shape_arabic("شكراً لزيارتكم ونسعد بخدمتكم دائماً")
-        bbox = draw.textbbox((0, 0), ty_text, font=font_small)
-        draw.text(((width_px - (bbox[2] - bbox[0])) // 2, y), ty_text, fill="black", font=font_small)
-        y += 24
+        draw.line([(content_left, y), (content_right, y)], fill="black", width=1)
+        y += 10
+        draw_center(draw, "شكراً لزيارتكم ونسعد بخدمتكم دائماً", y, font_small)
+        y += 18
+        draw_center(draw, f"*** {invoice_number} ***", y, font_small)
+        y += 35
 
-        # Crop to actual used height
-        final_height = max(100, y + 20)
+        # Crop to actual content height + bottom margin for auto-cutter
+        final_height = max(100, y)
         final_image = image.crop((0, 0, width_px, final_height))
         return [final_image]

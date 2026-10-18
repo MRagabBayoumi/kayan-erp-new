@@ -131,6 +131,8 @@ function initPortalOrderForm() {
         let repCommissionRate = 0;
         let repCommissionType = 'percentage';
         let initialCustomerId = '';
+        let initialProductId = '';
+        let isAdmin = false;
 
         if (root) {
             try {
@@ -141,11 +143,13 @@ function initPortalOrderForm() {
             repCommissionRate = Number(root.dataset.commissionRate) || 0;
             repCommissionType = root.dataset.commissionType || 'percentage';
             initialCustomerId = root.dataset.selectedCustomer || '';
+            initialProductId = root.dataset.selectedProduct || '';
+            isAdmin = root.dataset.isAdmin === '1';
         }
 
         return {
             customerId: initialCustomerId,
-            priceTier: 'retail',
+            priceTier: isAdmin ? 'retail' : 'wholesale',
             paymentType: 'cash',
             paidAmount: 0,
             items: [],
@@ -157,6 +161,13 @@ function initPortalOrderForm() {
             init() {
                 if (this.customerId) {
                     this.onCustomerChange();
+                }
+
+                if (initialProductId) {
+                    const preselected = allProducts.find(p => String(p.id) === String(initialProductId));
+                    if (preselected) {
+                        this.selectProduct(preselected);
+                    }
                 }
 
                 window.addEventListener('portal-barcode-scanned', (e) => {
@@ -181,12 +192,19 @@ function initPortalOrderForm() {
                 if (!select) return;
                 const opt = select.options[select.selectedIndex];
                 if (opt && opt.dataset.tier) {
-                    this.priceTier = opt.dataset.tier;
+                    if (isAdmin) {
+                        this.priceTier = opt.dataset.tier;
+                    } else {
+                        this.priceTier = 'wholesale';
+                    }
                     this.recalculateItemPrices();
                 }
             },
 
             getProductPrice(product) {
+                if (!isAdmin) {
+                    return product.wholesale_price;
+                }
                 if (this.priceTier === 'wholesale') return product.wholesale_price || product.retail_price;
                 if (this.priceTier === 'distributor') return product.distributor_price || product.retail_price;
                 return product.retail_price;
@@ -211,6 +229,8 @@ function initPortalOrderForm() {
                         product_id: product.id,
                         name: product.name,
                         available_stock: product.available_stock,
+                        stock_display: product.stock_display,
+                        is_available: product.is_available,
                         unit: product.unit,
                         quantity: 1,
                         unit_price: this.getProductPrice(product),

@@ -5,6 +5,8 @@
      id="portalOrderApp"
      data-products="{{ $productsJson }}"
      data-selected-customer="{{ $selectedCustomerId ?? '' }}"
+     data-selected-product="{{ $selectedProductId ?? '' }}"
+     data-is-admin="{{ $isAdmin ? '1' : '0' }}"
      data-commission-rate="{{ (float) (auth()->user()->commission_rate ?? 0) }}"
      data-commission-type="{{ auth()->user()->commission_type ?? 'percentage' }}"
      x-data="portalOrderForm()">
@@ -83,27 +85,37 @@
                         </div>
                     </div>
 
-                    <!-- Price Tier Switcher -->
-                    <div class="pt-1">
-                        <label class="erp-form-label font-bold text-xs mb-1.5">فئة السعر المطبقة للطلب</label>
-                        <div class="grid grid-cols-3 gap-2">
-                            <label class="flex items-center justify-center p-2 rounded border border-[var(--border-color)] text-xs font-bold cursor-pointer text-center transition-all select-none"
-                                :class="priceTier === 'retail' ? 'bg-[var(--primary-soft)] border-[var(--primary)] text-[var(--primary)]' : 'bg-[var(--bg-hover)] text-[var(--text-secondary)]'">
-                                <input type="radio" name="price_tier" value="retail" x-model="priceTier" @change="recalculateItemPrices()" class="sr-only">
-                                <span>قطاعي</span>
-                            </label>
-                            <label class="flex items-center justify-center p-2 rounded border border-[var(--border-color)] text-xs font-bold cursor-pointer text-center transition-all select-none"
-                                :class="priceTier === 'wholesale' ? 'bg-[var(--primary-soft)] border-[var(--primary)] text-[var(--primary)]' : 'bg-[var(--bg-hover)] text-[var(--text-secondary)]'">
-                                <input type="radio" name="price_tier" value="wholesale" x-model="priceTier" @change="recalculateItemPrices()" class="sr-only">
-                                <span>جملة</span>
-                            </label>
-                            <label class="flex items-center justify-center p-2 rounded border border-[var(--border-color)] text-xs font-bold cursor-pointer text-center transition-all select-none"
-                                :class="priceTier === 'distributor' ? 'bg-[var(--primary-soft)] border-[var(--primary)] text-[var(--primary)]' : 'bg-[var(--bg-hover)] text-[var(--text-secondary)]'">
-                                <input type="radio" name="price_tier" value="distributor" x-model="priceTier" @change="recalculateItemPrices()" class="sr-only">
-                                <span>موزع</span>
-                            </label>
+                    <!-- Price Tier Switcher (Admin Only) or Locked to Wholesale (Sales Rep) -->
+                    @if($isAdmin)
+                        <div class="pt-1">
+                            <label class="erp-form-label font-bold text-xs mb-1.5">فئة السعر المطبقة للطلب (صلاحية مدير)</label>
+                            <div class="grid grid-cols-3 gap-2">
+                                <label class="flex items-center justify-center p-2 rounded border border-[var(--border-color)] text-xs font-bold cursor-pointer text-center transition-all select-none"
+                                    :class="priceTier === 'retail' ? 'bg-[var(--primary-soft)] border-[var(--primary)] text-[var(--primary)]' : 'bg-[var(--bg-hover)] text-[var(--text-secondary)]'">
+                                    <input type="radio" name="price_tier" value="retail" x-model="priceTier" @change="recalculateItemPrices()" class="sr-only">
+                                    <span>قطاعي</span>
+                                </label>
+                                <label class="flex items-center justify-center p-2 rounded border border-[var(--border-color)] text-xs font-bold cursor-pointer text-center transition-all select-none"
+                                    :class="priceTier === 'wholesale' ? 'bg-[var(--primary-soft)] border-[var(--primary)] text-[var(--primary)]' : 'bg-[var(--bg-hover)] text-[var(--text-secondary)]'">
+                                    <input type="radio" name="price_tier" value="wholesale" x-model="priceTier" @change="recalculateItemPrices()" class="sr-only">
+                                    <span>جملة</span>
+                                </label>
+                                <label class="flex items-center justify-center p-2 rounded border border-[var(--border-color)] text-xs font-bold cursor-pointer text-center transition-all select-none"
+                                    :class="priceTier === 'distributor' ? 'bg-[var(--primary-soft)] border-[var(--primary)] text-[var(--primary)]' : 'bg-[var(--bg-hover)] text-[var(--text-secondary)]'">
+                                    <input type="radio" name="price_tier" value="distributor" x-model="priceTier" @change="recalculateItemPrices()" class="sr-only">
+                                    <span>موزع</span>
+                                </label>
+                            </div>
                         </div>
-                    </div>
+                    @else
+                        <input type="hidden" name="price_tier" value="wholesale">
+                        <div class="pt-1">
+                            <div class="p-2.5 rounded-lg bg-emerald-50/70 border border-emerald-200 text-xs flex items-center justify-between">
+                                <span class="font-bold text-emerald-950">فئة السعر المعتمدة للمندوب:</span>
+                                <span class="erp-badge erp-badge-success text-[11px] font-bold">سعر الجملة</span>
+                            </div>
+                        </div>
+                    @endif
                 </div>
 
                 <!-- Add Items Section -->
@@ -140,7 +152,7 @@
                                 <div class="flex items-start justify-between gap-2">
                                     <div class="min-w-0">
                                         <div class="text-xs sm:text-sm font-bold text-[var(--text-main)] truncate" x-text="item.name"></div>
-                                        <div class="text-[11px] text-[var(--text-muted)] font-numeric" x-text="'متاح بالمخزن: ' + item.available_stock + ' ' + (item.unit || 'قطعة')"></div>
+                                        <div class="text-[11px] text-[var(--text-muted)] font-numeric" x-text="item.stock_display || (item.is_available ? 'متوفر للطلب' : 'غير متوفر')"></div>
                                     </div>
                                     <button type="button" @click="removeItem(index)" class="p-1 text-slate-400 hover:text-rose-600 transition-colors" title="حذف البند">
                                         <x-icon name="trash-2" size="15" />
@@ -297,14 +309,26 @@
                 <!-- Product List in Modal -->
                 <div class="overflow-y-auto p-3 space-y-2 flex-1">
                     <template x-for="product in filteredProducts" :key="product.id">
-                        <div class="p-3 rounded border border-[var(--border-color)] hover:border-[var(--primary)] hover:bg-[var(--bg-hover)] transition-all flex items-center justify-between cursor-pointer"
+                        <div class="p-3 rounded border border-[var(--border-color)] hover:border-[var(--primary)] hover:bg-[var(--bg-hover)] transition-all flex items-center justify-between cursor-pointer gap-2.5"
                             @click="selectProduct(product)">
-                            <div class="min-w-0">
-                                <div class="text-xs sm:text-sm font-bold text-[var(--text-main)]" x-text="product.name"></div>
-                                <div class="text-[11px] text-[var(--text-muted)] font-numeric mt-0.5" x-text="'كود: ' + (product.sku || '---') + ' · متاح: ' + product.available_stock"></div>
+                            <div class="flex items-center gap-2.5 min-w-0 flex-1">
+                                <template x-if="product.image_url">
+                                    <img :src="product.image_url" :alt="product.name" class="w-10 h-10 object-contain rounded bg-slate-100 border border-slate-200 shrink-0">
+                                </template>
+                                <template x-if="!product.image_url">
+                                    <div class="w-10 h-10 rounded bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-slate-400">
+                                        <x-icon name="image" size="18" />
+                                    </div>
+                                </template>
+                                <div class="min-w-0">
+                                    <div class="text-xs sm:text-sm font-bold text-[var(--text-main)] truncate" x-text="product.name"></div>
+                                    <div class="text-[11px] font-numeric mt-0.5"
+                                         :class="product.is_available ? 'text-emerald-700' : 'text-rose-600'"
+                                         x-text="'كود: ' + (product.sku || '---') + ' · ' + (product.stock_display || (product.is_available ? 'متوفر للطلب' : 'غير متوفر'))"></div>
+                                </div>
                             </div>
                             <div class="text-left shrink-0">
-                                <div class="text-xs font-extrabold text-[var(--primary)] font-numeric" x-text="formatCurrency(getProductPrice(product)) + ' ج.م'"></div>
+                                <div class="text-xs font-extrabold text-emerald-700 font-numeric" x-text="formatCurrency(getProductPrice(product)) + ' ج.م'"></div>
                                 <span class="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-bold bg-[var(--primary-soft)] text-[var(--primary)]">+ إضافة</span>
                             </div>
                         </div>

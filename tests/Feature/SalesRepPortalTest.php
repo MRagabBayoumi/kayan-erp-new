@@ -116,15 +116,65 @@ test('sales rep can view mobile dashboard with accurate stats', function () {
     $response->assertSee('نسبة العمولة: 10%');
 });
 
-test('sales rep can browse mobile catalog with pricing and stock', function () {
+test('sales rep can browse mobile catalog with wholesale pricing and stock privacy', function () {
     $response = $this->actingAs($this->salesRep)->get(route('portal.catalog'));
 
     $response->assertOk();
     $response->assertSee('توكة شعر لؤلؤ فاخرة');
-    $response->assertSee('50.00'); // retail
-    $response->assertSee('40.00'); // wholesale
-    $response->assertSee('35.00'); // distributor
-    $response->assertSee('متاح 100');
+    $response->assertSee('40.00'); // Wholesale price
+    $response->assertSee('سعر الجملة');
+    $response->assertSee('متوفر للطلب');
+
+    // Crucial privacy: sales rep should NOT see retail, distributor, or raw stock numbers
+    $response->assertDontSee('50.00'); // Retail
+    $response->assertDontSee('35.00'); // Distributor
+    $response->assertDontSee('متاح 100'); // Raw stock count
+});
+
+test('admin can see exact stock quantity in catalog while rep cannot', function () {
+    $admin = User::factory()->create([
+        'name' => 'مدير النظام',
+        'role' => User::ROLE_ADMIN,
+    ]);
+
+    $adminResponse = $this->actingAs($admin)->get(route('portal.catalog'));
+    $adminResponse->assertOk();
+    $adminResponse->assertSee('100 قطعة'); // Admin sees exact count
+
+    $repResponse = $this->actingAs($this->salesRep)->get(route('portal.catalog'));
+    $repResponse->assertOk();
+    $repResponse->assertDontSee('100 قطعة');
+    $repResponse->assertSee('متوفر للطلب');
+});
+
+test('product is marked out of stock for rep when below min stock threshold', function () {
+    $productWithMinStock = Product::create([
+        'category_id' => $this->category->id,
+        'sku' => 'CLIP-MIN-50',
+        'barcode' => '6228899009999',
+        'name' => 'صنف بحد أدنى مرتفع',
+        'cost_price' => 20.00,
+        'retail_price' => 60.00,
+        'wholesale_price' => 45.00,
+        'distributor_price' => 40.00,
+        'unit' => 'قطعة',
+        'min_stock_alert' => 50, // Min order/stock required is 50
+        'is_active' => true,
+    ]);
+
+    // Add only 30 in stock (less than min_stock_alert 50)
+    app(InventoryService::class)->addStock(
+        productId: $productWithMinStock->id,
+        warehouseId: $this->warehouse->id,
+        quantity: 30.0,
+        costPrice: 20.00,
+        referenceType: 'opening_balance'
+    );
+
+    $response = $this->actingAs($this->salesRep)->get(route('portal.catalog', ['search' => 'CLIP-MIN-50']));
+    $response->assertOk();
+    $response->assertSee('غير متوفر حالياً');
+    $response->assertDontSee('متوفر للطلب');
 });
 
 test('sales rep can register new field customer with GPS location', function () {

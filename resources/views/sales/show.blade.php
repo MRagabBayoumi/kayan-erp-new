@@ -47,36 +47,20 @@
                 </button>
             @endif
 
-            <!-- Compact Print Selection Menu -->
-            <div class="erp-dropdown">
-                <button type="button" class="erp-btn erp-btn-secondary" data-dropdown-toggle="salesPrintMenu" title="خيارات ونماذج الطباعة">
-                    <x-icon name="printer" size="16" />
-                    <span>طباعة الفاتورة</span>
-                    <x-icon name="chevron-down" size="12" class="opacity-80" />
-                </button>
-                <div id="salesPrintMenu" class="erp-dropdown-menu w-[220px] left-0">
-                    <div class="erp-dropdown-header">
-                        <strong class="text-xs text-[var(--text-main)]">خيارات ونماذج الطباعة</strong>
-                    </div>
-                    <button type="button" data-action="python-direct-print" data-url="{{ route('sales.direct-print', $invoice) }}" class="erp-dropdown-item text-[var(--primary)] font-semibold" title="طباعة فورية مباشرة عبر خادم الطباعة">
-                        <x-icon name="zap" size="14" />
-                        <span>طباعة فورية (Instant Print)</span>
-                    </button>
-                    <div class="erp-dropdown-divider"></div>
-                    <a href="{{ route('sales.print', [$invoice, 'format' => 'a4']) }}" target="_blank" class="erp-dropdown-item" title="طباعة نموذج A4">
-                        <x-icon name="file-text" size="14" />
-                        <span>نموذج قياسي (A4)</span>
-                    </a>
-                    <a href="{{ route('sales.print', [$invoice, 'format' => 'a5']) }}" target="_blank" class="erp-dropdown-item" title="طباعة نموذج A5">
-                        <x-icon name="file" size="14" />
-                        <span>نموذج مدمج (A5)</span>
-                    </a>
-                    <a href="{{ route('sales.print', [$invoice, 'format' => 'thermal_80mm']) }}" target="_blank" class="erp-dropdown-item" title="طباعة إيصال حراري 80 مم">
-                        <x-icon name="printer" size="14" />
-                        <span>إيصال حراري (80 مم)</span>
-                    </a>
-                </div>
-            </div>
+            <!-- Universal Print Trigger -->
+            <button type="button" class="erp-btn erp-btn-secondary" 
+                data-action="open-print-modal"
+                data-print-title="فاتورة مبيعات: {{ $invoice->invoice_number }}"
+                data-url-a4="{{ route('sales.print', [$invoice, 'format' => 'a4']) }}"
+                data-url-a5="{{ route('sales.print', [$invoice, 'format' => 'a5']) }}"
+                data-url-thermal="{{ route('sales.print', [$invoice, 'format' => 'thermal_80mm']) }}"
+                data-direct-url-a4="{{ route('sales.direct-print', [$invoice, 'format' => 'a4']) }}"
+                data-direct-url-a5="{{ route('sales.direct-print', [$invoice, 'format' => 'a5']) }}"
+                data-direct-url-thermal="{{ route('sales.direct-print', [$invoice, 'format' => 'thermal_80mm']) }}"
+                title="خيارات ونماذج الطباعة (A4, A5, حراري 80مم)">
+                <x-icon name="printer" size="16" />
+                <span>طباعة الفاتورة</span>
+            </button>
 
             <a href="{{ route('sales.index') }}" class="erp-btn erp-btn-ghost">
                 <x-icon name="arrow-left" size="16" />

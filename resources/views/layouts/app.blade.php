@@ -75,6 +75,9 @@
 
     <!-- Odoo 3x3 App Launcher Drawer -->
     <x-app-launcher />
+
+    <!-- Universal Print Options Modal -->
+    <x-universal-print-modal />
 </div>
 
 @stack('scripts')

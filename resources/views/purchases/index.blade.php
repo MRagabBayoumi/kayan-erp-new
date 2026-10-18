@@ -213,13 +213,19 @@
                                             <x-icon name="eye" size="14" />
                                         </a>
 
-                                        <button type="button" data-action="python-direct-print" data-url="{{ route('purchases.direct-print', $inv) }}" class="erp-btn erp-btn-ghost erp-btn-icon text-[var(--primary)]" title="طباعة فورية بايثون">
+                                        <button type="button" 
+                                            data-action="open-print-modal"
+                                            data-print-title="فاتورة مشتريات: {{ $inv->invoice_number }}"
+                                            data-url-a4="{{ route('purchases.print', [$inv, 'format' => 'a4']) }}"
+                                            data-url-a5="{{ route('purchases.print', [$inv, 'format' => 'a5']) }}"
+                                            data-url-thermal="{{ route('purchases.print', [$inv, 'format' => 'thermal_80mm']) }}"
+                                            data-direct-url-a4="{{ route('purchases.direct-print', [$inv, 'format' => 'a4']) }}"
+                                            data-direct-url-a5="{{ route('purchases.direct-print', [$inv, 'format' => 'a5']) }}"
+                                            data-direct-url-thermal="{{ route('purchases.direct-print', [$inv, 'format' => 'thermal_80mm']) }}"
+                                            class="erp-btn erp-btn-ghost erp-btn-icon text-[var(--primary)]" 
+                                            title="خيارات الطباعة (A4, A5, حراري)">
                                             <x-icon name="printer" size="14" />
                                         </button>
-
-                                        <a href="{{ route('purchases.print', [$inv, 'format' => 'a4']) }}" target="_blank" class="erp-btn erp-btn-ghost erp-btn-icon text-[var(--primary)]" title="طباعة الفاتورة (A4)">
-                                            <x-icon name="file-text" size="14" />
-                                        </a>
 
                                         @if($inv->status === 'draft')
                                             <form action="{{ route('purchases.post', $inv) }}" method="POST" data-confirm="هل أنت متأكد من ترحيل هذه الفاتورة وإيداع البضاعة في المستودع؟">

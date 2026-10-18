@@ -148,6 +148,7 @@ Route::middleware('auth')->group(function () {
 
         // Purchase Returns (مرتجعات المشتريات والتوريد)
         Route::get('/purchase-returns/{purchase_return}/print', [PurchaseReturnController::class, 'print'])->name('purchase-returns.print');
+        Route::post('/purchase-returns/{purchase_return}/direct-print', [PurchaseReturnController::class, 'directPrint'])->name('purchase-returns.direct-print');
         Route::post('/purchase-returns/{purchase_return}/post', [PurchaseReturnController::class, 'post'])
             ->middleware('can:post-purchase-invoice')
             ->name('purchase-returns.post');

@@ -231,6 +231,7 @@ class PortalController extends Controller
     public function createOrder(Request $request): View
     {
         $user = auth()->user();
+        $isAdmin = $user && ($user->isAdmin() || $user->can('manage-inventory'));
 
         $customers = Customer::active()
             ->when(! $user->isAdmin(), fn ($q) => $q->where('sales_rep_id', $user->id))
@@ -239,22 +240,35 @@ class PortalController extends Controller
 
         $warehouses = $user->getAllowedWarehouses();
         $selectedCustomerId = $request->input('customer_id');
+        $selectedProductId = $request->input('product_id');
 
         $products = Product::active()
             ->with(['category', 'stockBalances'])
             ->orderBy('name')
             ->get()
-            ->map(function ($p) {
+            ->map(function ($p) use ($isAdmin) {
+                $totalStock = (float) $p->stockBalances->sum('quantity');
+                $threshold = ($p->min_stock_alert && (float) $p->min_stock_alert > 0)
+                    ? (float) $p->min_stock_alert
+                    : 1.0;
+                $isAvailable = $totalStock >= $threshold;
+
                 return [
                     'id' => $p->id,
                     'name' => $p->name,
                     'sku' => $p->sku,
                     'barcode' => $p->barcode,
-                    'retail_price' => (float) $p->retail_price,
+                    'image_url' => $p->image_url,
                     'wholesale_price' => (float) $p->wholesale_price,
-                    'distributor_price' => (float) $p->distributor_price,
+                    'retail_price' => $isAdmin ? (float) $p->retail_price : (float) $p->wholesale_price,
+                    'distributor_price' => $isAdmin ? (float) $p->distributor_price : (float) $p->wholesale_price,
                     'unit' => $p->unit ?? 'قطعة',
-                    'available_stock' => (float) $p->stockBalances->sum('quantity'),
+                    'is_available' => $isAvailable,
+                    'available_stock' => $isAdmin ? $totalStock : ($isAvailable ? 'متوفر للطلب' : 'غير متوفر'),
+                    'stock_display' => $isAdmin
+                        ? ($isAvailable ? "متوفر ({$totalStock} {$p->unit})" : "غير متوفر ({$totalStock} / حد أدنى {$threshold})")
+                        : ($isAvailable ? 'متوفر للطلب' : 'غير متوفر حالياً'),
+                    'min_stock_alert' => (float) $p->min_stock_alert,
                 ];
             });
 
@@ -263,9 +277,11 @@ class PortalController extends Controller
         return view('portal.orders.create', [
             'customers' => $customers,
             'selectedCustomerId' => $selectedCustomerId,
+            'selectedProductId' => $selectedProductId,
             'warehouses' => $warehouses,
             'productsJson' => $products->toJson(JSON_UNESCAPED_UNICODE),
             'units' => $units,
+            'isAdmin' => $isAdmin,
         ]);
     }
 

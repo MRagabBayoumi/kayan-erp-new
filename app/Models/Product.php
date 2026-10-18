@@ -120,6 +120,26 @@ class Product extends Model
     }
 
     /**
+     * Minimum stock threshold for sales rep order availability.
+     * Bound to min_stock_alert if set (> 0), otherwise 1.0.
+     */
+    public function getRepStockThresholdAttribute(): float
+    {
+        return ($this->min_stock_alert && (float) $this->min_stock_alert > 0)
+            ? (float) $this->min_stock_alert
+            : 1.0;
+    }
+
+    /**
+     * Determine whether product is available for field sales reps.
+     * Rep availability strictly requires total stock >= rep stock threshold.
+     */
+    public function isAvailableForSalesRep(): bool
+    {
+        return $this->total_stock >= $this->rep_stock_threshold;
+    }
+
+    /**
      * Conversion factor of the product's registered unit to base pieces.
      * For 'قطعة' (piece), factor is ALWAYS 1.0.
      */

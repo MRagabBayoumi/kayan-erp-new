@@ -71,5 +71,86 @@ export function initCommonUI() {
             span.textContent = allChecked ? 'تحديد الكل' : 'إلغاء التحديد';
         }
     });
+
+    // 5. Initialize Universal Print Modal
+    initUniversalPrintModal();
+}
+
+/**
+ * Universal Print Modal Controller
+ * Binds [data-action="open-print-modal"] triggers to the global modal
+ */
+export function initUniversalPrintModal() {
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-action="open-print-modal"]');
+        if (!btn) return;
+        e.preventDefault();
+
+        const modal = document.getElementById('universalPrintModal');
+        if (!modal) return;
+
+        const title = btn.dataset.printTitle || 'خيارات طباعة المستند';
+        const urlA4 = btn.dataset.urlA4 || '#';
+        const urlA5 = btn.dataset.urlA5 || '#';
+        const urlThermal = btn.dataset.urlThermal || '#';
+        const directA4 = btn.dataset.directUrlA4 || '';
+        const directA5 = btn.dataset.directUrlA5 || '';
+        const directThermal = btn.dataset.directUrlThermal || '';
+
+        const titleEl = modal.querySelector('#printModalDocTitle');
+        if (titleEl) titleEl.textContent = title;
+
+        const linkA4 = modal.querySelector('#printModalLinkA4');
+        if (linkA4) linkA4.href = urlA4;
+
+        const linkA5 = modal.querySelector('#printModalLinkA5');
+        if (linkA5) linkA5.href = urlA5;
+
+        const linkThermal = modal.querySelector('#printModalLinkThermal');
+        if (linkThermal) linkThermal.href = urlThermal;
+
+        const btnDirectA4 = modal.querySelector('#printModalDirectA4');
+        if (btnDirectA4) {
+            btnDirectA4.dataset.url = directA4;
+            btnDirectA4.style.display = directA4 ? 'inline-flex' : 'none';
+        }
+
+        const btnDirectA5 = modal.querySelector('#printModalDirectA5');
+        if (btnDirectA5) {
+            btnDirectA5.dataset.url = directA5;
+            btnDirectA5.style.display = directA5 ? 'inline-flex' : 'none';
+        }
+
+        const btnDirectThermal = modal.querySelector('#printModalDirectThermal');
+        if (btnDirectThermal) {
+            btnDirectThermal.dataset.url = directThermal;
+            btnDirectThermal.style.display = directThermal ? 'inline-flex' : 'none';
+        }
+
+        modal.classList.add('open');
+        modal.setAttribute('aria-hidden', 'false');
+    });
+
+    // Close Modal triggers
+    document.addEventListener('click', (e) => {
+        if (e.target.closest('[data-action="close-print-modal"]') || e.target.id === 'universalPrintModal') {
+            const modal = document.getElementById('universalPrintModal');
+            if (modal) {
+                modal.classList.remove('open');
+                modal.setAttribute('aria-hidden', 'true');
+            }
+        }
+    });
+
+    // Close on Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            const modal = document.getElementById('universalPrintModal');
+            if (modal && modal.classList.contains('open')) {
+                modal.classList.remove('open');
+                modal.setAttribute('aria-hidden', 'true');
+            }
+        }
+    });
 }
 

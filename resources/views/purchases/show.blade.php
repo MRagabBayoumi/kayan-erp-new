@@ -36,23 +36,20 @@
                 </a>
             @endif
 
-            <button type="button" data-action="python-direct-print" data-url="{{ route('purchases.direct-print', $invoice) }}" class="erp-btn erp-btn-primary" title="طباعة مباشرة بطابعة الإيصالات عبر بايثون">
+            <!-- Universal Print Trigger -->
+            <button type="button" class="erp-btn erp-btn-secondary" 
+                data-action="open-print-modal"
+                data-print-title="فاتورة مشتريات: {{ $invoice->invoice_number }}"
+                data-url-a4="{{ route('purchases.print', [$invoice, 'format' => 'a4']) }}"
+                data-url-a5="{{ route('purchases.print', [$invoice, 'format' => 'a5']) }}"
+                data-url-thermal="{{ route('purchases.print', [$invoice, 'format' => 'thermal_80mm']) }}"
+                data-direct-url-a4="{{ route('purchases.direct-print', [$invoice, 'format' => 'a4']) }}"
+                data-direct-url-a5="{{ route('purchases.direct-print', [$invoice, 'format' => 'a5']) }}"
+                data-direct-url-thermal="{{ route('purchases.direct-print', [$invoice, 'format' => 'thermal_80mm']) }}"
+                title="خيارات ونماذج الطباعة (A4, A5, حراري 80مم)">
                 <x-icon name="printer" size="16" />
-                <span>طباعة بايثون المباشرة</span>
+                <span>طباعة الفاتورة</span>
             </button>
-
-            <div class="inline-flex items-center gap-1">
-                <a href="{{ route('purchases.print', [$invoice, 'format' => 'a4']) }}" target="_blank" class="erp-btn erp-btn-secondary" title="فتح نافذة طباعة رسمية على ورق A4">
-                    <x-icon name="printer" size="16" />
-                    <span>طباعة الفاتورة (A4)</span>
-                </a>
-                <a href="{{ route('purchases.print', [$invoice, 'format' => 'a5']) }}" target="_blank" class="erp-btn erp-btn-ghost text-xs px-2" title="طباعة مقاس A5">
-                    <span>A5</span>
-                </a>
-                <a href="{{ route('purchases.print', [$invoice, 'format' => 'thermal_80mm']) }}" target="_blank" class="erp-btn erp-btn-ghost text-xs px-2" title="طباعة إيصال حراري 80 مم">
-                    <span>80 مم</span>
-                </a>
-            </div>
 
             @if($invoice->status === 'posted' && (float)$invoice->remaining_amount > 0)
                 <button type="button" onclick="document.getElementById('recordSupplierPaymentModal').classList.remove('hidden')" class="erp-btn erp-btn-success">

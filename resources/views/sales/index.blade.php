@@ -293,15 +293,19 @@
                                                     </button>
                                                 </form>
                                             @endif
-                                            <button type="button" data-action="python-direct-print" data-url="{{ route('sales.direct-print', $inv) }}" class="erp-btn erp-btn-ghost erp-btn-sm text-[var(--primary)]" title="طباعة فورية بايثون">
+                                            <button type="button" 
+                                                data-action="open-print-modal"
+                                                data-print-title="فاتورة مبيعات: {{ $inv->invoice_number }}"
+                                                data-url-a4="{{ route('sales.print', [$inv, 'format' => 'a4']) }}"
+                                                data-url-a5="{{ route('sales.print', [$inv, 'format' => 'a5']) }}"
+                                                data-url-thermal="{{ route('sales.print', [$inv, 'format' => 'thermal_80mm']) }}"
+                                                data-direct-url-a4="{{ route('sales.direct-print', [$inv, 'format' => 'a4']) }}"
+                                                data-direct-url-a5="{{ route('sales.direct-print', [$inv, 'format' => 'a5']) }}"
+                                                data-direct-url-thermal="{{ route('sales.direct-print', [$inv, 'format' => 'thermal_80mm']) }}"
+                                                class="erp-btn erp-btn-ghost erp-btn-sm text-[var(--primary)]" 
+                                                title="خيارات الطباعة (A4, A5, حراري)">
                                                 <x-icon name="printer" size="14" />
                                             </button>
-                                            <a href="{{ route('sales.print', [$inv, 'format' => 'a4']) }}" target="_blank" class="erp-btn erp-btn-ghost erp-btn-sm" title="طباعة A4">
-                                                <x-icon name="file-text" size="14" />
-                                            </a>
-                                            <a href="{{ route('sales.print', [$inv, 'format' => 'thermal_80mm']) }}" target="_blank" class="erp-btn erp-btn-ghost erp-btn-sm" title="طباعة 80 مم">
-                                                <x-icon name="printer" size="14" />
-                                            </a>
                                         </div>
                                     </td>
                                 </tr>
