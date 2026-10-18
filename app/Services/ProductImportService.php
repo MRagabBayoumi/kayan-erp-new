@@ -704,6 +704,16 @@ class ProductImportService
 
                 $openingQty = isset($item['opening_quantity']) ? (float) $item['opening_quantity'] : 0.00;
                 $openingCost = isset($item['opening_cost']) ? (float) $item['opening_cost'] : (float) $item['cost_price'];
+                $itemCostPrice = (float) $item['cost_price'];
+
+                // Smart safeguard: if unit is piece and opening_cost equals dozen cost (cost_price * 12), normalize to single piece cost
+                $itemUnit = trim((string) ($item['unit'] ?: 'قطعة'));
+                if (($itemUnit === 'قطعة' || $itemUnit === 'قطعه' || empty($item['unit'])) && $itemCostPrice > 0 && $openingCost > 0) {
+                    if (abs($openingCost - ($itemCostPrice * 12)) < 1.0) {
+                        $openingCost = $itemCostPrice;
+                    }
+                }
+
                 $openingWarehouseId = $item['opening_warehouse_id'] ?? null;
                 $openingDate = ! empty($item['opening_balance_date']) ? $item['opening_balance_date'] : date('Y-m-d');
 
