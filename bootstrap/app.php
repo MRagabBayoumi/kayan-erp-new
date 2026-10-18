@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureActiveAttendanceSession;
 use App\Http\Middleware\EnsureSalesRepScopedToPortal;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -24,6 +25,9 @@ return Application::configure(basePath: dirname(__DIR__))
 
             return route('dashboard');
         });
+        $middleware->alias([
+            'attendance.required' => EnsureActiveAttendanceSession::class,
+        ]);
         $middleware->web(append: [
             EnsureSalesRepScopedToPortal::class,
         ]);

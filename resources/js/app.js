@@ -1,8 +1,9 @@
 /**
- * Kayan ERP — Frontend Application Client
- * Odoo-Inspired Interactions, Theme & Density Engine
+ * Kayan ERP — Frontend Application Client (Single Page Application via Hotwire Turbo)
+ * Odoo-Inspired Interactions, Instant Transitions, Theme & Density Engine
  */
 
+import * as Turbo from '@hotwired/turbo';
 import { initCommonUI } from './common.js';
 import { initBarcodeScanner } from './components/barcode-scanner.js';
 import { initProductForm } from './pages/products-form.js';
@@ -22,14 +23,48 @@ import { initPrintTemplatesPage } from './pages/print-templates.js';
 import { initPortalPage } from './pages/portal.js';
 import { initSalesRepsPage } from './pages/sales-reps.js';
 
-document.addEventListener('DOMContentLoaded', () => {
+// Expose Turbo globally
+window.Turbo = Turbo;
+
+// 1. Forward Laravel CSRF token in all Turbo background requests
+document.addEventListener('turbo:before-fetch-request', (event) => {
+    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    if (token) {
+        event.detail.fetchOptions.headers['X-CSRF-TOKEN'] = token;
+    }
+});
+
+// 2. Close mobile drawers and app launcher upon navigating to another route
+document.addEventListener('turbo:before-visit', () => {
+    if (typeof window.closeAppLauncher === 'function') {
+        window.closeAppLauncher();
+    }
+    const sb = document.getElementById('erpSidebar');
+    const ov = document.getElementById('sidebarOverlay');
+    if (sb && sb.classList.contains('open-mobile')) {
+        sb.classList.remove('open-mobile');
+        if (ov) ov.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+});
+
+// 3. Master Bootstrapper (Fires on initial page load and every Turbo SPA navigation)
+document.addEventListener('turbo:load', () => {
+    // A. One-time global listeners
+    if (!window.__kayanGlobalBooted) {
+        window.__kayanGlobalBooted = true;
+        initKeyboardShortcuts();
+        initDirectPythonPrint();
+        initPwaInstallation();
+        initCommonUI();
+    }
+
+    // B. Page & Navigation binders (Re-run on every SPA page change)
     initThemeAndDensity();
     initAppLauncher();
     initSidebar();
     initDropdowns();
-    initKeyboardShortcuts();
     initGlobalSearch();
-    initCommonUI();
     initBarcodeScanner();
     initProductForm();
     initProductsIndex();
@@ -45,46 +80,43 @@ document.addEventListener('DOMContentLoaded', () => {
     initSales();
     initShifts();
     initPrintTemplatesPage();
-    initDirectPythonPrint();
     initPortalPage();
     initSalesRepsPage();
-    initPwaInstallation();
 });
 
 /**
  * Theme & Density Control
  */
 function initThemeAndDensity() {
-    const themeToggleBtn = document.getElementById('kayanThemeToggle');
-    const densityToggleBtn = document.getElementById('kayanDensityToggle');
+    if (!window.__themeDensityDelegated) {
+        window.__themeDensityDelegated = true;
 
-    // Theme Toggle
-    if (themeToggleBtn) {
-        themeToggleBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            
-            document.documentElement.setAttribute('data-theme', newTheme);
-            localStorage.setItem('kayan_theme', newTheme);
-            updateThemeIcons(newTheme);
+        document.addEventListener('click', (e) => {
+            const themeToggleBtn = e.target.closest('#kayanThemeToggle');
+            if (themeToggleBtn) {
+                e.preventDefault();
+                const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                document.documentElement.setAttribute('data-theme', newTheme);
+                localStorage.setItem('kayan_theme', newTheme);
+                updateThemeIcons(newTheme);
+                return;
+            }
+
+            const densityToggleBtn = e.target.closest('#kayanDensityToggle');
+            if (densityToggleBtn) {
+                e.preventDefault();
+                const currentDensity = document.documentElement.getAttribute('data-density') || 'comfortable';
+                const newDensity = currentDensity === 'enterprise' ? 'comfortable' : 'enterprise';
+                document.documentElement.setAttribute('data-density', newDensity);
+                localStorage.setItem('kayan_density', newDensity);
+                updateDensityButton(newDensity);
+                return;
+            }
         });
     }
 
-    // Density Toggle (Comfortable vs Enterprise Table View)
-    if (densityToggleBtn) {
-        densityToggleBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            const currentDensity = document.documentElement.getAttribute('data-density') || 'comfortable';
-            const newDensity = currentDensity === 'enterprise' ? 'comfortable' : 'enterprise';
-            
-            document.documentElement.setAttribute('data-density', newDensity);
-            localStorage.setItem('kayan_density', newDensity);
-            updateDensityButton(newDensity);
-        });
-    }
-
-    // Set initial icon states
+    // Set initial icon states on each page load
     const activeTheme = document.documentElement.getAttribute('data-theme') || 'light';
     updateThemeIcons(activeTheme);
 
@@ -111,40 +143,47 @@ function updateDensityButton(density) {
  * App Launcher (Odoo 3x3 App Drawer)
  */
 function initAppLauncher() {
-    const launcherBtns = document.querySelectorAll('[data-action="open-app-launcher"]');
-    const backdrop = document.getElementById('appLauncherBackdrop');
-    const closeBtn = document.getElementById('appLauncherClose');
+    if (!window.__appLauncherDelegated) {
+        window.__appLauncherDelegated = true;
 
-    if (!backdrop) return;
-
-    function openLauncher() {
-        backdrop.classList.add('open');
-        document.body.style.overflow = 'hidden';
-    }
-
-    function closeLauncher() {
-        backdrop.classList.remove('open');
-        document.body.style.overflow = '';
-    }
-
-    launcherBtns.forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.preventDefault();
-            openLauncher();
-        });
-    });
-
-    if (closeBtn) {
-        closeBtn.addEventListener('click', closeLauncher);
-    }
-
-    backdrop.addEventListener('click', (e) => {
-        if (e.target === backdrop) {
-            closeLauncher();
+        function openLauncher() {
+            const backdrop = document.getElementById('appLauncherBackdrop');
+            if (backdrop) {
+                backdrop.classList.add('open');
+                document.body.style.overflow = 'hidden';
+            }
         }
-    });
 
-    window.closeAppLauncher = closeLauncher;
+        function closeLauncher() {
+            const backdrop = document.getElementById('appLauncherBackdrop');
+            if (backdrop) {
+                backdrop.classList.remove('open');
+                document.body.style.overflow = '';
+            }
+        }
+
+        window.closeAppLauncher = closeLauncher;
+
+        document.addEventListener('click', (e) => {
+            const launcherBtn = e.target.closest('[data-action="open-app-launcher"]');
+            if (launcherBtn) {
+                e.preventDefault();
+                openLauncher();
+                return;
+            }
+
+            const closeBtn = e.target.closest('#appLauncherClose');
+            if (closeBtn) {
+                closeLauncher();
+                return;
+            }
+
+            const backdrop = document.getElementById('appLauncherBackdrop');
+            if (backdrop && e.target === backdrop) {
+                closeLauncher();
+            }
+        });
+    }
 }
 
 /**
@@ -152,10 +191,6 @@ function initAppLauncher() {
  */
 function initSidebar() {
     const sidebar = document.getElementById('erpSidebar');
-    const desktopToggle = document.getElementById('sidebarDesktopToggle');
-    const topbarToggle = document.getElementById('sidebarToggleBtn') || document.getElementById('sidebarMobileToggle');
-    const overlay = document.getElementById('sidebarOverlay');
-
     if (!sidebar) return;
 
     function isMobile() {
@@ -163,33 +198,40 @@ function initSidebar() {
     }
 
     function openMobileSidebar() {
-        sidebar.classList.add('open-mobile');
-        if (overlay) overlay.classList.add('active');
+        const sb = document.getElementById('erpSidebar');
+        const ov = document.getElementById('sidebarOverlay');
+        if (sb) sb.classList.add('open-mobile');
+        if (ov) ov.classList.add('active');
         document.body.style.overflow = 'hidden';
         updateSidebarAria();
     }
 
     function closeMobileSidebar() {
-        sidebar.classList.remove('open-mobile');
-        if (overlay) overlay.classList.remove('active');
+        const sb = document.getElementById('erpSidebar');
+        const ov = document.getElementById('sidebarOverlay');
+        if (sb) sb.classList.remove('open-mobile');
+        if (ov) ov.classList.remove('active');
         document.body.style.overflow = '';
         updateSidebarAria();
     }
 
     function toggleSidebar() {
         if (isMobile()) {
-            if (sidebar.classList.contains('open-mobile')) {
+            const sb = document.getElementById('erpSidebar');
+            if (sb && sb.classList.contains('open-mobile')) {
                 closeMobileSidebar();
             } else {
                 openMobileSidebar();
             }
         } else {
-            const isCurrentlyCollapsed = sidebar.classList.contains('collapsed');
-            if (isCurrentlyCollapsed) {
-                sidebar.classList.remove('collapsed');
+            const sb = document.getElementById('erpSidebar');
+            if (!sb) return;
+            const isCollapsed = sb.classList.contains('collapsed');
+            if (isCollapsed) {
+                sb.classList.remove('collapsed');
                 localStorage.setItem('kayan_sidebar_collapsed', 'false');
             } else {
-                sidebar.classList.add('collapsed');
+                sb.classList.add('collapsed');
                 localStorage.setItem('kayan_sidebar_collapsed', 'true');
             }
             updateSidebarAria();
@@ -197,8 +239,13 @@ function initSidebar() {
     }
 
     function updateSidebarAria() {
-        const isCollapsed = sidebar.classList.contains('collapsed');
-        const isOpenMobile = sidebar.classList.contains('open-mobile');
+        const sb = document.getElementById('erpSidebar');
+        if (!sb) return;
+        const desktopToggle = document.getElementById('sidebarDesktopToggle');
+        const topbarToggle = document.getElementById('sidebarToggleBtn') || document.getElementById('sidebarMobileToggle');
+
+        const isCollapsed = sb.classList.contains('collapsed');
+        const isOpenMobile = sb.classList.contains('open-mobile');
         const isExpanded = isMobile() ? isOpenMobile : !isCollapsed;
 
         if (desktopToggle) {
@@ -224,65 +271,62 @@ function initSidebar() {
     }
     updateSidebarAria();
 
-    // Event listeners
-    if (topbarToggle) {
-        topbarToggle.addEventListener('click', (e) => {
-            e.stopPropagation();
-            toggleSidebar();
-        });
-    }
+    if (!window.__sidebarDelegated) {
+        window.__sidebarDelegated = true;
 
-    if (desktopToggle) {
-        desktopToggle.addEventListener('click', (e) => {
-            e.stopPropagation();
-            toggleSidebar();
-        });
-    }
-
-    if (overlay) {
-        overlay.addEventListener('click', closeMobileSidebar);
-    }
-
-    // Close mobile sidebar on outside click
-    document.addEventListener('click', (e) => {
-        if (isMobile() && sidebar.classList.contains('open-mobile')) {
-            if (!sidebar.contains(e.target) && !topbarToggle?.contains(e.target)) {
-                closeMobileSidebar();
+        document.addEventListener('click', (e) => {
+            const toggle = e.target.closest('#sidebarToggleBtn, #sidebarMobileToggle, #sidebarDesktopToggle');
+            if (toggle) {
+                e.stopPropagation();
+                toggleSidebar();
+                return;
             }
-        }
-    });
 
-    // Window resize handling
-    window.addEventListener('resize', () => {
-        if (!isMobile()) {
-            closeMobileSidebar();
-            const pref = localStorage.getItem('kayan_sidebar_collapsed') === 'true';
-            sidebar.classList.toggle('collapsed', pref);
-        } else {
-            sidebar.classList.remove('collapsed');
-        }
-        updateSidebarAria();
-    });
+            const overlay = e.target.closest('#sidebarOverlay');
+            if (overlay) {
+                closeMobileSidebar();
+                return;
+            }
 
-    window.toggleSidebar = toggleSidebar;
-    window.openMobileSidebar = openMobileSidebar;
-    window.closeMobileSidebar = closeMobileSidebar;
+            const sb = document.getElementById('erpSidebar');
+            const tbToggle = document.getElementById('sidebarToggleBtn') || document.getElementById('sidebarMobileToggle');
+            if (isMobile() && sb && sb.classList.contains('open-mobile')) {
+                if (!sb.contains(e.target) && !tbToggle?.contains(e.target)) {
+                    closeMobileSidebar();
+                }
+            }
+        });
+
+        window.addEventListener('resize', () => {
+            const sb = document.getElementById('erpSidebar');
+            if (!sb) return;
+            if (!isMobile()) {
+                closeMobileSidebar();
+                const pref = localStorage.getItem('kayan_sidebar_collapsed') === 'true';
+                sb.classList.toggle('collapsed', pref);
+            } else {
+                sb.classList.remove('collapsed');
+            }
+            updateSidebarAria();
+        });
+    }
 }
 
 /**
- * Generic Dropdown Handlers
+ * Generic Dropdown Handlers (Delegated)
  */
 function initDropdowns() {
-    const toggles = document.querySelectorAll('[data-dropdown-toggle]');
+    if (window.__dropdownsDelegated) return;
+    window.__dropdownsDelegated = true;
 
-    toggles.forEach(toggle => {
-        const targetId = toggle.getAttribute('data-dropdown-toggle');
-        const menu = document.getElementById(targetId);
-
-        if (!menu) return;
-
-        toggle.addEventListener('click', (e) => {
+    document.addEventListener('click', (e) => {
+        const toggle = e.target.closest('[data-dropdown-toggle]');
+        if (toggle) {
             e.stopPropagation();
+            const targetId = toggle.getAttribute('data-dropdown-toggle');
+            const menu = document.getElementById(targetId);
+            if (!menu) return;
+
             const isOpen = menu.classList.contains('open');
 
             // Close other open menus
@@ -290,18 +334,12 @@ function initDropdowns() {
                 if (el !== menu) el.classList.remove('open');
             });
 
-            if (isOpen) {
-                menu.classList.remove('open');
-            } else {
-                menu.classList.add('open');
-            }
-        });
-    });
+            menu.classList.toggle('open', !isOpen);
+            return;
+        }
 
-    // Close dropdowns on outside click
-    document.addEventListener('click', (e) => {
+        // Close dropdowns on outside click
         document.querySelectorAll('.erp-dropdown-menu.open').forEach(menu => {
-            // Keep menu open when interacting with its contents (e.g. checkboxes, labels, inputs)
             if (menu.contains(e.target) && !e.target.closest('.erp-dropdown-item:not(.keep-open)')) {
                 return;
             }
@@ -327,14 +365,8 @@ function initKeyboardShortcuts() {
 
         // Escape: Close modals, drawers, and dropdowns
         if (e.key === 'Escape' || e.key === 'Esc' || e.keyCode === 27) {
-            const launcherBackdrop = document.getElementById('appLauncherBackdrop');
-            if (launcherBackdrop && launcherBackdrop.classList.contains('open')) {
-                if (typeof window.closeAppLauncher === 'function') {
-                    window.closeAppLauncher();
-                } else {
-                    launcherBackdrop.classList.remove('open');
-                    document.body.style.overflow = '';
-                }
+            if (typeof window.closeAppLauncher === 'function') {
+                window.closeAppLauncher();
             }
 
             document.querySelectorAll('.erp-dropdown-menu.open').forEach(menu => {
@@ -342,8 +374,11 @@ function initKeyboardShortcuts() {
             });
 
             const sidebar = document.getElementById('erpSidebar');
+            const overlay = document.getElementById('sidebarOverlay');
             if (sidebar && sidebar.classList.contains('open-mobile')) {
                 sidebar.classList.remove('open-mobile');
+                if (overlay) overlay.classList.remove('active');
+                document.body.style.overflow = '';
             }
         }
     });
@@ -353,14 +388,19 @@ function initKeyboardShortcuts() {
  * Global Search in Topbar
  */
 function initGlobalSearch() {
-    const searchInput = document.getElementById('globalSearchInput');
-    if (searchInput) {
-        searchInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
+    if (!window.__globalSearchDelegated) {
+        window.__globalSearchDelegated = true;
+
+        document.addEventListener('keydown', (e) => {
+            if (e.target && e.target.id === 'globalSearchInput' && e.key === 'Enter') {
                 e.preventDefault();
-                const q = searchInput.value.trim();
+                const q = e.target.value.trim();
                 if (q) {
-                    window.location.href = '/products?search=' + encodeURIComponent(q);
+                    if (window.Turbo) {
+                        window.Turbo.visit('/products?search=' + encodeURIComponent(q));
+                    } else {
+                        window.location.href = '/products?search=' + encodeURIComponent(q);
+                    }
                 }
             }
         });
@@ -468,5 +508,3 @@ function initPwaInstallation() {
         });
     });
 }
-
-

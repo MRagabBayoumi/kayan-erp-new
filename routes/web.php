@@ -312,25 +312,31 @@ Route::middleware('auth')->group(function () {
         Route::post('/attendance/check-in', [PortalAttendanceController::class, 'checkIn'])->name('attendance.check-in');
         Route::post('/attendance/check-out', [PortalAttendanceController::class, 'checkOut'])->name('attendance.check-out');
 
-        // GPS Customer Visits
-        Route::get('/visits', [PortalVisitController::class, 'index'])->name('visits.index');
-        Route::get('/visits/create', [PortalVisitController::class, 'create'])->name('visits.create');
-        Route::post('/visits', [PortalVisitController::class, 'store'])->name('visits.store');
-        Route::get('/visits/{visit}', [PortalVisitController::class, 'show'])->name('visits.show');
-        Route::post('/visits/{visit}/complete', [PortalVisitController::class, 'complete'])->name('visits.complete');
-
-        // Customer field registration & directory
+        // Customer field directory (Viewing)
         Route::get('/customers', [PortalController::class, 'customers'])->name('customers.index');
-        Route::get('/customers/create', [PortalController::class, 'createCustomer'])->name('customers.create');
-        Route::post('/customers', [PortalController::class, 'storeCustomer'])->name('customers.store');
-
-        // Mobile Orders & Invoicing
-        Route::get('/orders', [PortalController::class, 'orders'])->name('orders.index');
-        Route::get('/orders/create', [PortalController::class, 'createOrder'])->name('orders.create');
-        Route::post('/orders', [PortalController::class, 'storeOrder'])->name('orders.store');
-        Route::get('/orders/{invoice}', [PortalController::class, 'showOrder'])->name('orders.show');
 
         // Commissions Statement
         Route::get('/commissions', [PortalController::class, 'commissions'])->name('commissions');
+
+        // Active Working Session Gated Operations (Requires GPS-Verified Attendance)
+        Route::middleware('attendance.required')->group(function () {
+            Route::get('/visits/create', [PortalVisitController::class, 'create'])->name('visits.create');
+            Route::post('/visits', [PortalVisitController::class, 'store'])->name('visits.store');
+            Route::post('/visits/{visit}/complete', [PortalVisitController::class, 'complete'])->name('visits.complete');
+
+            Route::get('/customers/create', [PortalController::class, 'createCustomer'])->name('customers.create');
+            Route::post('/customers', [PortalController::class, 'storeCustomer'])->name('customers.store');
+
+            Route::get('/orders/create', [PortalController::class, 'createOrder'])->name('orders.create');
+            Route::post('/orders', [PortalController::class, 'storeOrder'])->name('orders.store');
+        });
+
+        // GPS Customer Visits (Viewing & Parameterized)
+        Route::get('/visits', [PortalVisitController::class, 'index'])->name('visits.index');
+        Route::get('/visits/{visit}', [PortalVisitController::class, 'show'])->name('visits.show');
+
+        // Mobile Orders & Invoicing (Viewing & Parameterized)
+        Route::get('/orders', [PortalController::class, 'orders'])->name('orders.index');
+        Route::get('/orders/{invoice}', [PortalController::class, 'showOrder'])->name('orders.show');
     });
 });

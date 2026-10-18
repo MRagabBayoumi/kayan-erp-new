@@ -215,8 +215,8 @@
 
 @push('scripts')
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Live Clock
+(function() {
+    function initAttendanceScreen() {
         const liveClockEl = document.getElementById('liveClock');
         function updateClock() {
             const now = new Date();
@@ -227,47 +227,111 @@
         setInterval(updateClock, 1000);
         updateClock();
 
-        // Check In Handling with GPS
+        // Check In Handling with STRICT Mandatory GPS
         const checkInBtn = document.getElementById('checkInBtn');
         const checkInForm = document.getElementById('checkInForm');
         const checkInLat = document.getElementById('checkInLat');
         const checkInLng = document.getElementById('checkInLng');
         const gpsStatusText = document.getElementById('gpsStatusText');
+        const gpsStatusBox = document.getElementById('gpsStatusBox');
 
+        let currentCoordinates = null;
+
+        function acquireGps(onSuccess, onError) {
+            if (!navigator.geolocation) {
+                if (onError) onError('عذراً، متصفح هاتفك لا يدعم خدمة تحديد الموقع GPS.');
+                return;
+            }
+
+            if (gpsStatusText) {
+                gpsStatusText.innerHTML = '<span class="inline-block animate-spin mr-1">⏳</span> جارٍ الاتصال بالأقمار الصناعية لتحديد موقعك الميداني بدقة...';
+                gpsStatusText.className = 'text-amber-600 font-bold';
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    currentCoordinates = {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude,
+                        accuracy: Math.round(position.coords.accuracy || 0)
+                    };
+
+                    if (checkInLat) checkInLat.value = currentCoordinates.lat;
+                    if (checkInLng) checkInLng.value = currentCoordinates.lng;
+
+                    if (gpsStatusText) {
+                        gpsStatusText.innerHTML = `
+                            <div class="flex items-center justify-center gap-2 text-emerald-700 font-bold">
+                                <span>✅ تم رصد موقعك الجغرافي الميداني بنجاح:</span>
+                                <span class="font-numeric dir-ltr text-xs">(${currentCoordinates.lat.toFixed(5)}, ${currentCoordinates.lng.toFixed(5)})</span>
+                                <span class="text-[11px] font-normal text-emerald-600">(دقة: ±${currentCoordinates.accuracy}م)</span>
+                            </div>
+                        `;
+                        gpsStatusText.className = 'text-emerald-700 font-bold';
+                    }
+
+                    if (gpsStatusBox) {
+                        gpsStatusBox.className = 'p-3 rounded-lg bg-emerald-50 border border-emerald-300 text-xs max-w-md mx-auto';
+                    }
+
+                    if (onSuccess) onSuccess(currentCoordinates);
+                },
+                function(error) {
+                    currentCoordinates = null;
+                    let errorMsg = 'تعذر التقاط الموقع بدقة.';
+                    if (error.code === 1) {
+                        errorMsg = 'تم رفض إذن الوصول للموقع (GPS). يجب السماح بالوصول لموقعك في إعدادات المتصفح/الهاتف لتتمكن من تسجيل الحضور.';
+                    } else if (error.code === 2) {
+                        errorMsg = 'موقع الـ GPS غير متاح حالياً. يرجى التأكد من تشغيل خاصية الموقع في الهاتف.';
+                    } else if (error.code === 3) {
+                        errorMsg = 'استغرق تحديد الموقع وقتاً طويلاً. يرجى الخروج لمكان مفتوح والمحاولة مجدداً.';
+                    }
+
+                    if (gpsStatusText) {
+                        gpsStatusText.innerHTML = `<span class="text-rose-600 font-bold">⚠️ ${errorMsg}</span>`;
+                        gpsStatusText.className = 'text-rose-600 font-bold';
+                    }
+
+                    if (gpsStatusBox) {
+                        gpsStatusBox.className = 'p-3 rounded-lg bg-rose-50 border border-rose-300 text-xs max-w-md mx-auto';
+                    }
+
+                    if (onError) onError(errorMsg);
+                },
+                { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+            );
+        }
+
+        // Auto warm-up GPS immediately on page load
         if (checkInBtn) {
-            checkInBtn.addEventListener('click', function() {
-                if (!navigator.geolocation) {
-                    alert('عذراً، متصفح هاتفك لا يدعم خدمة تحديد الموقع GPS.');
+            acquireGps();
+
+            checkInBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+
+                if (currentCoordinates && checkInLat.value && checkInLng.value) {
+                    checkInBtn.disabled = true;
+                    checkInBtn.innerHTML = '<span>جارٍ حفظ الحضور...</span>';
+                    checkInForm.submit();
                     return;
                 }
 
+                // If not yet acquired, force acquire and then submit
                 checkInBtn.disabled = true;
-                gpsStatusText.textContent = 'جارٍ تحديد موقعك عبر الأقمار الصناعية (GPS)...';
-                gpsStatusText.className = 'text-[var(--primary)] font-bold';
-
-                navigator.geolocation.getCurrentPosition(
-                    function(position) {
-                        checkInLat.value = position.coords.latitude;
-                        checkInLng.value = position.coords.longitude;
-                        gpsStatusText.textContent = 'تم التقاط الموقع بنجاح! جارٍ تسجيل الحضور...';
-                        gpsStatusText.className = 'text-emerald-700 font-bold';
+                acquireGps(
+                    function(coords) {
+                        checkInBtn.innerHTML = '<span>جارٍ حفظ الحضور...</span>';
                         checkInForm.submit();
                     },
-                    function(error) {
+                    function(err) {
                         checkInBtn.disabled = false;
-                        gpsStatusText.textContent = 'تعذر التقاط الموقع: ' + (error.message || 'يرجى تفعيل صلاحية الموقع بهاتفك.');
-                        gpsStatusText.className = 'text-rose-600 font-bold';
-                        // Allow submit even if GPS denied with warning
-                        if (confirm('تعذر التقاط الـ GPS بدقة. هل ترغب في تسجيل الحضور بدون إحداثيات؟')) {
-                            checkInForm.submit();
-                        }
-                    },
-                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                        alert('لا يمكن تسجيل الحضور بدون تفعيل موقع الـ GPS الميداني: ' + err);
+                    }
                 );
             });
         }
 
-        // Live Working Timer
+        // Live Working Timer and Check-out
         @if($todayAttendance && $todayAttendance->status === 'present' && ! $todayAttendance->check_out_time)
             const checkInTimestamp = new Date("{{ $todayAttendance->check_in_time->toIso8601String() }}").getTime();
             const timerEl = document.getElementById('workingTimer');
@@ -288,7 +352,7 @@
             setInterval(updateWorkTimer, 1000);
             updateWorkTimer();
 
-            // Check Out Handling with GPS
+            // Check Out with Mandatory GPS
             const checkOutBtn = document.getElementById('checkOutBtn');
             const checkOutForm = document.getElementById('checkOutForm');
             const checkOutLat = document.getElementById('checkOutLat');
@@ -296,34 +360,51 @@
             const checkOutGpsText = document.getElementById('checkOutGpsText');
 
             if (checkOutBtn) {
-                checkOutBtn.addEventListener('click', function() {
-                    if (!confirm('هل أنت متأكد من رغبتك في تسجيل الانصراف وإنهاء يوم العمل؟')) {
+                checkOutBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    if (!confirm('هل أنت متأكد من رغبتك في تسجيل الانصراف وإنهاء يوم العمل؟ سيتم توثيق موقع مغادرتك عبر GPS.')) {
                         return;
                     }
 
                     checkOutBtn.disabled = true;
-                    if (navigator.geolocation) {
-                        checkOutGpsText.textContent = 'جارٍ التقاط موقع الانصراف...';
-                        checkOutGpsText.className = 'text-[var(--primary)] font-bold';
-
-                        navigator.geolocation.getCurrentPosition(
-                            function(position) {
-                                checkOutLat.value = position.coords.latitude;
-                                checkOutLng.value = position.coords.longitude;
-                                checkOutForm.submit();
-                            },
-                            function(error) {
-                                checkOutForm.submit();
-                            },
-                            { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
-                        );
-                    } else {
-                        checkOutForm.submit();
+                    if (checkOutGpsText) {
+                        checkOutGpsText.innerHTML = '<span class="text-amber-600 font-bold">جارٍ توثيق موقع الانصراف عبر الأقمار الصناعية (GPS)...</span>';
                     }
+
+                    if (!navigator.geolocation) {
+                        alert('خدمة الـ GPS غير مدعومة بالمتصفح.');
+                        checkOutBtn.disabled = false;
+                        return;
+                    }
+
+                    navigator.geolocation.getCurrentPosition(
+                        function(position) {
+                            checkOutLat.value = position.coords.latitude;
+                            checkOutLng.value = position.coords.longitude;
+                            checkOutBtn.innerHTML = '<span>جارٍ إنهاء الوردية...</span>';
+                            checkOutForm.submit();
+                        },
+                        function(error) {
+                            checkOutBtn.disabled = false;
+                            alert('يجب تشغيل الموقع (GPS) وتأكيد الصلاحية لتسجيل الانصراف بنجاح.');
+                            if (checkOutGpsText) {
+                                checkOutGpsText.innerHTML = '<span class="text-rose-600 font-bold">تعذر التقاط موقع الانصراف. يرجى تفعيل الموقع والمحاولة مجدداً.</span>';
+                            }
+                        },
+                        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+                    );
                 });
             }
         @endif
-    });
+    }
+
+    document.addEventListener('turbo:load', initAttendanceScreen);
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initAttendanceScreen);
+    } else {
+        initAttendanceScreen();
+    }
+})();
 </script>
 @endpush
 @endsection

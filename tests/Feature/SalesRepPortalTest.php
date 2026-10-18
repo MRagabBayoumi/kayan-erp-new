@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\Role;
 use App\Models\SalesCommission;
 use App\Models\SalesInvoice;
+use App\Models\SalesRepAttendance;
 use App\Models\Unit;
 use App\Models\User;
 use App\Models\Warehouse;
@@ -177,7 +178,67 @@ test('product is marked out of stock for rep when below min stock threshold', fu
     $response->assertDontSee('متوفر للطلب');
 });
 
-test('sales rep can register new field customer with GPS location', function () {
+test('sales rep cannot create customer or order without an active GPS attendance session', function () {
+    // 1. Trying to view customer creation form
+    $respCustomerForm = $this->actingAs($this->salesRep)->get(route('portal.customers.create'));
+    $respCustomerForm->assertRedirect(route('portal.attendance.index'));
+    $respCustomerForm->assertSessionHas('status', 'warning');
+
+    // 2. Trying to store customer
+    $respCustomerStore = $this->actingAs($this->salesRep)->post(route('portal.customers.store'), [
+        'name' => 'عميل بدون حضور',
+        'phone' => '01011112222',
+    ]);
+    $respCustomerStore->assertRedirect(route('portal.attendance.index'));
+    $respCustomerStore->assertSessionHas('status', 'warning');
+
+    // 3. Trying to view order creation form
+    $respOrderForm = $this->actingAs($this->salesRep)->get(route('portal.orders.create'));
+    $respOrderForm->assertRedirect(route('portal.attendance.index'));
+    $respOrderForm->assertSessionHas('status', 'warning');
+
+    // 4. Trying to store order
+    $respOrderStore = $this->actingAs($this->salesRep)->post(route('portal.orders.store'), [
+        'customer_id' => 1,
+    ]);
+    $respOrderStore->assertRedirect(route('portal.attendance.index'));
+    $respOrderStore->assertSessionHas('status', 'warning');
+});
+
+test('sales rep must provide GPS coordinates to check in', function () {
+    // Missing coordinates fails validation
+    $response = $this->actingAs($this->salesRep)->post(route('portal.attendance.check-in'), []);
+    $response->assertSessionHasErrors(['latitude', 'longitude']);
+
+    // Valid coordinates succeeds and creates attendance session
+    $validResponse = $this->actingAs($this->salesRep)->post(route('portal.attendance.check-in'), [
+        'latitude' => 30.7865000,
+        'longitude' => 31.0004000,
+        'address' => 'ميدان المحطة، طنطا',
+    ]);
+    $validResponse->assertRedirect();
+    $validResponse->assertSessionHas('status', 'success');
+
+    $this->assertDatabaseHas('sales_rep_attendances', [
+        'sales_rep_id' => $this->salesRep->id,
+        'status' => 'present',
+        'check_in_latitude' => 30.7865000,
+        'check_in_longitude' => 31.0004000,
+    ]);
+
+    expect($this->salesRep->fresh()->hasActiveAttendanceSession())->toBeTrue();
+});
+
+test('sales rep can register new field customer with GPS location after active checkin', function () {
+    SalesRepAttendance::create([
+        'sales_rep_id' => $this->salesRep->id,
+        'date' => now()->format('Y-m-d'),
+        'check_in_time' => now(),
+        'check_in_latitude' => 30.7865,
+        'check_in_longitude' => 31.0004,
+        'status' => 'present',
+    ]);
+
     $response = $this->actingAs($this->salesRep)->post(route('portal.customers.store'), [
         'name' => 'سنتر الأمل للإكسسوارات',
         'company_name' => 'شركة الأمل للتجارة',
@@ -205,6 +266,14 @@ test('sales rep can register new field customer with GPS location', function () 
 });
 
 test('sales rep can submit a field order as draft', function () {
+    SalesRepAttendance::create([
+        'sales_rep_id' => $this->salesRep->id,
+        'date' => now()->format('Y-m-d'),
+        'check_in_time' => now(),
+        'check_in_latitude' => 30.7865,
+        'check_in_longitude' => 31.0004,
+        'status' => 'present',
+    ]);
     $customer = Customer::create([
         'name' => 'معرض السعادة',
         'phone' => '01000000001',
@@ -247,6 +316,15 @@ test('sales rep can submit a field order as draft', function () {
 });
 
 test('sales rep can submit and post order directly, generating commission', function () {
+    SalesRepAttendance::create([
+        'sales_rep_id' => $this->salesRep->id,
+        'date' => now()->format('Y-m-d'),
+        'check_in_time' => now(),
+        'check_in_latitude' => 30.7865,
+        'check_in_longitude' => 31.0004,
+        'status' => 'present',
+    ]);
+
     $customer = Customer::create([
         'name' => 'محل ريتاج',
         'phone' => '01000000002',

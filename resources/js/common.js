@@ -4,6 +4,9 @@
  */
 
 export function initCommonUI() {
+    if (window.__commonUiInitialized) return;
+    window.__commonUiInitialized = true;
+
     // 1. Auto-submit on change
     document.addEventListener('change', (e) => {
         if (e.target.matches('[data-action="auto-submit"]')) {
@@ -81,6 +84,9 @@ export function initCommonUI() {
  * Binds [data-action="open-print-modal"] triggers to the global modal
  */
 export function initUniversalPrintModal() {
+    if (window.__universalPrintModalInitialized) return;
+    window.__universalPrintModalInitialized = true;
+
     document.addEventListener('click', (e) => {
         const btn = e.target.closest('[data-action="open-print-modal"]');
         if (!btn) return;

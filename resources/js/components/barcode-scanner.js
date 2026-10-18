@@ -54,6 +54,9 @@ function loadScript(src) {
 }
 
 export async function initBarcodeScanner() {
+    if (window.__barcodeScannerInitialized) return;
+    window.__barcodeScannerInitialized = true;
+
     const modal = document.getElementById('kayanBarcodeScannerModal');
     if (!modal) return;
 

@@ -4,13 +4,13 @@
 <div class="space-y-4">
 
     <!-- Header & Search Controls (Kayan ERP Card) -->
-    <div class="erp-card mb-0 p-4">
-        <div class="flex items-center justify-between mb-3 pb-3 border-b border-[var(--border-light)]">
-            <h1 class="text-sm sm:text-base font-bold text-[var(--text-main)] flex items-center gap-2">
-                <x-icon name="package" size="18" class="text-[var(--primary)]" />
+    <div class="erp-card mb-0 p-3 sm:p-4">
+        <div class="flex items-center justify-between mb-2.5 pb-2 border-b border-[var(--border-light)]">
+            <h1 class="text-xs sm:text-base font-bold text-[var(--text-main)] flex items-center gap-2">
+                <x-icon name="package" size="17" class="text-[var(--primary)]" />
                 <span>كتالوج منتجات المعرض والمخازن</span>
             </h1>
-            <span class="erp-badge erp-badge-neutral font-numeric text-xs">
+            <span class="erp-badge erp-badge-neutral font-numeric text-[11px] sm:text-xs">
                 {{ $products->total() }} صنف
             </span>
         </div>
@@ -63,7 +63,7 @@
     </div>
 
     <!-- Product Cards Responsive Grid -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
         @php
             $isAdmin = auth()->user()?->isAdmin() || auth()->user()?->can('manage-inventory');
         @endphp
@@ -77,10 +77,10 @@
                     ? ($isAvailable ? 'متوفر (' . $totalStock . ' ' . ($product->unit ?? 'قطعة') . ')' : 'غير متوفر (' . $totalStock . ' / حد أدنى ' . $threshold . ')')
                     : ($isAvailable ? 'متوفر للطلب' : 'غير متوفر حالياً');
             @endphp
-            <div class="erp-card mb-0 p-4 hover:border-[var(--primary-border)] hover:shadow-md transition-all flex flex-col justify-between">
+            <div class="erp-card mb-0 p-3 sm:p-3.5 hover:border-[var(--primary-border)] hover:shadow-md transition-all flex flex-col justify-between">
                 <div>
                     <!-- Product Image Card with Customer Showcase Action -->
-                    <div class="relative group cursor-pointer overflow-hidden rounded-lg bg-slate-50 border border-[var(--border-light)] mb-3 h-48 flex items-center justify-center transition-all hover:bg-slate-100"
+                    <div class="relative group cursor-pointer overflow-hidden rounded-lg bg-slate-50 border border-slate-200/80 mb-2.5 h-36 sm:h-44 flex items-center justify-center transition-all hover:bg-slate-100"
                          data-action="open-showcase"
                          data-product-id="{{ $product->id }}"
                          data-product-name="{{ $product->name }}"
@@ -99,24 +99,24 @@
                         @if($product->image_url)
                             <img src="{{ $product->image_url }}" alt="{{ $product->name }}" loading="lazy" class="w-full h-full object-contain p-2 group-hover:scale-105 transition-transform duration-200">
                         @else
-                            <div class="flex flex-col items-center justify-center text-slate-300">
-                                <x-icon name="image" size="36" class="text-slate-300 mb-1" />
-                                <span class="text-[11px] text-slate-400">لا توجد صورة</span>
+                            <div class="flex flex-col items-center justify-center text-slate-300 py-3">
+                                <x-icon name="image" size="28" class="text-slate-300 mb-1" />
+                                <span class="text-[10px] text-slate-400 font-medium">لا توجد صورة</span>
                             </div>
                         @endif
 
-                        <!-- Hover/Tap Overlay Banner -->
-                        <div class="absolute inset-x-2 bottom-2 bg-slate-900/80 backdrop-blur-xs text-white text-[11px] font-semibold py-1.5 px-3 rounded-full flex items-center justify-center gap-1.5 shadow-sm opacity-90 group-hover:opacity-100 transition-opacity">
-                            <x-icon name="eye" size="14" class="text-sky-300" />
-                            <span>عرض الصنف للعميل</span>
+                        <!-- Showcase Badge Pill -->
+                        <div class="absolute top-2 left-2 bg-black/60 backdrop-blur-xs text-white text-[10px] font-medium py-0.5 px-2 rounded-full flex items-center gap-1 shadow-xs group-hover:bg-[#714B67] transition-colors">
+                            <x-icon name="eye" size="11" class="text-sky-300" />
+                            <span>عرض للعميل</span>
                         </div>
                     </div>
 
                     <!-- Header: Name & Category -->
-                    <div class="flex items-start justify-between gap-2 mb-2">
+                    <div class="flex items-start justify-between gap-2 mb-1.5">
                         <div class="min-w-0 flex-1">
-                            <h2 class="text-sm font-bold text-[var(--text-main)] leading-snug line-clamp-2">{{ $product->name }}</h2>
-                            <div class="flex flex-wrap items-center gap-2 text-[11px] text-[var(--text-muted)] mt-1 font-numeric">
+                            <h2 class="text-xs sm:text-sm font-bold text-[var(--text-main)] leading-snug line-clamp-2">{{ $product->name }}</h2>
+                            <div class="flex flex-wrap items-center gap-2 text-[10px] sm:text-[11px] text-[var(--text-muted)] mt-0.5 font-numeric">
                                 @if($product->sku)
                                     <span>كود: <strong class="text-[var(--text-secondary)]">{{ $product->sku }}</strong></span>
                                 @endif
@@ -127,17 +127,17 @@
                         </div>
 
                         @if($product->category)
-                            <span class="erp-badge erp-badge-neutral text-[10px] shrink-0">
+                            <span class="erp-badge erp-badge-neutral text-[9px] sm:text-[10px] shrink-0">
                                 {{ $product->category->name }}
                             </span>
                         @endif
                     </div>
 
                     <!-- Wholesale Price Only (Prompt Requirement) -->
-                    <div class="p-2.5 rounded-lg bg-emerald-50/80 border border-emerald-200/90 my-2.5 flex items-center justify-between">
+                    <div class="p-2 rounded-lg bg-emerald-50/80 border border-emerald-200/80 my-2 flex items-center justify-between">
                         <span class="text-xs font-bold text-emerald-900">سعر الجملة:</span>
                         <div class="text-left font-numeric">
-                            <span class="text-base font-extrabold text-emerald-700">{{ number_format($product->wholesale_price, 2) }}</span>
+                            <span class="text-sm sm:text-base font-extrabold text-emerald-700">{{ number_format($product->wholesale_price, 2) }}</span>
                             <span class="text-[10px] font-semibold text-emerald-600 mr-0.5">ج.م</span>
                         </div>
                     </div>

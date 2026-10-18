@@ -57,6 +57,15 @@ beforeEach(function () {
         'is_active' => true,
     ]);
 
+    SalesRepAttendance::create([
+        'sales_rep_id' => $this->salesRep->id,
+        'date' => now()->format('Y-m-d'),
+        'check_in_time' => now(),
+        'check_in_latitude' => 30.7865000,
+        'check_in_longitude' => 31.0004000,
+        'status' => 'present',
+    ]);
+
     $this->category = Category::create([
         'name' => 'إكسسوارات حريمي',
         'code' => 'ACC',
@@ -221,6 +230,9 @@ test('manager can reject customer request with reason', function () {
 });
 
 test('sales rep GPS attendance check-in and check-out calculates duration accurately', function () {
+    // Reset any existing attendance for fresh checkin test
+    SalesRepAttendance::where('sales_rep_id', $this->salesRep->id)->delete();
+
     // Check In
     $checkInResponse = $this->actingAs($this->salesRep)->post(route('portal.attendance.check-in'), [
         'latitude' => 30.0444,

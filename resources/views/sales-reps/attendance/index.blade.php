@@ -34,25 +34,8 @@
 @section('content')
 <div class="space-y-4">
 
-    <!-- Top Sub-Navigation Tabs -->
-    <div class="erp-card mb-0 p-2 flex items-center gap-2 overflow-x-auto text-xs">
-        <a href="{{ route('sales-reps.index') }}" class="px-3 py-1.5 rounded font-bold border border-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors">
-            <x-icon name="users" size="14" class="inline ml-1" />
-            <span>فريق المناديب والعمولات</span>
-        </a>
-        <a href="{{ route('sales-reps.customer-requests.index') }}" class="px-3 py-1.5 rounded font-bold border border-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors">
-            <x-icon name="user-check" size="14" class="inline ml-1" />
-            <span>طلبات اعتماد العملاء</span>
-        </a>
-        <a href="{{ route('sales-reps.attendance.index') }}" class="px-3 py-1.5 rounded font-bold bg-[var(--primary)] text-white shadow-xs">
-            <x-icon name="clock" size="14" class="inline ml-1" />
-            <span>الحضور والانصراف (GPS)</span>
-        </a>
-        <a href="{{ route('sales-reps.visits.index') }}" class="px-3 py-1.5 rounded font-bold border border-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors">
-            <x-icon name="map-pin" size="14" class="inline ml-1" />
-            <span>الزيارات الميدانية (GPS)</span>
-        </a>
-    </div>
+    <!-- Enterprise Sub-Navigation Tabs -->
+    <x-sales-reps-nav-tabs active="attendance" />
 
     <!-- Quick Metrics Cards -->
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">

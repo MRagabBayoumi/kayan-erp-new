@@ -56,15 +56,15 @@
         </div>
 
         <!-- Pricing Tier & Manager Approval Notice -->
-        <div class="p-3 rounded-lg border border-blue-200 bg-blue-50/70 dark:border-blue-900/40 dark:bg-blue-950/20 text-xs text-blue-900 dark:text-blue-300 space-y-1">
-            <div class="flex items-center justify-between">
-                <span class="font-bold flex items-center gap-1.5">
-                    <x-icon name="tag" size="14" class="text-blue-600 dark:text-blue-400" />
-                    <span>فئة التسعير التلقائية للمندوب:</span>
-                </span>
-                <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-600 text-white">سعر الجملة</span>
+        <div class="p-3.5 rounded-lg border border-blue-200 bg-blue-50/80 text-xs text-blue-950 space-y-1.5">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+                <div class="flex items-center gap-1.5 font-bold text-blue-900">
+                    <x-icon name="tag" size="14" class="text-blue-700 shrink-0" />
+                    <span>فئة التسعير التلقائية:</span>
+                </div>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-600 text-white shadow-xs shrink-0">سعر الجملة</span>
             </div>
-            <p class="text-[11px] text-blue-700 dark:text-blue-400">يتم إرسال الطلب لإدارة النظام لاعتماده وتحديد الحد الائتماني أو تعديل فئة التسعير إن رغب المدير في ذلك.</p>
+            <p class="text-[11px] text-blue-800/90 leading-relaxed">يتم إرسال الطلب لإدارة النظام لاعتماده وتحديد الحد الائتماني أو تعديل فئة التسعير إن رغب المدير في ذلك.</p>
         </div>
 
         <!-- City & Address -->
@@ -91,10 +91,12 @@
                 <span class="text-[10px] text-[var(--text-muted)]">التقاط أو رفع حتى 5 صور</span>
             </div>
 
-            <label class="flex flex-col items-center justify-center p-4 border-2 border-dashed border-[var(--border-color)] rounded-lg bg-white dark:bg-gray-900 cursor-pointer hover:border-[var(--primary)] transition-all text-center">
-                <x-icon name="upload-cloud" size="24" class="text-[var(--primary)] mb-1" />
-                <span class="text-xs font-bold text-[var(--text-main)]">اضغط لالتقاط صور من الكاميرا أو اختيار ملفات</span>
-                <span class="text-[10px] text-[var(--text-muted)] mt-0.5">JPG, PNG, WebP (بحد أقصى 5 ميجابايت للصورة)</span>
+            <label class="flex flex-col items-center justify-center p-5 border-2 border-dashed border-slate-300 rounded-lg bg-slate-50 cursor-pointer hover:bg-slate-100 hover:border-[var(--primary)] transition-all text-center">
+                <div class="w-10 h-10 rounded-full bg-white shadow-xs border border-slate-200 flex items-center justify-center text-[var(--primary)] mb-2">
+                    <x-icon name="upload-cloud" size="20" />
+                </div>
+                <span class="text-xs font-bold text-slate-800">اضغط لالتقاط صور من الكاميرا أو اختيار ملفات</span>
+                <span class="text-[10px] text-slate-500 mt-0.5">JPG, PNG, WebP (بحد أقصى 5 ميجابايت للصورة)</span>
                 <input type="file" name="store_images[]" id="storeImagesInput" multiple accept="image/*" class="sr-only">
             </label>
 
@@ -203,7 +205,7 @@
                     const reader = new FileReader();
                     reader.onload = function(evt) {
                         const div = document.createElement('div');
-                        div.className = 'relative aspect-square rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-100 shadow-xs group';
+                        div.className = 'relative aspect-square rounded-lg overflow-hidden border border-gray-200 bg-gray-100 shadow-xs group';
                         div.innerHTML = `
                             <img src="${evt.target.result}" alt="صورة ${index + 1}" class="w-full h-full object-cover">
                             <span class="absolute bottom-1 right-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-black/60 text-white">${index + 1}</span>

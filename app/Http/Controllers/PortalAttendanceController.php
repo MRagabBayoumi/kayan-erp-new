@@ -54,18 +54,21 @@ class PortalAttendanceController extends Controller
         }
 
         $validated = $request->validate([
-            'latitude' => ['nullable', 'numeric'],
-            'longitude' => ['nullable', 'numeric'],
+            'latitude' => ['required', 'numeric', 'between:-90,90'],
+            'longitude' => ['required', 'numeric', 'between:-180,180'],
             'address' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string', 'max:500'],
+        ], [
+            'latitude.required' => 'تحديد الموقع الجغرافي (GPS) إلزامي وأساسي لتسجيل حضور المندوب الميداني. يرجى تفعيل الـ GPS بهاتفك والسماح للمتصفح بالوصول لموقعك.',
+            'longitude.required' => 'تحديد الموقع الجغرافي (GPS) إلزامي وأساسي لتسجيل حضور المندوب الميداني.',
         ]);
 
         SalesRepAttendance::create([
             'sales_rep_id' => $user->id,
             'date' => $today,
             'check_in_time' => now(),
-            'check_in_latitude' => $validated['latitude'] ?? null,
-            'check_in_longitude' => $validated['longitude'] ?? null,
+            'check_in_latitude' => $validated['latitude'],
+            'check_in_longitude' => $validated['longitude'],
             'check_in_address' => $validated['address'] ?? null,
             'status' => 'present',
             'notes' => $validated['notes'] ?? null,
@@ -73,7 +76,7 @@ class PortalAttendanceController extends Controller
 
         return redirect()->back()
             ->with('status', 'success')
-            ->with('message', 'تم تسجيل حضورك الميداني بنجاح والتقاط موقعك الجغرافي. نتمنى لك يوماً موفقاً!');
+            ->with('message', 'تم تسجيل حضورك الميداني بنجاح والتقاط موقعك الجغرافي (GPS). نتمنى لك يوماً موفقاً!');
     }
 
     /**
@@ -98,9 +101,12 @@ class PortalAttendanceController extends Controller
         }
 
         $validated = $request->validate([
-            'latitude' => ['nullable', 'numeric'],
-            'longitude' => ['nullable', 'numeric'],
+            'latitude' => ['required', 'numeric', 'between:-90,90'],
+            'longitude' => ['required', 'numeric', 'between:-180,180'],
             'address' => ['nullable', 'string', 'max:255'],
+        ], [
+            'latitude.required' => 'تحديد الموقع الجغرافي (GPS) إلزامي لتسجيل الانصراف وإنهاء يوم العمل.',
+            'longitude.required' => 'تحديد الموقع الجغرافي (GPS) إلزامي لتسجيل الانصراف وإنهاء يوم العمل.',
         ]);
 
         $checkOutTime = now();

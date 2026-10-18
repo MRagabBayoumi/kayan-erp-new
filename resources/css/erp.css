@@ -98,3 +98,12 @@
     transform: scale(0.96) !important;
 }
 
+/* Hotwire Turbo SPA Progress Bar */
+.turbo-progress-bar {
+    height: 3px !important;
+    background: linear-gradient(90deg, #714B67, #a26993, #714B67) !important;
+    box-shadow: 0 0 10px rgba(113, 75, 103, 0.7) !important;
+    z-index: 999999 !important;
+}
+
+

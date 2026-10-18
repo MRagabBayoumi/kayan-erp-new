@@ -7,7 +7,9 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="كيان ERP">
     <meta name="theme-color" content="#714B67">
+    <meta name="turbo-cache-control" content="no-cache">
     <link rel="manifest" href="{{ asset('manifest.json') }}">
     <link rel="apple-touch-icon" href="{{ asset('icon-192.png') }}">
     <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
@@ -28,17 +30,17 @@
 <body class="bg-[var(--bg-app)] text-[var(--text-main)] min-h-screen flex flex-col antialiased selection:bg-[var(--primary)] selection:text-white" style="overflow-y: auto !important; height: auto !important; min-height: 100vh; font-family: 'Cairo', system-ui, -apple-system, sans-serif !important;">
 
     <!-- Kayan ERP Enterprise Topbar for Field Reps -->
-    <header class="erp-topbar sticky top-0 z-40">
-        <div class="max-w-7xl mx-auto w-full px-3 sm:px-6 flex items-center justify-between gap-4">
+    <header class="erp-topbar !sticky top-0 z-40 !bg-[#714B67] !text-white shadow-sm border-b border-[#5e3c55] !h-auto min-h-[50px] pt-[env(safe-area-inset-top)]">
+        <div class="max-w-7xl mx-auto w-full px-3 sm:px-6 flex items-center justify-between gap-3 h-14">
             <!-- Brand & Module Badge -->
-            <div class="flex items-center gap-2.5 shrink-0">
-                <a href="{{ route('portal.index') }}" class="erp-brand group">
+            <div class="flex items-center gap-2 shrink-0">
+                <a href="{{ route('portal.index') }}" class="erp-brand group flex items-center gap-2">
                     @if(!empty($globalCompanySetting?->logo_url))
                         <img src="{{ $globalCompanySetting->logo_url }}" alt="Logo" class="h-6 w-6 object-contain rounded bg-white p-0.5">
                     @else
                         <span class="erp-brand-badge">K</span>
                     @endif
-                    <span class="text-sm sm:text-base font-bold text-white">{{ $globalCompanySetting?->company_name ?? config('app.name', 'Kayan ERP') }}</span>
+                    <span class="text-sm sm:text-base font-bold text-white truncate max-w-[170px] sm:max-w-none">{{ $globalCompanySetting?->company_name ?? config('app.name', 'Kayan ERP') }}</span>
                 </a>
 
                 <div class="hidden sm:block w-px h-4 bg-white/20"></div>
@@ -75,9 +77,9 @@
             </nav>
 
             <!-- User Info & Actions -->
-            <div class="flex items-center gap-2 shrink-0">
-                <!-- New Order Button -->
-                <a href="{{ route('portal.orders.create') }}" class="erp-btn-pill-white px-3 py-1.5 text-xs">
+            <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                <!-- New Order Button (Desktop only; on mobile the bottom bar has the elevated + button) -->
+                <a href="{{ route('portal.orders.create') }}" class="hidden sm:inline-flex erp-btn-pill-white px-3 py-1.5 text-xs">
                     <x-icon name="plus" size="13" />
                     <span>طلب جديد</span>
                 </a>
@@ -110,7 +112,12 @@
 
     <!-- Flash Notifications -->
     <div class="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-3">
-        @if (session('status') === 'success' || session('message'))
+        @if (session('status') === 'warning')
+            <div class="erp-alert erp-alert-warning mb-3 shadow-xs bg-amber-50 border border-amber-300 text-amber-900 p-3 rounded-lg flex items-center gap-2.5" role="alert">
+                <x-icon name="alert-triangle" size="18" class="text-amber-600 shrink-0" />
+                <div class="text-xs sm:text-sm font-semibold">{{ session('message') }}</div>
+            </div>
+        @elseif (session('status') === 'success' || (session('message') && session('status') !== 'error'))
             <div class="erp-alert erp-alert-success mb-3 shadow-xs" role="alert">
                 <x-icon name="check-circle" size="16" />
                 <div>{{ session('message') ?? 'تم تنفيذ العملية بنجاح.' }}</div>

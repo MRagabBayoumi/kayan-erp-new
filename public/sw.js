@@ -1,9 +1,8 @@
-// Kayan ERP Service Worker for Desktop/PWA installation
-const CACHE_NAME = 'kayan-erp-v1';
+// Kayan ERP Service Worker for Mobile PWA & Desktop installation
+const CACHE_NAME = 'kayan-erp-v2';
 const STATIC_ASSETS = [
-    '/',
+    '/login',
     '/favicon.svg',
-    '/favicon.png',
     '/icon-192.png',
     '/icon-512.png',
     '/manifest.json'
@@ -12,10 +11,14 @@ const STATIC_ASSETS = [
 self.addEventListener('install', (event) => {
     self.skipWaiting();
     event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => {
-            return cache.addAll(STATIC_ASSETS).catch((err) => {
-                console.warn('[SW] Initial caching note:', err);
-            });
+        caches.open(CACHE_NAME).then(async (cache) => {
+            for (const asset of STATIC_ASSETS) {
+                try {
+                    await cache.add(asset);
+                } catch (e) {
+                    console.debug('[SW] Caching note:', asset, e);
+                }
+            }
         })
     );
 });
@@ -34,7 +37,7 @@ self.addEventListener('activate', (event) => {
     );
 });
 
-// Network-first strategy for dynamic ERP data with fallback to cache for static shell
+// Network-first strategy for dynamic ERP data with fallback to cache
 self.addEventListener('fetch', (event) => {
     if (event.request.method !== 'GET' || !event.request.url.startsWith('http')) {
         return;

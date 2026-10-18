@@ -194,6 +194,24 @@ class User extends Authenticatable
     }
 
     /**
+     * Check if the user has an active, GPS-verified attendance session for today.
+     */
+    public function hasActiveAttendanceSession(): bool
+    {
+        if ($this->isAdmin()) {
+            return true;
+        }
+
+        $attendance = $this->todayAttendance;
+
+        return $attendance !== null
+            && $attendance->status === 'present'
+            && $attendance->check_in_latitude !== null
+            && $attendance->check_in_longitude !== null
+            && $attendance->check_out_time === null;
+    }
+
+    /**
      * Scope query to only active users.
      */
     public function scopeActive(Builder $query): Builder

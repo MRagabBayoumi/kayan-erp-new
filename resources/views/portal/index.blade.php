@@ -21,102 +21,145 @@
                     </span>
                 </div>
             </div>
-            <div class="flex items-center gap-2 self-start sm:self-center shrink-0">
-                <a href="{{ route('portal.orders.create') }}" class="erp-btn-pill-white px-3.5 py-2 text-xs">
-                    <x-icon name="plus" size="14" />
-                    <span>إنشاء فاتورة جديدة</span>
-                </a>
+            <div class="hidden sm:flex items-center gap-2 self-start sm:self-center shrink-0">
+                @php $hasActiveSession = $user->hasActiveAttendanceSession(); @endphp
+                @if($hasActiveSession)
+                    <a href="{{ route('portal.orders.create') }}" class="erp-btn-pill-white px-3.5 py-2 text-xs">
+                        <x-icon name="plus" size="14" />
+                        <span>إنشاء فاتورة جديدة</span>
+                    </a>
+                @else
+                    <a href="{{ route('portal.attendance.index') }}" class="erp-btn-pill-white px-3.5 py-2 text-xs bg-amber-500/20 border-amber-300/40 text-amber-100 hover:bg-amber-500/30">
+                        <x-icon name="map-pin" size="14" />
+                        <span>فتح جلسة العمل (GPS)</span>
+                    </a>
+                @endif
             </div>
         </div>
     </div>
 
+    @php
+        $hasActiveSession = $user->hasActiveAttendanceSession();
+    @endphp
+
     <!-- Daily GPS Attendance Status Banner -->
-    <div class="erp-card mb-0 p-3 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 {{ ! $todayAttendance ? 'border-amber-300 bg-amber-50/70' : ($todayAttendance->status === 'present' ? 'border-emerald-300 bg-emerald-50/70' : 'border-blue-300 bg-blue-50/70') }}">
+    <div class="erp-card mb-0 p-3.5 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 {{ ! $hasActiveSession ? 'border-amber-400 bg-amber-50/90 shadow-xs' : 'border-emerald-300 bg-emerald-50/80 shadow-xs' }}">
         <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0 {{ ! $todayAttendance ? 'bg-amber-100 text-amber-700' : ($todayAttendance->status === 'present' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700') }}">
-                <x-icon name="clock" size="20" />
+            <div class="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 {{ ! $hasActiveSession ? 'bg-amber-100 text-amber-800 ring-2 ring-amber-300' : 'bg-emerald-100 text-emerald-800 ring-2 ring-emerald-300' }}">
+                <x-icon name="{{ ! $hasActiveSession ? 'map-pin' : 'check-circle' }}" size="22" />
             </div>
             <div>
                 @if(! $todayAttendance)
-                    <div class="text-xs sm:text-sm font-bold text-amber-900">لم تقم بتسجيل حضورك الميداني اليوم بعد</div>
-                    <div class="text-[11px] text-amber-700">سجل حضورك الآن عبر الـ GPS لاحتساب ساعات عملك الميدانية</div>
-                @elseif($todayAttendance->status === 'present')
-                    <div class="text-xs sm:text-sm font-bold text-emerald-900 flex items-center gap-1.5">
-                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-                        <span>أنت مسجل حضورك الميداني اليوم</span>
+                    <div class="text-xs sm:text-sm font-black text-amber-950 flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                        <span>جلسة العمل الميداني مغلقة — الحضور بالـ GPS إلزامي</span>
                     </div>
-                    <div class="text-[11px] text-emerald-700 font-numeric">وقت الحضور: {{ $todayAttendance->check_in_time->format('h:i A') }} (مدة الدوام جارية)</div>
+                    <div class="text-[11px] text-amber-800 mt-0.5 font-medium leading-relaxed">
+                        يجب تسجيل حضورك الميداني وتوثيق موقعك (GPS) لفتح جلسة العمل والبدء في تسجيل الطلبات، الزيارات، وإضافة العملاء.
+                    </div>
+                @elseif($hasActiveSession)
+                    <div class="text-xs sm:text-sm font-black text-emerald-950 flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
+                        <span>جلسة العمل الميداني نشطة وموثقة بالـ GPS</span>
+                    </div>
+                    <div class="text-[11px] text-emerald-800 font-numeric mt-0.5">
+                        وقت بدء الجلسة: {{ $todayAttendance->check_in_time?->format('h:i A') }} — أنت جاهز الآن لتسجيل الطلبات والزيارات والعملاء.
+                    </div>
                 @else
-                    <div class="text-xs sm:text-sm font-bold text-blue-900">تم إنهاء يوم العمل بنجاح (انصراف مكتمل)</div>
-                    <div class="text-[11px] text-blue-700 font-numeric">إجمالي وقت العمل اليوم: {{ $todayAttendance->formatted_work_duration }}</div>
+                    <div class="text-xs sm:text-sm font-black text-blue-950 flex items-center gap-1.5">
+                        <x-icon name="check-circle" size="14" class="text-blue-600" />
+                        <span>تم إنهاء جلسة العمل لليوم (انصراف موثق)</span>
+                    </div>
+                    <div class="text-[11px] text-blue-800 font-numeric mt-0.5">
+                        إجمالي وقت العمل اليوم: {{ $todayAttendance->formatted_work_duration }} — يتطلب تسجيل أي طلبات إضافية إعادة فتح الجلسة.
+                    </div>
                 @endif
             </div>
         </div>
 
-        <a href="{{ route('portal.attendance.index') }}" class="erp-btn {{ ! $todayAttendance ? 'erp-btn-warning' : ($todayAttendance->status === 'present' ? 'erp-btn-danger' : 'erp-btn-secondary') }} text-xs py-1.5 px-3 self-stretch sm:self-auto justify-center">
-            <x-icon name="{{ ! $todayAttendance ? 'log-in' : ($todayAttendance->status === 'present' ? 'log-out' : 'eye') }}" size="14" />
-            <span>{{ ! $todayAttendance ? 'تسجيل الحضور الآن' : ($todayAttendance->status === 'present' ? 'شاشة الحضور / انصراف' : 'عرض سجل الدوام') }}</span>
+        <a href="{{ route('portal.attendance.index') }}" class="erp-btn {{ ! $hasActiveSession ? 'bg-amber-600 hover:bg-amber-700 text-white font-black shadow-xs' : 'bg-emerald-700 hover:bg-emerald-800 text-white font-bold' }} text-xs py-2 px-4 self-stretch sm:self-auto justify-center shrink-0">
+            <x-icon name="{{ ! $hasActiveSession ? 'log-in' : 'clock' }}" size="15" />
+            <span>{{ ! $todayAttendance ? 'تسجيل الحضور وفتح الجلسة' : ($hasActiveSession ? 'سجل الحضور والانصراف' : 'عرض سجل الدوام') }}</span>
         </a>
     </div>
 
-    <!-- Quick Action Cards (Kayan ERP Card Style) -->
-    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3">
-        <a href="{{ route('portal.orders.create') }}" class="erp-card hover:border-[var(--primary)] hover:shadow-sm transition-all p-3 flex flex-col items-center justify-center text-center group mb-0">
-            <div class="w-9 h-9 rounded-md bg-[var(--primary-soft)] text-[var(--primary)] flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform">
-                <x-icon name="plus-circle" size="18" />
+    <!-- Quick Action Cards (Kayan ERP Compact Mobile 3-Col Grid) -->
+    <div class="grid grid-cols-3 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
+        <!-- New Order Card -->
+        <a href="{{ $hasActiveSession ? route('portal.orders.create') : route('portal.attendance.index') }}" class="erp-card hover:border-[var(--primary)] hover:shadow-sm transition-all p-2.5 sm:p-3 flex flex-col items-center justify-center text-center group mb-0 relative">
+            @if(! $hasActiveSession)
+                <span class="absolute top-1.5 left-1.5 px-1 py-0.5 rounded bg-amber-100 text-amber-800 text-[9px] font-bold flex items-center gap-0.5" title="يتطلب فتح جلسة العمل أولاً">
+                    <x-icon name="lock" size="10" />
+                </span>
+            @endif
+            <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-md bg-[var(--primary-soft)] text-[var(--primary)] flex items-center justify-center mb-1 group-hover:scale-105 transition-transform">
+                <x-icon name="plus-circle" size="17" />
             </div>
-            <span class="text-xs font-bold text-[var(--text-main)]">طلب بيع جديد</span>
-            <span class="text-[10px] text-[var(--text-muted)] mt-0.5">تسجيل فاتورة</span>
+            <span class="text-[11px] sm:text-xs font-bold text-[var(--text-main)] truncate max-w-full">طلب جديد</span>
+            <span class="text-[9px] sm:text-[10px] text-[var(--text-muted)] mt-0.5">{{ $hasActiveSession ? 'تسجيل فاتورة' : 'يتطلب حضور' }}</span>
         </a>
 
-        <a href="{{ route('portal.visits.create') }}" class="erp-card hover:border-[var(--primary)] hover:shadow-sm transition-all p-3 flex flex-col items-center justify-center text-center group mb-0">
-            <div class="w-9 h-9 rounded-md bg-rose-50 text-rose-600 flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform">
-                <x-icon name="map-pin" size="18" />
+        <!-- Field Visit Card -->
+        <a href="{{ $hasActiveSession ? route('portal.visits.create') : route('portal.attendance.index') }}" class="erp-card hover:border-[var(--primary)] hover:shadow-sm transition-all p-2.5 sm:p-3 flex flex-col items-center justify-center text-center group mb-0 relative">
+            @if(! $hasActiveSession)
+                <span class="absolute top-1.5 left-1.5 px-1 py-0.5 rounded bg-amber-100 text-amber-800 text-[9px] font-bold flex items-center gap-0.5" title="يتطلب فتح جلسة العمل أولاً">
+                    <x-icon name="lock" size="10" />
+                </span>
+            @endif
+            <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-md bg-rose-50 text-rose-600 flex items-center justify-center mb-1 group-hover:scale-105 transition-transform">
+                <x-icon name="map-pin" size="17" />
             </div>
-            <span class="text-xs font-bold text-[var(--text-main)]">زيارة ميدانية</span>
-            <span class="text-[10px] text-[var(--text-muted)] mt-0.5">توثيق وصول GPS</span>
+            <span class="text-[11px] sm:text-xs font-bold text-[var(--text-main)] truncate max-w-full">زيارة ميدانية</span>
+            <span class="text-[9px] sm:text-[10px] text-[var(--text-muted)] mt-0.5">{{ $hasActiveSession ? 'توثيق GPS' : 'يتطلب حضور' }}</span>
         </a>
 
-        <a href="{{ route('portal.attendance.index') }}" class="erp-card hover:border-[var(--primary)] hover:shadow-sm transition-all p-3 flex flex-col items-center justify-center text-center group mb-0">
-            <div class="w-9 h-9 rounded-md bg-sky-50 text-sky-600 flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform">
-                <x-icon name="clock" size="18" />
+        <!-- Attendance Card -->
+        <a href="{{ route('portal.attendance.index') }}" class="erp-card hover:border-[var(--primary)] hover:shadow-sm transition-all p-2.5 sm:p-3 flex flex-col items-center justify-center text-center group mb-0">
+            <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-md bg-sky-50 text-sky-600 flex items-center justify-center mb-1 group-hover:scale-105 transition-transform">
+                <x-icon name="clock" size="17" />
             </div>
-            <span class="text-xs font-bold text-[var(--text-main)]">دوام العمل (GPS)</span>
-            <span class="text-[10px] text-[var(--text-muted)] mt-0.5">حضور وانصراف</span>
+            <span class="text-[11px] sm:text-xs font-bold text-[var(--text-main)] truncate max-w-full">جلسة العمل</span>
+            <span class="text-[9px] sm:text-[10px] text-[var(--text-muted)] mt-0.5">{{ $hasActiveSession ? 'دوام نشط' : 'تسجيل GPS' }}</span>
         </a>
 
-        <a href="{{ route('portal.customers.create') }}" class="erp-card hover:border-[var(--primary)] hover:shadow-sm transition-all p-3 flex flex-col items-center justify-center text-center group mb-0">
-            <div class="w-9 h-9 rounded-md bg-emerald-50 text-emerald-700 flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform">
-                <x-icon name="user-plus" size="18" />
+        <!-- Customer Register Card -->
+        <a href="{{ $hasActiveSession ? route('portal.customers.create') : route('portal.attendance.index') }}" class="erp-card hover:border-[var(--primary)] hover:shadow-sm transition-all p-2.5 sm:p-3 flex flex-col items-center justify-center text-center group mb-0 relative">
+            @if(! $hasActiveSession)
+                <span class="absolute top-1.5 left-1.5 px-1 py-0.5 rounded bg-amber-100 text-amber-800 text-[9px] font-bold flex items-center gap-0.5" title="يتطلب فتح جلسة العمل أولاً">
+                    <x-icon name="lock" size="10" />
+                </span>
+            @endif
+            <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-md bg-emerald-50 text-emerald-700 flex items-center justify-center mb-1 group-hover:scale-105 transition-transform">
+                <x-icon name="user-plus" size="17" />
             </div>
-            <span class="text-xs font-bold text-[var(--text-main)]">تسجيل عميل</span>
-            <span class="text-[10px] text-[var(--text-muted)] mt-0.5">بيانات وصور المحل</span>
+            <span class="text-[11px] sm:text-xs font-bold text-[var(--text-main)] truncate max-w-full">تسجيل عميل</span>
+            <span class="text-[9px] sm:text-[10px] text-[var(--text-muted)] mt-0.5">{{ $hasActiveSession ? 'إضافة عميل' : 'يتطلب حضور' }}</span>
         </a>
 
-        <a href="{{ route('portal.catalog') }}" class="erp-card hover:border-[var(--primary)] hover:shadow-sm transition-all p-3 flex flex-col items-center justify-center text-center group mb-0">
-            <div class="w-9 h-9 rounded-md bg-amber-50 text-amber-700 flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform">
-                <x-icon name="package" size="18" />
+        <a href="{{ route('portal.catalog') }}" class="erp-card hover:border-[var(--primary)] hover:shadow-sm transition-all p-2.5 sm:p-3 flex flex-col items-center justify-center text-center group mb-0">
+            <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-md bg-amber-50 text-amber-700 flex items-center justify-center mb-1 group-hover:scale-105 transition-transform">
+                <x-icon name="package" size="17" />
             </div>
-            <span class="text-xs font-bold text-[var(--text-main)]">كتالوج الأصناف</span>
-            <span class="text-[10px] text-[var(--text-muted)] mt-0.5">سعر الجملة والمخزون</span>
+            <span class="text-[11px] sm:text-xs font-bold text-[var(--text-main)] truncate max-w-full">الكتالوج</span>
+            <span class="text-[9px] sm:text-[10px] text-[var(--text-muted)] mt-0.5">الأسعار والمخزون</span>
         </a>
 
-        <a href="{{ route('portal.orders.index') }}" class="erp-card hover:border-[var(--primary)] hover:shadow-sm transition-all p-3 flex flex-col items-center justify-center text-center group mb-0">
-            <div class="w-9 h-9 rounded-md bg-slate-100 text-slate-700 flex items-center justify-center mb-1.5 group-hover:scale-105 transition-transform">
-                <x-icon name="file-text" size="18" />
+        <a href="{{ route('portal.orders.index') }}" class="erp-card hover:border-[var(--primary)] hover:shadow-sm transition-all p-2.5 sm:p-3 flex flex-col items-center justify-center text-center group mb-0">
+            <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-md bg-slate-100 text-slate-700 flex items-center justify-center mb-1 group-hover:scale-105 transition-transform">
+                <x-icon name="file-text" size="17" />
             </div>
-            <span class="text-xs font-bold text-[var(--text-main)]">سجل الطلبيات</span>
-            <span class="text-[10px] text-[var(--text-muted)] mt-0.5">متابعة الفواتير</span>
+            <span class="text-[11px] sm:text-xs font-bold text-[var(--text-main)] truncate max-w-full">سجل الطلبات</span>
+            <span class="text-[9px] sm:text-[10px] text-[var(--text-muted)] mt-0.5">متابعة الفواتير</span>
         </a>
     </div>
 
     <!-- Rep KPIs & Financial Stats (Odoo ERP Cards) -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         <!-- Today's Sales -->
-        <div class="erp-card p-3.5 sm:p-4 mb-0 flex flex-col justify-between">
-            <div class="flex items-center justify-between text-[var(--text-muted)] mb-2">
-                <span class="text-xs font-semibold">مبيعات اليوم</span>
-                <span class="erp-badge erp-badge-neutral font-numeric text-[10px]">{{ $todaySalesCount }} طلب</span>
+        <div class="erp-card p-3 sm:p-4 mb-0 flex flex-col justify-between">
+            <div class="flex items-center justify-between gap-1 text-[var(--text-muted)] mb-1.5">
+                <span class="text-xs font-semibold truncate">مبيعات اليوم</span>
+                <span class="erp-badge erp-badge-neutral font-numeric text-[10px] shrink-0">{{ $todaySalesCount }} طلب</span>
             </div>
             <div class="text-base sm:text-xl font-extrabold text-[var(--text-main)] font-numeric">
                 {{ number_format($todaySalesTotal, 2) }} <span class="text-xs font-normal text-[var(--text-muted)]">ج.م</span>
@@ -124,10 +167,10 @@
         </div>
 
         <!-- Month's Commissions -->
-        <div class="erp-card p-3.5 sm:p-4 mb-0 flex flex-col justify-between">
-            <div class="flex items-center justify-between text-[var(--text-muted)] mb-2">
-                <span class="text-xs font-semibold">عمولات هذا الشهر</span>
-                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+        <div class="erp-card p-3 sm:p-4 mb-0 flex flex-col justify-between">
+            <div class="flex items-center justify-between gap-1 text-[var(--text-muted)] mb-1.5">
+                <span class="text-xs font-semibold truncate">عمولات الشهر</span>
+                <span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
             </div>
             <div class="text-base sm:text-xl font-extrabold text-emerald-700 font-numeric">
                 {{ number_format($monthCommissions, 2) }} <span class="text-xs font-normal text-emerald-600">ج.م</span>
@@ -135,10 +178,10 @@
         </div>
 
         <!-- Pending Commissions -->
-        <div class="erp-card p-3.5 sm:p-4 mb-0 flex flex-col justify-between">
-            <div class="flex items-center justify-between text-[var(--text-muted)] mb-2">
-                <span class="text-xs font-semibold">عمولات معلقة</span>
-                <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+        <div class="erp-card p-3 sm:p-4 mb-0 flex flex-col justify-between">
+            <div class="flex items-center justify-between gap-1 text-[var(--text-muted)] mb-1.5">
+                <span class="text-xs font-semibold truncate">عمولات معلقة</span>
+                <span class="w-2 h-2 rounded-full bg-amber-500 shrink-0"></span>
             </div>
             <div class="text-base sm:text-xl font-extrabold text-amber-700 font-numeric">
                 {{ number_format($pendingCommissions, 2) }} <span class="text-xs font-normal text-amber-600">ج.م</span>
@@ -146,10 +189,10 @@
         </div>
 
         <!-- My Customers -->
-        <div class="erp-card p-3.5 sm:p-4 mb-0 flex flex-col justify-between">
-            <div class="flex items-center justify-between text-[var(--text-muted)] mb-2">
-                <span class="text-xs font-semibold">عملائي المربوطين بي</span>
-                <x-icon name="users" size="14" class="text-[var(--primary)]" />
+        <div class="erp-card p-3 sm:p-4 mb-0 flex flex-col justify-between">
+            <div class="flex items-center justify-between gap-1 text-[var(--text-muted)] mb-1.5">
+                <span class="text-xs font-semibold truncate">عملائي المربوطين</span>
+                <x-icon name="users" size="14" class="text-[var(--primary)] shrink-0" />
             </div>
             <div class="text-base sm:text-xl font-extrabold text-[var(--primary)] font-numeric">
                 {{ $myCustomersCount }} <span class="text-xs font-normal text-[var(--text-muted)]">عميل</span>
