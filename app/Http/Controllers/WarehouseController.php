@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Category;
+use App\Models\CompanySetting;
 use App\Models\Warehouse;
+use App\Services\StocktakeService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -111,16 +114,16 @@ class WarehouseController extends Controller
     /**
      * Display real-time warehouse inventory breakdown.
      */
-    public function show(Warehouse $warehouse, Request $request, \App\Services\StocktakeService $stocktakeService): View
+    public function show(Warehouse $warehouse, Request $request, StocktakeService $stocktakeService): View
     {
         $search = $request->input('search');
         $categoryId = $request->filled('category_id') ? (int) $request->input('category_id') : null;
 
         $breakdown = $stocktakeService->getWarehouseStockBreakdown($warehouse, $search, $categoryId);
-        $categories = \App\Models\Category::active()->orderBy('name')->get();
+        $categories = Category::active()->orderBy('name')->get();
 
         return view('warehouses.show', [
-            'title' => 'جرد ورصيد مستودع: ' . $warehouse->name,
+            'title' => 'جرد ورصيد مستودع: '.$warehouse->name,
             'warehouse' => $warehouse,
             'breakdown' => $breakdown,
             'categories' => $categories,
@@ -132,7 +135,7 @@ class WarehouseController extends Controller
     /**
      * Dedicated printable warehouse stock report supporting A4, A5, and Thermal 80mm.
      */
-    public function printStock(Warehouse $warehouse, Request $request, \App\Services\StocktakeService $stocktakeService): View
+    public function printStock(Warehouse $warehouse, Request $request, StocktakeService $stocktakeService): View
     {
         $search = $request->input('search');
         $categoryId = $request->filled('category_id') ? (int) $request->input('category_id') : null;
@@ -142,10 +145,10 @@ class WarehouseController extends Controller
         }
 
         $breakdown = $stocktakeService->getWarehouseStockBreakdown($warehouse, $search, $categoryId);
-        $company = \App\Models\CompanySetting::getSettings();
+        $company = CompanySetting::getSettings();
 
         return view('warehouses.stock-print', [
-            'title' => 'تقرير مخزون مستودع: ' . $warehouse->name,
+            'title' => 'تقرير مخزون مستودع: '.$warehouse->name,
             'warehouse' => $warehouse,
             'breakdown' => $breakdown,
             'format' => $format,

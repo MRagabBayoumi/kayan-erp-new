@@ -8,6 +8,7 @@ use App\Models\Warehouse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -75,8 +76,21 @@ class UserController extends Controller
 
         $role = Role::findOrFail($validated['role_id']);
 
+        $username = filled($request->input('username'))
+            ? Str::slug($request->input('username'), '_')
+            : Str::slug(explode('@', $validated['email'])[0], '_');
+        if (empty($username)) {
+            $username = 'user_'.time();
+        }
+        $candidate = $username;
+        $counter = 1;
+        while (User::where('username', $candidate)->exists()) {
+            $candidate = $username.$counter++;
+        }
+
         User::create([
             'name' => $validated['name'],
+            'username' => $candidate,
             'email' => $validated['email'],
             'phone' => filled($validated['phone'] ?? null) ? trim($validated['phone']) : null,
             'password' => Hash::make($validated['password']),

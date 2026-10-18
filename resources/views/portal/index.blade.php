@@ -9,11 +9,11 @@
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
                 <div class="text-xs text-white/80 font-medium mb-1">مرحباً بك، {{ $user->name }} 👋</div>
-                <h1 class="text-base sm:text-xl font-bold tracking-tight">لوحة تحكم مبيعات المندوب الميداني</h1>
+                <h1 class="text-base sm:text-xl font-bold tracking-tight">بوابة المندوب الميداني — لوحة التحكم</h1>
                 <div class="mt-2.5 flex flex-wrap items-center gap-2 text-xs">
                     <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-white/15 border border-white/20 text-white font-semibold">
                         <x-icon name="percent" size="13" class="text-emerald-300" />
-                        <span>نسبة العمولة: <strong>{{ (float) ($user->commission_rate ?? 0) }}{{ $user->commission_type === 'percentage' ? '%' : ' ج.م' }}</strong></span>
+                        <span>نسبة العمولة: {{ (float) ($user->commission_rate ?? 0) }}{{ $user->commission_type === 'percentage' ? '%' : ' ج.م' }}</span>
                     </span>
                     <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-white/10 text-white/90 text-xs">
                         <x-icon name="calendar" size="13" />

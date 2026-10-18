@@ -2,10 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\Category;
-use App\Models\InventoryBatch;
 use App\Models\Product;
-use App\Models\StockBalance;
 use App\Models\Warehouse;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -173,6 +170,7 @@ class StocktakeService
                     'barcode' => $barcode ?: '—',
                     'error' => 'لم يتم العثور على صنف مسجل في النظام بهذا الكود أو الباركود.',
                 ];
+
                 continue;
             }
 
@@ -185,6 +183,7 @@ class StocktakeService
                     'name' => $product->name,
                     'error' => "الكمية الفعلية المدخلة ({$countedRaw}) غير صالحة أو سالبة. يجب أن تكون رقماً أكبر من أو يساوي الصفر.",
                 ];
+
                 continue;
             }
 
@@ -253,7 +252,7 @@ class StocktakeService
         return DB::transaction(function () use ($warehouse, $discrepancies, $reason, $userId) {
             $appliedCount = 0;
             $userId = $userId ?? auth()->id();
-            $baseReason = $reason ?: 'تسوية جرد دوري معتمد للمستودع (' . $warehouse->name . ')';
+            $baseReason = $reason ?: 'تسوية جرد دوري معتمد للمستودع ('.$warehouse->name.')';
 
             foreach ($discrepancies as $item) {
                 $productId = (int) $item['product_id'];
@@ -264,7 +263,7 @@ class StocktakeService
                     productId: $productId,
                     warehouseId: $warehouse->id,
                     actualQuantity: $countedQty,
-                    reason: $baseReason . $rowNote,
+                    reason: $baseReason.$rowNote,
                     userId: $userId
                 );
 
@@ -467,7 +466,7 @@ class StocktakeService
 
     protected function readXlsx(string $path): array
     {
-        $zip = new ZipArchive();
+        $zip = new ZipArchive;
         if ($zip->open($path) !== true) {
             throw new \RuntimeException('تعذر فتح ملف Excel.');
         }

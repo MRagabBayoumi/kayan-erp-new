@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -62,45 +64,35 @@ class AuthController extends Controller
         $remember = $request->boolean('remember');
         $password = (string) $request->input('password');
 
-        $isEmail = (bool) filter_var($loginInput, FILTER_VALIDATE_EMAIL);
-        $primaryField = $isEmail ? 'email' : 'name';
-        $secondaryField = $isEmail ? 'name' : 'email';
+        $user = User::where('username', $loginInput)
+            ->orWhere('email', $loginInput)
+            ->orWhere('phone', $loginInput)
+            ->orWhere('name', $loginInput)
+            ->first();
 
-        $authenticated = Auth::attempt([$primaryField => $loginInput, 'password' => $password], $remember);
-
-        if (! $authenticated) {
-            $authenticated = Auth::attempt([$secondaryField => $loginInput, 'password' => $password], $remember);
-        }
-
-        if (! $authenticated) {
+        if (! $user || ! Hash::check($password, $user->password)) {
             RateLimiter::hit($throttleKey, 60);
 
             throw ValidationException::withMessages([
-                'email' => 'اسم المستخدم أو البريد الإلكتروني أو كلمة المرور غير صحيحة.',
-                'login' => 'اسم المستخدم أو البريد الإلكتروني أو كلمة المرور غير صحيحة.',
+                'email' => 'اسم المستخدم أو كلمة المرور غير صحيحة.',
+                'login' => 'اسم المستخدم أو كلمة المرور غير صحيحة.',
             ]);
         }
 
-        if (Auth::user()->is_active === false || Auth::user()->is_active === 0) {
-            Auth::logout();
-
+        if ($user->is_active === false || $user->is_active === 0) {
             throw ValidationException::withMessages([
                 'email' => 'تم تعطيل هذا الحساب. يرجى مراجعة إدارة النظام.',
                 'login' => 'تم تعطيل هذا الحساب. يرجى مراجعة إدارة النظام.',
             ]);
         }
 
+        Auth::login($user, $remember);
+
         RateLimiter::clear($throttleKey);
         $request->session()->regenerate();
 
         if (Auth::user()->isSalesRep()) {
             return redirect()->intended(route('portal.index'))
-                ->with('status', 'success')
-                ->with('message', 'مرحباً بك مجدداً، '.Auth::user()->name);
-        }
-
-        if (Auth::user()->isCashier()) {
-            return redirect()->intended(route('sales.create'))
                 ->with('status', 'success')
                 ->with('message', 'مرحباً بك مجدداً، '.Auth::user()->name);
         }

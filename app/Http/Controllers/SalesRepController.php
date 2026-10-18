@@ -87,26 +87,41 @@ class SalesRepController extends Controller
     }
 
     /**
+     * Show the form for creating a new sales representative.
+     */
+    public function create(): View
+    {
+        $warehouses = Warehouse::active()->orderBy('name')->get();
+
+        return view('sales-reps.create', [
+            'title' => 'إضافة مندوب مبيعات جديد',
+            'warehouses' => $warehouses,
+        ]);
+    }
+
+    /**
      * Store a newly created sales representative in storage.
      */
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
-            'phone' => ['required', 'string', 'max:50'],
+            'username' => ['required', 'string', 'max:100', 'unique:users,username'],
             'password' => ['required', 'string', 'min:6'],
+            'phone' => ['nullable', 'string', 'max:50'],
+            'email' => ['nullable', 'string', 'email', 'max:255', 'unique:users,email'],
             'commission_rate' => ['required', 'numeric', 'min:0'],
             'commission_type' => ['required', 'in:percentage,fixed'],
             'warehouse_id' => ['nullable', 'exists:warehouses,id'],
             'is_active' => ['sometimes', 'boolean'],
         ], [
             'name.required' => 'اسم المندوب مطلوب.',
-            'email.required' => 'البريد الإلكتروني مطلوب.',
-            'email.unique' => 'البريد الإلكتروني مسجل مسبقاً لمستخدم آخر.',
-            'phone.required' => 'رقم هاتف المندوب مطلوب.',
+            'username.required' => 'اسم المستخدم مطلوب لتسجيل الدخول.',
+            'username.unique' => 'اسم المستخدم مستخدم مسبقاً، يرجى اختيار اسم آخر.',
             'password.required' => 'كلمة المرور مطلوبة.',
             'password.min' => 'كلمة المرور يجب أن تكون 6 أحرف على الأقل.',
+            'email.email' => 'صيغة البريد الإلكتروني غير صالحة.',
+            'email.unique' => 'البريد الإلكتروني مسجل مسبقاً لمستخدم آخر.',
             'commission_rate.required' => 'نسبة أو قيمة العمولة مطلوبة.',
         ]);
 
@@ -122,8 +137,9 @@ class SalesRepController extends Controller
 
         User::create([
             'name' => trim($validated['name']),
-            'email' => strtolower(trim($validated['email'])),
-            'phone' => trim($validated['phone']),
+            'username' => trim($validated['username']),
+            'email' => filled($validated['email'] ?? null) ? strtolower(trim($validated['email'])) : null,
+            'phone' => filled($validated['phone'] ?? null) ? trim($validated['phone']) : null,
             'password' => Hash::make($validated['password']),
             'role_id' => $role->id,
             'role' => User::ROLE_SALES_REP,
@@ -135,7 +151,7 @@ class SalesRepController extends Controller
         ]);
 
         return redirect()->route('sales-reps.index')
-            ->with('success', 'تمت إضافة مندوب المبيعات الجديد بنجاح، ويمكنه الآن تسجيل الدخول لبوابة المندوب.');
+            ->with('success', 'تمت إضافة مندوب المبيعات الجديد بنجاح، ويمكنه الآن تسجيل الدخول باسم المستخدم وكلمة المرور.');
     }
 
     /**
@@ -254,8 +270,9 @@ class SalesRepController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($rep->id)],
-            'phone' => ['required', 'string', 'max:50'],
+            'username' => ['required', 'string', 'max:100', Rule::unique('users', 'username')->ignore($rep->id)],
+            'phone' => ['nullable', 'string', 'max:50'],
+            'email' => ['nullable', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($rep->id)],
             'password' => ['nullable', 'string', 'min:6'],
             'commission_rate' => ['required', 'numeric', 'min:0'],
             'commission_type' => ['required', 'in:percentage,fixed'],
@@ -263,15 +280,18 @@ class SalesRepController extends Controller
             'is_active' => ['sometimes', 'boolean'],
         ], [
             'name.required' => 'اسم المندوب مطلوب.',
-            'email.required' => 'البريد الإلكتروني مطلوب.',
-            'phone.required' => 'رقم هاتف المندوب مطلوب.',
+            'username.required' => 'اسم المستخدم مطلوب لتسجيل الدخول.',
+            'username.unique' => 'اسم المستخدم مستخدم مسبقاً، يرجى اختيار اسم آخر.',
+            'email.email' => 'صيغة البريد الإلكتروني غير صالحة.',
+            'email.unique' => 'البريد الإلكتروني مسجل مسبقاً لمستخدم آخر.',
             'commission_rate.required' => 'نسبة أو قيمة العمولة مطلوبة.',
         ]);
 
         $updateData = [
             'name' => trim($validated['name']),
-            'email' => strtolower(trim($validated['email'])),
-            'phone' => trim($validated['phone']),
+            'username' => trim($validated['username']),
+            'email' => filled($validated['email'] ?? null) ? strtolower(trim($validated['email'])) : null,
+            'phone' => filled($validated['phone'] ?? null) ? trim($validated['phone']) : null,
             'commission_rate' => (float) $validated['commission_rate'],
             'commission_type' => $validated['commission_type'],
             'warehouse_id' => $validated['warehouse_id'] ?? null,

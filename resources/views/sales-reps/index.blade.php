@@ -5,8 +5,12 @@
         <x-slot:actions>
             <button type="button" data-action="open-add-rep-modal" class="erp-btn erp-btn-primary">
                 <x-icon name="user-plus" size="16" />
-                <span>إضافة مندوب مبيعات جديد</span>
+                <span>إضافة مندوب مبيعات سريع</span>
             </button>
+            <a href="{{ route('sales-reps.create') }}" class="erp-btn erp-btn-secondary" title="إضافة مندوب عبر صفحة كاملة">
+                <x-icon name="plus-circle" size="16" />
+                <span>صفحة الإضافة</span>
+            </a>
             <a href="{{ route('portal.index') }}" target="_blank" class="erp-btn erp-btn-secondary" title="معاينة بوابة المندوب الميداني">
                 <x-icon name="smartphone" size="16" class="text-sky-600" />
                 <span>فتح بوابة المندوب</span>
@@ -174,11 +178,18 @@
                         <tr class="hover:bg-[var(--bg-hover)] transition-colors">
                             <td class="font-numeric text-xs text-[var(--text-muted)]">{{ $rep->id }}</td>
                             <td>
-                                <div class="font-bold text-xs sm:text-sm text-[var(--text-main)]">{{ $rep->name }}</div>
+                                <div class="font-bold text-xs sm:text-sm text-[var(--text-main)] flex items-center gap-1.5 flex-wrap">
+                                    <span>{{ $rep->name }}</span>
+                                    @if($rep->username)
+                                        <span class="text-[10px] font-mono text-sky-700 bg-sky-50 border border-sky-200 rounded px-1.5 py-0.5" dir="ltr" title="اسم المستخدم لتسجيل الدخول">@{{ $rep->username }}</span>
+                                    @endif
+                                </div>
                                 <div class="text-[11px] text-[var(--text-muted)] font-numeric flex items-center gap-2 mt-0.5">
                                     <span>{{ $rep->phone ?? 'بدون هاتف' }}</span>
-                                    <span>·</span>
-                                    <span>{{ $rep->email }}</span>
+                                    @if($rep->email)
+                                        <span>·</span>
+                                        <span>{{ $rep->email }}</span>
+                                    @endif
                                 </div>
                             </td>
                             <td class="text-xs text-[var(--text-secondary)]">
@@ -223,8 +234,9 @@
                                         data-action="open-edit-rep-modal" 
                                         data-rep-id="{{ $rep->id }}"
                                         data-rep-name="{{ $rep->name }}"
-                                        data-rep-email="{{ $rep->email }}"
-                                        data-rep-phone="{{ $rep->phone }}"
+                                        data-rep-username="{{ $rep->username }}"
+                                        data-rep-email="{{ $rep->email ?? '' }}"
+                                        data-rep-phone="{{ $rep->phone ?? '' }}"
                                         data-rep-commission-rate="{{ (float) $rep->commission_rate }}"
                                         data-rep-commission-type="{{ $rep->commission_type }}"
                                         data-rep-warehouse-id="{{ $rep->warehouse_id }}"
@@ -274,29 +286,47 @@
         <form method="POST" action="{{ route('sales-reps.store') }}" class="p-5 space-y-3.5">
             @csrf
 
+            @if($errors->any())
+                <div class="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-md">
+                    <div class="font-bold mb-1">يرجى تصحيح الأخطاء التالية:</div>
+                    <ul class="list-disc list-inside space-y-0.5">
+                        @foreach($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
             <!-- Name -->
             <div class="erp-form-group mb-0">
-                <label class="erp-form-label">اسم المندوب الرباعي <span class="required">*</span></label>
-                <input type="text" name="name" required placeholder="مثال: أحمد محمود إبراهيم" class="erp-input text-xs sm:text-sm">
+                <label class="erp-form-label">اسم المندوب بالكامل <span class="required">*</span></label>
+                <input type="text" name="name" value="{{ old('name') }}" required placeholder="مثال: أحمد محمود إبراهيم" class="erp-input text-xs sm:text-sm">
+            </div>
+
+            <!-- Username & Password -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="erp-form-group mb-0">
+                    <label class="erp-form-label">اسم المستخدم للدخول <span class="required">*</span></label>
+                    <input type="text" name="username" value="{{ old('username') }}" required placeholder="مثال: ahmed_rep" class="erp-input text-xs sm:text-sm font-mono text-left" dir="ltr">
+                </div>
+
+                <div class="erp-form-group mb-0">
+                    <label class="erp-form-label">كلمة المرور للدخول <span class="required">*</span></label>
+                    <input type="password" name="password" required minlength="6" placeholder="لا تقل عن 6 أحرف" class="erp-input text-xs sm:text-sm font-mono text-left" dir="ltr">
+                </div>
             </div>
 
             <!-- Phone & Email -->
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div class="erp-form-group mb-0">
-                    <label class="erp-form-label">رقم الهاتف (للتواصل وتسجيل الدخول) <span class="required">*</span></label>
-                    <input type="tel" name="phone" required placeholder="مثال: 01012345678" class="erp-input text-xs sm:text-sm font-numeric">
+                    <label class="erp-form-label">رقم الهاتف (اختياري)</label>
+                    <input type="tel" name="phone" value="{{ old('phone') }}" placeholder="مثال: 01012345678" class="erp-input text-xs sm:text-sm font-numeric">
                 </div>
 
                 <div class="erp-form-group mb-0">
-                    <label class="erp-form-label">البريد الإلكتروني <span class="required">*</span></label>
-                    <input type="email" name="email" required placeholder="rep@company.com" class="erp-input text-xs sm:text-sm">
+                    <label class="erp-form-label">البريد الإلكتروني (اختياري)</label>
+                    <input type="email" name="email" value="{{ old('email') }}" placeholder="rep@company.com" class="erp-input text-xs sm:text-sm text-left" dir="ltr">
                 </div>
-            </div>
-
-            <!-- Password -->
-            <div class="erp-form-group mb-0">
-                <label class="erp-form-label">كلمة المرور للدخول للبوابة <span class="required">*</span></label>
-                <input type="password" name="password" required minlength="6" placeholder="لا تقل عن 6 أحرف أو أرقام" class="erp-input text-xs sm:text-sm">
             </div>
 
             <!-- Commission Rate & Type -->
@@ -304,15 +334,15 @@
                 <div class="erp-form-group mb-0">
                     <label class="erp-form-label">نوع احتساب العمولة <span class="required">*</span></label>
                     <select name="commission_type" required class="erp-select text-xs">
-                        <option value="percentage">نسبة مئوية (%) من قيمة الفاتورة</option>
-                        <option value="fixed">مبلغ ثابت (ج.م) لكل فاتورة</option>
+                        <option value="percentage" {{ old('commission_type', 'percentage') === 'percentage' ? 'selected' : '' }}>نسبة مئوية (%) من قيمة الفاتورة</option>
+                        <option value="fixed" {{ old('commission_type') === 'fixed' ? 'selected' : '' }}>مبلغ ثابت (ج.م) لكل فاتورة</option>
                     </select>
                 </div>
 
                 <div class="erp-form-group mb-0">
                     <label class="erp-form-label">قيمة أو نسبة العمولة <span class="required">*</span></label>
                     <div class="relative">
-                        <input type="number" step="0.01" min="0" name="commission_rate" required placeholder="مثال: 5 أو 50" class="erp-input text-xs font-numeric">
+                        <input type="number" step="0.01" min="0" name="commission_rate" value="{{ old('commission_rate', '0.00') }}" required placeholder="مثال: 5 أو 50" class="erp-input text-xs font-numeric">
                     </div>
                 </div>
             </div>
@@ -323,7 +353,7 @@
                 <select name="warehouse_id" class="erp-select text-xs">
                     <option value="">-- كافة المستودعات والفروع --</option>
                     @foreach($warehouses as $wh)
-                        <option value="{{ $wh->id }}">{{ $wh->name }}</option>
+                        <option value="{{ $wh->id }}" {{ (string)old('warehouse_id') === (string)$wh->id ? 'selected' : '' }}>{{ $wh->name }}</option>
                     @endforeach
                 </select>
             </div>
@@ -331,7 +361,7 @@
             <!-- Active Checkbox -->
             <div class="pt-1">
                 <label class="inline-flex items-center gap-2 cursor-pointer select-none">
-                    <input type="checkbox" name="is_active" value="1" checked class="rounded border-[var(--border-color)] text-[var(--primary)] focus:ring-[var(--primary)]">
+                    <input type="checkbox" name="is_active" value="1" {{ old('is_active', '1') === '1' ? 'checked' : '' }} class="rounded border-[var(--border-color)] text-[var(--primary)] focus:ring-[var(--primary)]">
                     <span class="text-xs font-semibold text-[var(--text-main)]">الحساب نشط ويحق له تسجيل الدخول لبوابة المندوب الميداني</span>
                 </label>
             </div>
@@ -367,27 +397,34 @@
 
             <!-- Name -->
             <div class="erp-form-group mb-0">
-                <label class="erp-form-label">اسم المندوب <span class="required">*</span></label>
+                <label class="erp-form-label">اسم المندوب بالكامل <span class="required">*</span></label>
                 <input type="text" id="editRepName" name="name" required class="erp-input text-xs sm:text-sm">
+            </div>
+
+            <!-- Username & Password Change -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="erp-form-group mb-0">
+                    <label class="erp-form-label">اسم المستخدم للدخول <span class="required">*</span></label>
+                    <input type="text" id="editRepUsername" name="username" required class="erp-input text-xs sm:text-sm font-mono text-left" dir="ltr">
+                </div>
+
+                <div class="erp-form-group mb-0">
+                    <label class="erp-form-label">كلمة المرور (اتركه فارغاً للتثبيت)</label>
+                    <input type="password" name="password" minlength="6" placeholder="كلمة مرور جديدة (اختياري)" class="erp-input text-xs sm:text-sm font-mono text-left" dir="ltr">
+                </div>
             </div>
 
             <!-- Phone & Email -->
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div class="erp-form-group mb-0">
-                    <label class="erp-form-label">رقم الهاتف <span class="required">*</span></label>
-                    <input type="tel" id="editRepPhone" name="phone" required class="erp-input text-xs sm:text-sm font-numeric">
+                    <label class="erp-form-label">رقم الهاتف (اختياري)</label>
+                    <input type="tel" id="editRepPhone" name="phone" class="erp-input text-xs sm:text-sm font-numeric">
                 </div>
 
                 <div class="erp-form-group mb-0">
-                    <label class="erp-form-label">البريد الإلكتروني <span class="required">*</span></label>
-                    <input type="email" id="editRepEmail" name="email" required class="erp-input text-xs sm:text-sm">
+                    <label class="erp-form-label">البريد الإلكتروني (اختياري)</label>
+                    <input type="email" id="editRepEmail" name="email" class="erp-input text-xs sm:text-sm text-left" dir="ltr">
                 </div>
-            </div>
-
-            <!-- Password Change (Optional) -->
-            <div class="erp-form-group mb-0">
-                <label class="erp-form-label">تغيير كلمة المرور (اتركه فارغاً للإبقاء على الحالية)</label>
-                <input type="password" name="password" minlength="6" placeholder="كلمة مرور جديدة (اختياري)" class="erp-input text-xs sm:text-sm">
             </div>
 
             <!-- Commission Rate & Type -->
@@ -440,6 +477,14 @@
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Auto-open add modal if there were validation errors
+        @if($errors->any())
+            const addModal = document.getElementById('addRepModal');
+            if (addModal) {
+                addModal.classList.remove('hidden');
+            }
+        @endif
+
         // Modal toggles
         document.querySelectorAll('[data-action="open-add-rep-modal"]').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -462,6 +507,7 @@
                 form.action = `/sales-reps/${repId}`;
 
                 document.getElementById('editRepName').value = btn.getAttribute('data-rep-name') || '';
+                document.getElementById('editRepUsername').value = btn.getAttribute('data-rep-username') || '';
                 document.getElementById('editRepEmail').value = btn.getAttribute('data-rep-email') || '';
                 document.getElementById('editRepPhone').value = btn.getAttribute('data-rep-phone') || '';
                 document.getElementById('editRepCommissionRate').value = btn.getAttribute('data-rep-commission-rate') || 0;

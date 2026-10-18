@@ -313,6 +313,8 @@
                     </table>
                 </div>
             </div>
+        @endif
+
         <!-- Payments & Installments Section -->
         @if($invoice->status === 'posted')
             <div class="erp-card">

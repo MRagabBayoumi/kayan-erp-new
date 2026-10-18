@@ -268,6 +268,7 @@ Route::middleware('auth')->group(function () {
     // Sales Representatives Management & Performance Analytics (Admin)
     Route::middleware('can:manage-sales-reps')->group(function () {
         Route::get('/sales-reps', [SalesRepController::class, 'index'])->name('sales-reps.index');
+        Route::get('/sales-reps/create', [SalesRepController::class, 'create'])->name('sales-reps.create');
         Route::post('/sales-reps', [SalesRepController::class, 'store'])->name('sales-reps.store');
         Route::get('/sales-reps/{rep}', [SalesRepController::class, 'show'])->name('sales-reps.show');
         Route::put('/sales-reps/{rep}', [SalesRepController::class, 'update'])->name('sales-reps.update');

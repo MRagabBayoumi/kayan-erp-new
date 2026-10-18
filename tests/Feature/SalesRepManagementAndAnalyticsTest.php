@@ -35,6 +35,7 @@ beforeEach(function () {
 
     $this->salesRep = User::create([
         'name' => 'مندوب تجريبي',
+        'username' => 'rep_test_'.uniqid(),
         'email' => 'rep_test_'.uniqid().'@example.com',
         'phone' => '01099998888',
         'password' => bcrypt('password123'),
@@ -57,16 +58,26 @@ test('admin can access sales reps management page and view KPIs', function () {
         ->assertSee('مندوب تجريبي');
 });
 
-test('admin can create a new sales representative with commission rate', function () {
+test('admin can access sales reps create page', function () {
     $this->actingAs($this->admin);
 
-    $email = 'new_rep_'.uniqid().'@example.com';
+    $response = $this->get(route('sales-reps.create'));
+
+    $response->assertOk()
+        ->assertSee('إضافة مندوب مبيعات جديد')
+        ->assertSee('اسم المستخدم (لتسجيل الدخول)');
+});
+
+test('admin can create a new sales representative with username and password without email', function () {
+    $this->actingAs($this->admin);
+
+    $username = 'rep_user_'.uniqid();
 
     $response = $this->post(route('sales-reps.store'), [
         'name' => 'مندوب جديد معتمد',
-        'email' => $email,
-        'phone' => '01122334455',
+        'username' => $username,
         'password' => 'secret123',
+        'phone' => '01122334455',
         'commission_rate' => 7.5,
         'commission_type' => 'percentage',
         'warehouse_id' => $this->warehouse->id,
@@ -78,11 +89,20 @@ test('admin can create a new sales representative with commission rate', functio
 
     $this->assertDatabaseHas('users', [
         'name' => 'مندوب جديد معتمد',
-        'email' => $email,
+        'username' => $username,
+        'email' => null,
         'role' => User::ROLE_SALES_REP,
         'commission_rate' => 7.50,
         'commission_type' => 'percentage',
     ]);
+
+    // Test that the newly created rep can log in using username and password
+    auth()->logout();
+
+    $this->post(route('login'), [
+        'login' => $username,
+        'password' => 'secret123',
+    ])->assertRedirect(route('portal.index'));
 });
 
 test('admin can access sales rep deep performance analytics page', function () {

@@ -246,4 +246,3 @@ test('shift report can be printed in a4, a5 and thermal formats', function () {
         $response->assertSee('وردية');
     }
 });
-

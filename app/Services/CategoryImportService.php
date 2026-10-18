@@ -188,8 +188,8 @@ class CategoryImportService
                 }
             } else {
                 // Auto-generate code from slug if blank
-                $generatedSlug = Str::slug($name, '-', null) ?: 'cat-' . Str::random(6);
-                $code = strtoupper('CAT-' . Str::random(6));
+                $generatedSlug = Str::slug($name, '-', null) ?: 'cat-'.Str::random(6);
+                $code = strtoupper('CAT-'.Str::random(6));
             }
 
             // Check Duplicate Name in File
@@ -261,9 +261,9 @@ class CategoryImportService
             $pendingParents = [];
 
             foreach ($validRows as $row) {
-                $slug = Str::slug($row['name'], '-', null) ?: 'cat-' . Str::random(8);
+                $slug = Str::slug($row['name'], '-', null) ?: 'cat-'.Str::random(8);
                 if (Category::where('slug', $slug)->exists()) {
-                    $slug .= '-' . Str::random(4);
+                    $slug .= '-'.Str::random(4);
                 }
 
                 $category = Category::create([
@@ -395,7 +395,7 @@ class CategoryImportService
      */
     protected function readXlsxRows(string $path): array
     {
-        $zip = new ZipArchive();
+        $zip = new ZipArchive;
         if ($zip->open($path) !== true) {
             throw new \RuntimeException('تعذر فتح ملف Excel. يرجى التأكد من سلامة الملف.');
         }

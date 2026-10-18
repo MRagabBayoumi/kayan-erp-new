@@ -306,7 +306,7 @@ class InventoryController extends Controller
         }
 
         $csvContent = $stocktakeService->generateStocktakeTemplate($warehouse);
-        $filename = 'stocktake_' . ($warehouse->code ?: 'WH') . '_' . date('Y-m-d') . '.csv';
+        $filename = 'stocktake_'.($warehouse->code ?: 'WH').'_'.date('Y-m-d').'.csv';
 
         return response($csvContent, 200, [
             'Content-Type' => 'text/csv; charset=UTF-8',
@@ -342,7 +342,7 @@ class InventoryController extends Controller
                 ->with('stocktake_preview', $preview);
         } catch (\Throwable $e) {
             return redirect()->route('inventory.stocktake', ['warehouse_id' => $request->input('warehouse_id')])
-                ->with('error', 'حدث خطأ أثناء فحص ملف الجرد: ' . $e->getMessage());
+                ->with('error', 'حدث خطأ أثناء فحص ملف الجرد: '.$e->getMessage());
         }
     }
 
@@ -378,7 +378,7 @@ class InventoryController extends Controller
                 ->with('success', $result['message']);
         } catch (\Throwable $e) {
             return redirect()->route('inventory.stocktake', ['warehouse_id' => $validated['warehouse_id']])
-                ->with('error', 'فشلت عملية تسوية الجرد: ' . $e->getMessage());
+                ->with('error', 'فشلت عملية تسوية الجرد: '.$e->getMessage());
         }
     }
 }
