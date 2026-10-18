@@ -20,6 +20,10 @@ class AuthController extends Controller
     public function showLogin(): View|RedirectResponse
     {
         if (Auth::check()) {
+            if (Auth::user()->isSalesRep()) {
+                return redirect()->route('portal.index');
+            }
+
             return redirect()->intended(route('dashboard'));
         }
 
@@ -92,7 +96,9 @@ class AuthController extends Controller
         $request->session()->regenerate();
 
         if (Auth::user()->isSalesRep()) {
-            return redirect()->intended(route('portal.index'))
+            $request->session()->forget('url.intended');
+
+            return redirect()->route('portal.index')
                 ->with('status', 'success')
                 ->with('message', 'مرحباً بك مجدداً، '.Auth::user()->name);
         }

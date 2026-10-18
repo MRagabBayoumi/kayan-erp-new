@@ -17,9 +17,14 @@ class HomeController extends Controller
     /**
      * Display the official BayoSoft ERP Applications Hub (Home Launcher).
      */
-    public function home(Request $request): View
+    public function home(Request $request): View|RedirectResponse
     {
         $user = auth()->user();
+
+        if ($user->isSalesRep()) {
+            return redirect()->route('portal.index');
+        }
+
         $activeShift = CashierShift::getActiveShift($user->id);
 
         return view('home', [

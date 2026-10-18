@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureSalesRepScopedToPortal;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -15,6 +16,16 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->trustProxies(at: '*');
         $middleware->validateCsrfTokens(except: [
             '_boots/*',
+        ]);
+        $middleware->redirectUsersTo(function (Request $request) {
+            if ($request->user()?->isSalesRep()) {
+                return route('portal.index');
+            }
+
+            return route('dashboard');
+        });
+        $middleware->web(append: [
+            EnsureSalesRepScopedToPortal::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

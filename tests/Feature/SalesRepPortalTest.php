@@ -35,6 +35,7 @@ beforeEach(function () {
     $this->salesRep = User::factory()->create([
         'name' => 'محمد مندوب المبيعات',
         'email' => 'rep@kayan.com',
+        'password' => 'secret123',
         'role' => User::ROLE_SALES_REP,
         'role_id' => $this->salesRepRole->id,
         'commission_rate' => 10.00, // 10%
@@ -238,4 +239,35 @@ test('sales rep can submit and post order directly, generating commission', func
     $commResponse->assertOk();
     $commResponse->assertSee('25.00');
     $commResponse->assertSee($invoice->invoice_number);
+});
+
+test('sales rep is strictly redirected to portal upon login even if url.intended was set', function () {
+    auth()->logout();
+    session(['url.intended' => route('dashboard')]);
+
+    $response = $this->post(route('login.post'), [
+        'login' => $this->salesRep->email,
+        'password' => 'secret123',
+    ]);
+
+    $response->assertRedirect(route('portal.index'));
+    expect(session()->has('url.intended'))->toBeFalse();
+});
+
+test('sales rep accessing non-portal routes or home is strictly redirected to portal', function (string $route) {
+    $response = $this->actingAs($this->salesRep)->get($route);
+
+    $response->assertRedirect(route('portal.index'));
+})->with([
+    '/',
+    '/dashboard',
+    '/products',
+    '/settings',
+    '/customers',
+]);
+
+test('sales rep accessing login page while authenticated is redirected to portal', function () {
+    $response = $this->actingAs($this->salesRep)->get(route('login'));
+
+    $response->assertRedirect(route('portal.index'));
 });
