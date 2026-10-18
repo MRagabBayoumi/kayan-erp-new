@@ -62,9 +62,13 @@
                         @endif
                     </h1>
                     <div class="text-xs text-[var(--text-muted)] font-numeric flex flex-wrap items-center gap-2 mt-0.5">
+                        @if($rep->username)
+                            <span class="text-[11px] font-mono text-sky-700 bg-sky-50 border border-sky-200 rounded px-1.5 py-0.5" dir="ltr" title="اسم المستخدم لتسجيل الدخول">{{ '@' . $rep->username }}</span>
+                            <span>·</span>
+                        @endif
                         <span>هاتف: <strong>{{ $rep->phone ?? '---' }}</strong></span>
                         <span>·</span>
-                        <span>بريد: <strong>{{ $rep->email }}</strong></span>
+                        <span>بريد: <strong>{{ $rep->email ?? '---' }}</strong></span>
                         <span>·</span>
                         <span>الفرع: <strong>{{ $rep->warehouse?->name ?? 'كافة الفروع' }}</strong></span>
                     </div>

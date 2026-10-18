@@ -181,7 +181,7 @@
                                 <div class="font-bold text-xs sm:text-sm text-[var(--text-main)] flex items-center gap-1.5 flex-wrap">
                                     <span>{{ $rep->name }}</span>
                                     @if($rep->username)
-                                        <span class="text-[10px] font-mono text-sky-700 bg-sky-50 border border-sky-200 rounded px-1.5 py-0.5" dir="ltr" title="اسم المستخدم لتسجيل الدخول">@{{ $rep->username }}</span>
+                                        <span class="text-[10px] font-mono text-sky-700 bg-sky-50 border border-sky-200 rounded px-1.5 py-0.5" dir="ltr" title="اسم المستخدم لتسجيل الدخول">{{ '@' . $rep->username }}</span>
                                     @endif
                                 </div>
                                 <div class="text-[11px] text-[var(--text-muted)] font-numeric flex items-center gap-2 mt-0.5">

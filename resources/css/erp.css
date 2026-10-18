@@ -59,3 +59,42 @@
     display: block !important;
 }
 
+/* Primary Utility Fallbacks */
+.text-\[var\(--primary\)\], .text-primary {
+    color: var(--primary) !important;
+}
+
+.bg-\[var\(--primary\)\], .bg-primary {
+    background-color: var(--primary) !important;
+}
+
+.border-\[var\(--primary\)\], .border-primary {
+    border-color: var(--primary) !important;
+}
+
+.bg-\[var\(--primary-soft\)\], .bg-primary-soft {
+    background-color: var(--primary-soft) !important;
+}
+
+/* Odoo Pill Button for Topbars and Banners */
+.erp-btn-pill-white {
+    background-color: #FFFFFF !important;
+    color: #714B67 !important;
+    font-weight: 700 !important;
+    border-radius: 6px !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    transition: transform 0.15s ease, background-color 0.15s ease !important;
+}
+
+.erp-btn-pill-white:hover {
+    background-color: #F8F9FA !important;
+    color: #5D3B54 !important;
+}
+
+.erp-btn-pill-white:active {
+    transform: scale(0.96) !important;
+}
+

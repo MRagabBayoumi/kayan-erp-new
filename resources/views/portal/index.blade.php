@@ -22,7 +22,7 @@
                 </div>
             </div>
             <div class="flex items-center gap-2 self-start sm:self-center shrink-0">
-                <a href="{{ route('portal.orders.create') }}" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded bg-white text-[var(--primary)] hover:bg-slate-50 font-bold text-xs shadow-xs transition-transform active:scale-95">
+                <a href="{{ route('portal.orders.create') }}" class="erp-btn-pill-white px-3.5 py-2 text-xs">
                     <x-icon name="plus" size="14" />
                     <span>إنشاء فاتورة جديدة</span>
                 </a>

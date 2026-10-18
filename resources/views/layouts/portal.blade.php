@@ -13,6 +13,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
+    <script>
+        document.documentElement.setAttribute('data-theme', 'light');
+    </script>
+
     @vite(['resources/js/theme-init.js', 'resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="bg-[var(--bg-app)] text-[var(--text-main)] min-h-screen flex flex-col antialiased selection:bg-[var(--primary)] selection:text-white" style="overflow-y: auto !important; height: auto !important; min-height: 100vh; font-family: 'Cairo', system-ui, -apple-system, sans-serif !important;">
@@ -61,7 +65,7 @@
             <!-- User Info & Actions -->
             <div class="flex items-center gap-2 shrink-0">
                 <!-- New Order Button -->
-                <a href="{{ route('portal.orders.create') }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-white text-[var(--primary)] hover:bg-slate-100 font-bold text-xs shadow-xs transition-all active:scale-95">
+                <a href="{{ route('portal.orders.create') }}" class="erp-btn-pill-white px-3 py-1.5 text-xs">
                     <x-icon name="plus" size="13" />
                     <span>طلب جديد</span>
                 </a>
@@ -129,36 +133,36 @@
     </main>
 
     <!-- Mobile Bottom Navigation Bar (Faithful to Kayan ERP) -->
-    <nav class="md:hidden fixed bottom-0 inset-x-0 z-50 bg-white border-t border-[var(--border-color)] shadow-lg safe-bottom">
+    <nav class="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-slate-200 shadow-[0_-2px_10px_rgba(0,0,0,0.06)] safe-bottom">
         <div class="max-w-md mx-auto grid grid-cols-5 h-16 items-center px-1">
             <!-- 1. Dashboard -->
-            <a href="{{ route('portal.index') }}" class="flex flex-col items-center justify-center gap-1 py-1 transition-colors {{ request()->routeIs('portal.index') ? 'text-[var(--primary)] font-bold' : 'text-slate-500 hover:text-slate-800' }}">
-                <x-icon name="home" size="18" />
+            <a href="{{ route('portal.index') }}" class="flex flex-col items-center justify-center gap-1 py-1 transition-colors {{ request()->routeIs('portal.index') ? 'text-[#714B67] font-bold' : 'text-slate-500 hover:text-slate-800' }}">
+                <x-icon name="home" size="19" />
                 <span class="text-[10px]">الرئيسية</span>
             </a>
 
             <!-- 2. Catalog -->
-            <a href="{{ route('portal.catalog') }}" class="flex flex-col items-center justify-center gap-1 py-1 transition-colors {{ request()->routeIs('portal.catalog') ? 'text-[var(--primary)] font-bold' : 'text-slate-500 hover:text-slate-800' }}">
-                <x-icon name="package" size="18" />
+            <a href="{{ route('portal.catalog') }}" class="flex flex-col items-center justify-center gap-1 py-1 transition-colors {{ request()->routeIs('portal.catalog') ? 'text-[#714B67] font-bold' : 'text-slate-500 hover:text-slate-800' }}">
+                <x-icon name="package" size="19" />
                 <span class="text-[10px]">الكتالوج</span>
             </a>
 
             <!-- 3. New Order (Elevated Kayan Primary Button) -->
             <div class="flex items-center justify-center -mt-5">
-                <a href="{{ route('portal.orders.create') }}" class="w-12 h-12 rounded-full bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white flex items-center justify-center shadow-lg shadow-[var(--primary)]/30 hover:scale-105 active:scale-95 transition-all">
-                    <x-icon name="plus" size="22" />
+                <a href="{{ route('portal.orders.create') }}" class="w-12 h-12 rounded-full bg-[#714B67] hover:bg-[#5d3b54] text-white flex items-center justify-center shadow-lg shadow-[#714B67]/30 hover:scale-105 active:scale-95 transition-all">
+                    <x-icon name="plus" size="22" stroke-width="2.5" />
                 </a>
             </div>
 
             <!-- 4. Customers -->
-            <a href="{{ route('portal.customers.index') }}" class="flex flex-col items-center justify-center gap-1 py-1 transition-colors {{ request()->routeIs('portal.customers.*') ? 'text-[var(--primary)] font-bold' : 'text-slate-500 hover:text-slate-800' }}">
-                <x-icon name="users" size="18" />
+            <a href="{{ route('portal.customers.index') }}" class="flex flex-col items-center justify-center gap-1 py-1 transition-colors {{ request()->routeIs('portal.customers.*') ? 'text-[#714B67] font-bold' : 'text-slate-500 hover:text-slate-800' }}">
+                <x-icon name="users" size="19" />
                 <span class="text-[10px]">عملائي</span>
             </a>
 
             <!-- 5. Commissions -->
-            <a href="{{ route('portal.commissions') }}" class="flex flex-col items-center justify-center gap-1 py-1 transition-colors {{ request()->routeIs('portal.commissions') ? 'text-[var(--primary)] font-bold' : 'text-slate-500 hover:text-slate-800' }}">
-                <x-icon name="dollar-sign" size="18" />
+            <a href="{{ route('portal.commissions') }}" class="flex flex-col items-center justify-center gap-1 py-1 transition-colors {{ request()->routeIs('portal.commissions') ? 'text-[#714B67] font-bold' : 'text-slate-500 hover:text-slate-800' }}">
+                <x-icon name="dollar-sign" size="19" />
                 <span class="text-[10px]">عمولاتي</span>
             </a>
         </div>

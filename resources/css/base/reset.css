@@ -58,6 +58,10 @@ body {
     scrollbar-color: var(--border-color) var(--bg-surface-alt);
 }
 
+[x-cloak] {
+    display: none !important;
+}
+
 a {
     color: inherit;
     text-decoration: none;

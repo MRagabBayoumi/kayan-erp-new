@@ -954,4 +954,26 @@ class InventoryService
             'discrepancies' => $discrepancies,
         ];
     }
+
+    /**
+     * Recalculate and update the running balance of all stock movements for a product chronologically.
+     */
+    public function recalculateProductRunningBalances(int $productId): void
+    {
+        $movements = StockMovement::where('product_id', $productId)
+            ->orderBy('created_at')
+            ->orderBy('id')
+            ->get();
+
+        $running = 0.00;
+        foreach ($movements as $m) {
+            if ($m->type === StockMovement::TYPE_IN) {
+                $running += (float) $m->quantity;
+            } elseif ($m->type === StockMovement::TYPE_OUT) {
+                $running -= (float) $m->quantity;
+            }
+            $m->running_balance = round($running, 4);
+            $m->save();
+        }
+    }
 }

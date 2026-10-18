@@ -31,6 +31,11 @@
             <rect width="7" height="5" x="3" y="16" rx="1"/>
             @break
 
+        @case('home')
+            <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+            @break
+
         @case('package')
         @case('product')
         @case('products')
@@ -156,6 +161,14 @@
             <path d="M12 18h.01"/>
             @break
 
+        @case('phone')
+            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+            @break
+
+        @case('phone-call')
+            <path d="M15.05 5A5 5 0 0 1 19 8.95M15.05 1A9 9 0 0 1 23 8.94m-1 7.98v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+            @break
+
         @case('scan')
         @case('scan-barcode')
             <path d="M3 7V5a2 2 0 0 1 2-2h2"/>
@@ -191,11 +204,30 @@
             <path d="M20 21a8 8 0 0 0-16 0"/>
             @break
 
+        @case('user-plus')
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <line x1="19" x2="19" y1="8" y2="14"/>
+            <line x1="22" x2="16" y1="11" y2="11"/>
+            @break
+
+        @case('user-check')
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <polyline points="16 11 18 13 22 9"/>
+            @break
+
         @case('plus')
         @case('create')
         @case('add')
             <path d="M5 12h14"/>
             <path d="M12 5v14"/>
+            @break
+
+        @case('plus-circle')
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M8 12h8"/>
+            <path d="M12 8v8"/>
             @break
 
         @case('pencil')
@@ -286,6 +318,27 @@
             <line x1="12" y1="17" x2="12.01" y2="17"/>
             @break
 
+        @case('alert-circle')
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+            @break
+
+        @case('map-pin')
+            <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/>
+            <circle cx="12" cy="10" r="3"/>
+            @break
+
+        @case('map')
+            <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/>
+            <line x1="9" x2="9" y1="3" y2="18"/>
+            <line x1="15" x2="15" y1="6" y2="21"/>
+            @break
+
+        @case('navigation')
+            <polygon points="3 11 22 2 13 21 11 13 3 11"/>
+            @break
+
         @case('sun')
             <circle cx="12" cy="12" r="4"/>
             <path d="M12 2v2"/>
@@ -312,6 +365,20 @@
         @case('mail')
             <rect width="20" height="16" x="2" y="4" rx="2"/>
             <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+            @break
+
+        @case('inbox')
+            <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/>
+            <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>
+            @break
+
+        @case('send')
+            <line x1="22" y1="2" x2="11" y2="13"/>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            @break
+
+        @case('message-circle')
+            <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>
             @break
 
         @case('lock')
@@ -346,6 +413,11 @@
             <path d="M21 3v5h-5"/>
             <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
             <path d="M8 16H3v5"/>
+            @break
+
+        @case('rotate-ccw')
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+            <path d="M3 3v5h5"/>
             @break
 
         @case('zap')

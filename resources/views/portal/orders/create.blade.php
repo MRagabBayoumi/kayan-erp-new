@@ -43,12 +43,12 @@
                     </div>
 
                     @if($customers->isEmpty())
-                        <div class="p-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-md text-xs flex items-center justify-between gap-2">
+                        <div class="p-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-md text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
                             <div class="flex items-center gap-2">
                                 <x-icon name="alert-triangle" size="16" class="text-amber-600 shrink-0" />
                                 <span>لا يوجد عملاء تابعين لك مسجلين حتى الآن. يرجى تسجيل بيانات العميل أولاً للمتابعة.</span>
                             </div>
-                            <a href="{{ route('portal.customers.create') }}" class="erp-btn erp-btn-sm erp-btn-primary shrink-0 text-xs">
+                            <a href="{{ route('portal.customers.create') }}" class="erp-btn erp-btn-sm erp-btn-primary shrink-0 text-xs w-full sm:w-auto justify-center">
                                 <span>+ تسجيل عميل</span>
                             </a>
                         </div>
@@ -108,23 +108,25 @@
 
                 <!-- Add Items Section -->
                 <div class="erp-card mb-0 p-4 sm:p-5 space-y-4">
-                    <div class="flex items-center justify-between pb-2 border-b border-[var(--border-light)]">
-                        <h2 class="erp-card-title text-xs sm:text-sm">
-                            <x-icon name="shopping-bag" size="16" class="text-[var(--primary)]" />
-                            <span>بنود وأصناف الطلب</span>
-                            <span class="erp-badge erp-badge-neutral text-[10px] font-numeric" x-text="items.length + ' أصناف'"></span>
-                        </h2>
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2 border-b border-[var(--border-light)]">
+                        <div class="flex items-center justify-between w-full sm:w-auto">
+                            <h2 class="erp-card-title text-xs sm:text-sm">
+                                <x-icon name="shopping-bag" size="16" class="text-[var(--primary)]" />
+                                <span>بنود وأصناف الطلب</span>
+                                <span class="erp-badge erp-badge-neutral text-[10px] font-numeric" x-text="items.length + ' أصناف'"></span>
+                            </h2>
+                        </div>
 
-                        <div class="flex items-center gap-1.5">
+                        <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
                             <!-- Hidden input receiving the scanned barcode -->
                             <input type="hidden" id="portalOrderBarcodeInput">
 
-                            <button type="button" data-action="open-barcode-scanner" data-target-input="portalOrderBarcodeInput" class="erp-btn erp-btn-secondary erp-btn-sm text-xs">
+                            <button type="button" data-action="open-barcode-scanner" data-target-input="portalOrderBarcodeInput" class="erp-btn erp-btn-secondary erp-btn-sm text-xs flex-1 sm:flex-none justify-center">
                                 <x-icon name="camera" size="14" class="text-[var(--primary)]" />
                                 <span>مسح باركود</span>
                             </button>
 
-                            <button type="button" @click="showProductPicker = true" class="erp-btn erp-btn-primary erp-btn-sm text-xs">
+                            <button type="button" @click="showProductPicker = true" class="erp-btn erp-btn-primary erp-btn-sm text-xs flex-1 sm:flex-none justify-center">
                                 <x-icon name="plus" size="14" />
                                 <span>إضافة صنف</span>
                             </button>
@@ -262,7 +264,7 @@
     </form>
 
     <!-- Product Picker Modal -->
-    <div x-show="showProductPicker" x-cloak class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div x-show="showProductPicker" x-cloak style="display: none;" class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
         <div class="fixed inset-0 bg-black/50 transition-opacity" @click="showProductPicker = false"></div>
 
         <div class="flex min-h-full items-end sm:items-center justify-center p-0 sm:p-4 text-center">

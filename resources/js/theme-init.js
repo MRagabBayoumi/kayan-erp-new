@@ -7,8 +7,8 @@
         const savedTheme = localStorage.getItem('kayan_theme');
         if (savedTheme) {
             document.documentElement.setAttribute('data-theme', savedTheme);
-        } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-            document.documentElement.setAttribute('data-theme', 'dark');
+        } else {
+            document.documentElement.setAttribute('data-theme', 'light');
         }
 
         const savedDensity = localStorage.getItem('kayan_density');

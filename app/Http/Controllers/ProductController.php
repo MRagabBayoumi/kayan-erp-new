@@ -529,7 +529,10 @@ class ProductController extends Controller
                         $openingMovement->save();
                     }
 
-                    // 4. Update BatchCostMovement if present
+                    // 4. Recalculate running balances chronologically for this product
+                    $inventoryService->recalculateProductRunningBalances($product->id);
+
+                    // 5. Update BatchCostMovement if present
                     BatchCostMovement::where('batch_id', $openingBatch->id)
                         ->where('movement_type', 'opening_in')
                         ->update([
