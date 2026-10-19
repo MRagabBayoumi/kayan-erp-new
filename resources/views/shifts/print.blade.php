@@ -5,10 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>تقرير إغلاق وردية كاشير - {{ $shift->shift_number }}</title>
-
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ asset('fonts/cairo/cairo.css') }}">
 
     @vite(['resources/css/print/invoice-document.css', 'resources/css/print/shift-receipt.css', 'resources/js/pages/invoice-print.js'])
 </head>

@@ -304,3 +304,62 @@ test('import initializes opening stock and batch for existing product with zero 
         'wholesale_price' => 30.00,
     ]);
 });
+
+test('barcode takes precedence over SKU and float numbers are sanitized to integers', function () {
+    $cat = Category::firstOrCreate(['name' => 'عام'], ['slug' => 'general']);
+
+    // Pre-existing product in DB with SKU HB-79 and barcode 10035
+    $oldProduct = Product::create([
+        'sku' => 'HB-79',
+        'name' => 'فرشه ميكاب',
+        'category_id' => $cat->id,
+        'barcode' => '10035',
+        'cost_price' => 20.00,
+        'wholesale_price' => 30.00,
+        'retail_price' => 40.00,
+        'unit' => 'قطعة',
+        'is_active' => true,
+    ]);
+
+    // CSV containing a new product with new barcode 10280.0, but reusing SKU hb-79
+    $csvData = "\xEF\xBB\xBF"."كود الصنف,اسم المنتج,التصنيف,الباركود,سعر التكلفة,سعر الجملة,سعر التجزئة,سعر الموزع,وحدة القياس,عدد القطع في الطرد,حد الطلب الأدنى,الكمية الافتتاحية,تكلفة الرصيد الافتتاحي,المستودع المستلم,تاريخ الرصيد الافتتاحي\n"
+        ."hb-79,hb-79 اظافر صافي,عام,10280.0,25.00,35.00,45.00,,قطعة,12.0,5.0,10.0,25.00,,2026-10-19\n";
+
+    $file = UploadedFile::fake()->createWithContent('barcode_priority_test.csv', $csvData);
+
+    $response = $this->post(route('products.import.review'), ['import_file' => $file]);
+    $response->assertStatus(200);
+
+    $reviewData = session('import_review_data');
+    expect($reviewData)->not->toBeNull()
+        ->and($reviewData['stats']['new_count'])->toBe(1)
+        ->and($reviewData['stats']['update_count'])->toBe(0);
+
+    $row = $reviewData['rows'][0];
+    expect($row['action'])->toBe('new')
+        ->and($row['barcode'])->toBe('10280') // stripped of .0
+        ->and($row['sku'])->toBe('hb-79-10280') // disambiguated to prevent collision with oldProduct
+        ->and($row['sku_adjusted'])->toBeTrue()
+        ->and($row['pieces_per_package'])->toBe(12) // integer, not float
+        ->and((float) $row['opening_quantity'])->toBe(10.0);
+
+    // Confirm import
+    $this->post(route('products.import.confirm'), [
+        'update_existing' => '1',
+        'create_categories' => '1',
+    ])->assertRedirect(route('products.index'));
+
+    // Old product must remain completely unchanged!
+    $oldProduct->refresh();
+    expect($oldProduct->name)->toBe('فرشه ميكاب')
+        ->and($oldProduct->sku)->toBe('HB-79')
+        ->and($oldProduct->barcode)->toBe('10035');
+
+    // New product must be created cleanly in DB
+    $this->assertDatabaseHas('products', [
+        'name' => 'hb-79 اظافر صافي',
+        'sku' => 'hb-79-10280',
+        'barcode' => '10280',
+        'pieces_per_package' => 12,
+    ]);
+});

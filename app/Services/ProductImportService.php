@@ -124,6 +124,42 @@ class ProductImportService
     }
 
     /**
+     * Clean and sanitize numeric strings like barcodes or SKUs from Excel.
+     * Converts float representations (10280.0) or scientific notation (1.028E+4) to pure integer string "10280".
+     */
+    public function sanitizeIntegerString(mixed $val): string
+    {
+        if ($val === null) {
+            return '';
+        }
+
+        $str = trim((string) $val);
+        if ($str === '') {
+            return '';
+        }
+
+        // Remove spaces, non-breaking spaces, and commas
+        $str = str_replace([' ', "\xc2\xa0", ','], '', $str);
+
+        // If scientific notation e.g. "1.0284E+4" or "1.0284e4"
+        if (preg_match('/^[+-]?\d+(?:\.\d+)?[eE][+-]?\d+$/', $str)) {
+            return (string) number_format((float) $str, 0, '', '');
+        }
+
+        // If ends with .0, .00, .0000 e.g. "10280.0" -> "10280"
+        if (preg_match('/^([+-]?\d+)\.0+$/', $str, $m)) {
+            return $m[1];
+        }
+
+        // If it's a numeric float that represents an integer e.g. "10280.00"
+        if (is_numeric($str) && floor((float) $str) == (float) $str) {
+            return (string) (int) round((float) $str);
+        }
+
+        return $str;
+    }
+
+    /**
      * Convert Excel column letters (A, B, Z, AA, AB...) into a 0-based column index.
      */
     protected function columnLetterToIndex(string $col): int
@@ -358,17 +394,37 @@ class ProductImportService
         }
 
         $grid = [];
+        $consecutiveEmpty = 0;
+
         foreach ($sheetXml->sheetData->row as $row) {
             $rowValues = [];
             $maxColIdx = 0;
+            $hasCellData = false;
 
             foreach ($row->c as $cell) {
                 $cellRef = (string) $cell['r'];
                 $colIndex = 0;
-                if (preg_match('/^([A-Z]+)\d+$/', $cellRef, $matches)) {
-                    $colIndex = $this->columnLetterToIndex($matches[1]);
+
+                // Fast column letter extraction without regex overhead
+                $len = strlen($cellRef);
+                $colLetters = '';
+                for ($i = 0; $i < $len; $i++) {
+                    $ch = $cellRef[$i];
+                    if ($ch >= 'A' && $ch <= 'Z') {
+                        $colLetters .= $ch;
+                    } else {
+                        break;
+                    }
+                }
+
+                if ($colLetters !== '') {
+                    $colIndex = $this->columnLetterToIndex($colLetters);
                 } else {
                     $colIndex = count($rowValues);
+                }
+
+                if ($colIndex > 40) {
+                    continue; // Skip out-of-bounds phantom columns
                 }
 
                 $maxColIdx = max($maxColIdx, $colIndex);
@@ -384,17 +440,28 @@ class ProductImportService
                     $val = (string) $cell->v;
                 }
 
+                $valTrim = trim($val);
+                if ($valTrim !== '') {
+                    $hasCellData = true;
+                }
+
                 $rowValues[$colIndex] = $val;
             }
 
-            // Fill missing cells to maintain strict column alignment
-            $fullRow = [];
-            for ($c = 0; $c <= $maxColIdx; $c++) {
-                $fullRow[$c] = isset($rowValues[$c]) ? $rowValues[$c] : '';
-            }
-
-            if (! empty(array_filter($fullRow, fn ($v) => trim((string) $v) !== ''))) {
+            if ($hasCellData) {
+                $consecutiveEmpty = 0;
+                // Fill missing cells to maintain strict column alignment
+                $fullRow = [];
+                for ($c = 0; $c <= $maxColIdx; $c++) {
+                    $fullRow[$c] = isset($rowValues[$c]) ? $rowValues[$c] : '';
+                }
                 $grid[] = $fullRow;
+            } else {
+                $consecutiveEmpty++;
+                // If table data has already started and we encounter 15 consecutive empty rows, stop scanning phantom Excel rows
+                if (! empty($grid) && $consecutiveEmpty >= 15) {
+                    break;
+                }
             }
         }
 
@@ -447,34 +514,74 @@ class ProductImportService
      */
     protected function extractRowData(array $data, array $headerMap, int $lineNum): array
     {
+        $rawBarcode = isset($headerMap['barcode']) && isset($data[$headerMap['barcode']]) ? trim((string) $data[$headerMap['barcode']]) : null;
+        if ($rawBarcode !== null && $rawBarcode !== '') {
+            $rawBarcode = $this->sanitizeIntegerString($rawBarcode);
+        }
+
+        $rawSku = isset($headerMap['sku']) && isset($data[$headerMap['sku']]) ? trim((string) $data[$headerMap['sku']]) : null;
+        if ($rawSku !== null && $rawSku !== '') {
+            $rawSku = $this->sanitizeIntegerString($rawSku);
+        }
+
+        $rawPieces = isset($headerMap['pieces_per_package']) && isset($data[$headerMap['pieces_per_package']]) ? trim((string) $data[$headerMap['pieces_per_package']]) : null;
+        $pieces = null;
+        if ($rawPieces !== null && $rawPieces !== '') {
+            $pieces = $this->parseInteger($rawPieces);
+        }
+
+        $rawMinAlert = isset($headerMap['min_stock_alert']) && isset($data[$headerMap['min_stock_alert']]) ? trim((string) $data[$headerMap['min_stock_alert']]) : '5';
+        $minAlert = $this->parseInteger($rawMinAlert, 5);
+
+        $rawOpeningQty = isset($headerMap['opening_quantity']) && isset($data[$headerMap['opening_quantity']]) ? trim((string) $data[$headerMap['opening_quantity']]) : '0';
+        if ($rawOpeningQty !== '') {
+            $rawOpeningQty = $this->sanitizeIntegerString($rawOpeningQty);
+        }
+
         return [
             '_line_number' => $lineNum,
-            'sku' => isset($headerMap['sku']) && isset($data[$headerMap['sku']]) ? trim((string) $data[$headerMap['sku']]) : null,
+            'sku' => $rawSku,
             'name' => isset($headerMap['name']) && isset($data[$headerMap['name']]) ? trim((string) $data[$headerMap['name']]) : null,
             'category' => isset($headerMap['category']) && isset($data[$headerMap['category']]) ? trim((string) $data[$headerMap['category']]) : null,
-            'barcode' => isset($headerMap['barcode']) && isset($data[$headerMap['barcode']]) ? trim((string) $data[$headerMap['barcode']]) : null,
+            'barcode' => $rawBarcode,
             'cost_price' => isset($headerMap['cost_price']) && isset($data[$headerMap['cost_price']]) ? trim((string) $data[$headerMap['cost_price']]) : '0',
             'wholesale_price' => isset($headerMap['wholesale_price']) && isset($data[$headerMap['wholesale_price']]) ? trim((string) $data[$headerMap['wholesale_price']]) : '0',
             'retail_price' => isset($headerMap['retail_price']) && isset($data[$headerMap['retail_price']]) ? trim((string) $data[$headerMap['retail_price']]) : '0',
             'distributor_price' => isset($headerMap['distributor_price']) && isset($data[$headerMap['distributor_price']]) ? trim((string) $data[$headerMap['distributor_price']]) : null,
             'unit' => isset($headerMap['unit']) && isset($data[$headerMap['unit']]) && trim((string) $data[$headerMap['unit']]) !== '' ? trim((string) $data[$headerMap['unit']]) : 'قطعة',
-            'pieces_per_package' => isset($headerMap['pieces_per_package']) && isset($data[$headerMap['pieces_per_package']]) ? trim((string) $data[$headerMap['pieces_per_package']]) : null,
-            'min_stock_alert' => isset($headerMap['min_stock_alert']) && isset($data[$headerMap['min_stock_alert']]) ? trim((string) $data[$headerMap['min_stock_alert']]) : '5',
-            'opening_quantity' => isset($headerMap['opening_quantity']) && isset($data[$headerMap['opening_quantity']]) ? trim((string) $data[$headerMap['opening_quantity']]) : '0',
+            'pieces_per_package' => $pieces,
+            'min_stock_alert' => $minAlert,
+            'opening_quantity' => $rawOpeningQty,
             'opening_cost' => isset($headerMap['opening_cost']) && isset($data[$headerMap['opening_cost']]) ? trim((string) $data[$headerMap['opening_cost']]) : null,
             'opening_warehouse' => isset($headerMap['opening_warehouse']) && isset($data[$headerMap['opening_warehouse']]) ? trim((string) $data[$headerMap['opening_warehouse']]) : null,
             'opening_balance_date' => isset($headerMap['opening_balance_date']) && isset($data[$headerMap['opening_balance_date']]) ? trim((string) $data[$headerMap['opening_balance_date']]) : null,
         ];
     }
 
-    /**
-     * Audit and compare parsed rows against active database `kayan_erp`.
-     */
     public function auditRows(array $parsedRows): array
     {
         $audited = [];
-        $existingSkus = Product::pluck('id', 'sku')->toArray();
-        $existingBarcodes = Product::whereNotNull('barcode')->pluck('id', 'barcode')->toArray();
+        $existingSkus = [];
+        $existingBarcodes = [];
+        $allProducts = Product::select('id', 'name', 'sku', 'barcode', 'cost_price', 'wholesale_price', 'retail_price', 'distributor_price')
+            ->get()
+            ->keyBy('id');
+
+        foreach ($allProducts as $p) {
+            if (! empty($p->sku)) {
+                $existingSkus[mb_strtolower(trim($p->sku))] = $p->id;
+            }
+            if (! empty($p->barcode)) {
+                $cleanBc = trim((string) $p->barcode);
+                if ($cleanBc !== '') {
+                    $existingBarcodes[$cleanBc] = $p->id;
+                    $cleanBcSanitized = $this->sanitizeIntegerString($cleanBc);
+                    if ($cleanBcSanitized !== '') {
+                        $existingBarcodes[$cleanBcSanitized] = $p->id;
+                    }
+                }
+            }
+        }
         $warehouses = Warehouse::all();
         if ($warehouses->isEmpty()) {
             $createdWh = Warehouse::create([
@@ -515,32 +622,30 @@ class ProductImportService
             $errors = [];
             $action = 'new';
             $existingProduct = null;
+            $skuAdjusted = false;
+            $barcodeGenerated = false;
 
             // 1. Validate Product Name
             if (empty($row['name'])) {
                 $errors[] = "السطر {$line}: اسم المنتج مفقود ولا يمكن تركه فارغاً.";
             }
 
-            // 2. Validate/Auto-generate SKU
-            if (empty($row['sku'])) {
-                $errors[] = "السطر {$line}: كود الصنف (SKU) مطلوب.";
-            } elseif (isset($seenInFileSkus[$row['sku']])) {
-                $errors[] = "السطر {$line}: كود الصنف '{$row['sku']}' مكرر أكثر من مرة في نفس الملف.";
-            } else {
-                $seenInFileSkus[$row['sku']] = true;
-            }
+            // 2. Extract & Sanitize Barcode and SKU (Strip floats like .0 and scientific notation)
+            $barcode = ! empty($row['barcode']) ? $this->sanitizeIntegerString($row['barcode']) : null;
+            $sku = ! empty($row['sku']) ? $this->sanitizeIntegerString($row['sku']) : null;
+            $barcodeKey = $barcode !== null ? trim($barcode) : '';
+            $skuKey = $sku !== null ? mb_strtolower(trim($sku)) : '';
 
-            // 3. Validate Barcode
-            $barcode = ! empty($row['barcode']) ? $row['barcode'] : null;
+            // Check Barcode uniqueness inside this uploaded file
             if ($barcode) {
-                if (isset($seenInFileBarcodes[$barcode])) {
+                if (isset($seenInFileBarcodes[$barcodeKey])) {
                     $errors[] = "السطر {$line}: الباركود '{$barcode}' مكرر داخل نفس الملف.";
                 } else {
-                    $seenInFileBarcodes[$barcode] = true;
+                    $seenInFileBarcodes[$barcodeKey] = true;
                 }
             }
 
-            // 4. Validate Prices & Numerical Quantities (robust float & integer parsing)
+            // 3. Validate Prices & Numerical Quantities (robust float & integer parsing)
             $costPrice = $this->parseDecimal($row['cost_price'], -1.0);
             $wholesalePrice = $this->parseDecimal($row['wholesale_price'], -1.0);
             $retailPrice = $this->parseDecimal($row['retail_price'], -1.0);
@@ -602,15 +707,86 @@ class ProductImportService
                 ? trim((string) $row['opening_balance_date'])
                 : date('Y-m-d');
 
-            // 5. Check existence in database
+            // 4. Primary Anchor Matching: Barcode takes precedence over SKU
             if (empty($errors)) {
-                $matchIdBySku = ! empty($row['sku']) && isset($existingSkus[$row['sku']]) ? $existingSkus[$row['sku']] : null;
-                $matchIdByBarcode = $barcode && isset($existingBarcodes[$barcode]) ? $existingBarcodes[$barcode] : null;
+                if (! empty($barcode)) {
+                    // Match by Barcode
+                    if (isset($existingBarcodes[$barcodeKey])) {
+                        // Barcode exists in DB -> UPDATE existing product
+                        $action = 'update';
+                        $existingProduct = $allProducts->get($existingBarcodes[$barcodeKey]);
 
-                if ($matchIdBySku || $matchIdByBarcode) {
-                    $action = 'update';
-                    $matchedId = $matchIdBySku ?: $matchIdByBarcode;
-                    $existingProduct = Product::find($matchedId);
+                        // Protect existing SKU if file has a conflicting SKU taken by another DB product
+                        if (! empty($sku) && isset($existingSkus[$skuKey]) && $existingSkus[$skuKey] !== $existingProduct?->id) {
+                            $sku = $existingProduct->sku;
+                            $skuKey = mb_strtolower(trim($sku));
+                            $row['sku'] = $existingProduct->sku;
+                        } elseif (empty($sku) && $existingProduct) {
+                            $sku = $existingProduct->sku;
+                            $skuKey = mb_strtolower(trim($sku));
+                            $row['sku'] = $existingProduct->sku;
+                        }
+                    } else {
+                        // Barcode NOT in DB -> STRICTLY NEW PRODUCT!
+                        $action = 'new';
+                        $existingProduct = null;
+
+                        // Auto-assign SKU if empty
+                        if (empty($sku)) {
+                            $sku = 'SKU-'.$barcode;
+                            $skuKey = mb_strtolower(trim($sku));
+                        }
+
+                        // Disambiguate SKU if it collides with another product in DB or file
+                        if (isset($existingSkus[$skuKey]) || isset($seenInFileSkus[$skuKey])) {
+                            $candidateSku = $sku.'-'.$barcode;
+                            $candidateKey = mb_strtolower(trim($candidateSku));
+                            $c = 1;
+                            while (isset($existingSkus[$candidateKey]) || isset($seenInFileSkus[$candidateKey])) {
+                                $c++;
+                                $candidateSku = $sku.'-'.$barcode.'-'.$c;
+                                $candidateKey = mb_strtolower(trim($candidateSku));
+                            }
+                            $sku = $candidateSku;
+                            $skuKey = $candidateKey;
+                            $row['sku'] = $sku;
+                            $skuAdjusted = true;
+                        }
+                    }
+                } else {
+                    // Barcode is EMPTY -> Fallback to SKU
+                    if (! empty($sku)) {
+                        if (isset($existingSkus[$skuKey])) {
+                            // SKU exists in DB -> UPDATE
+                            $action = 'update';
+                            $existingProduct = $allProducts->get($existingSkus[$skuKey]);
+                        } else {
+                            // SKU is new -> NEW PRODUCT!
+                            $action = 'new';
+                            $existingProduct = null;
+                            // Auto-generate internal barcode
+                            $barcode = Product::generateInternalBarcode();
+                            $barcodeKey = trim($barcode);
+                            $barcodeGenerated = true;
+                        }
+                    } else {
+                        $errors[] = "السطر {$line}: يجب إدخال الباركود أو كود الصنف (SKU).";
+                    }
+                }
+            }
+
+            // Track seen SKU in file
+            if (! empty($skuKey)) {
+                $seenInFileSkus[$skuKey] = true;
+            }
+
+            // Check Name Mismatch on Update
+            $isNameMismatch = false;
+            if ($existingProduct && ! empty($row['name'])) {
+                $cleanExisting = trim(preg_replace('/[^\p{L}\p{N}]/u', '', mb_strtolower($existingProduct->name)));
+                $cleanNew = trim(preg_replace('/[^\p{L}\p{N}]/u', '', mb_strtolower($row['name'])));
+                if ($cleanExisting !== '' && $cleanNew !== '' && ! str_contains($cleanExisting, $cleanNew) && ! str_contains($cleanNew, $cleanExisting)) {
+                    $isNameMismatch = true;
                 }
             }
 
@@ -626,7 +802,10 @@ class ProductImportService
             $audited[] = [
                 'line' => $line,
                 'action' => $action,
-                'sku' => $row['sku'],
+                'name_mismatch' => $isNameMismatch,
+                'sku_adjusted' => $skuAdjusted,
+                'barcode_generated' => $barcodeGenerated,
+                'sku' => $sku,
                 'name' => $row['name'],
                 'category_name' => $row['category'] ?: 'عام',
                 'barcode' => $barcode,
@@ -759,14 +938,22 @@ class ProductImportService
 
                 if ($item['action'] === 'update') {
                     if ($updateExisting) {
-                        $product = Product::where('sku', $item['sku'])
-                            ->orWhere(function ($q) use ($item) {
-                                if (! empty($item['barcode'])) {
-                                    $q->where('barcode', $item['barcode']);
-                                }
-                            })->first();
+                        $product = null;
+                        if (! empty($item['barcode'])) {
+                            $product = Product::where('barcode', $item['barcode'])->first();
+                        }
+                        if (! $product && ! empty($item['sku'])) {
+                            $product = Product::where('sku', $item['sku'])->first();
+                        }
 
                         if ($product) {
+                            // Ensure updating SKU does not collide with another product
+                            if (! empty($payload['sku']) && $payload['sku'] !== $product->sku) {
+                                if (Product::where('sku', $payload['sku'])->where('id', '!=', $product->id)->exists()) {
+                                    $payload['sku'] = $product->sku;
+                                }
+                            }
+
                             $hasStockHistory = $product->batches()->exists()
                                 || $product->stockBalances()->where('quantity', '>', 0)->exists()
                                 || ((float) $product->opening_quantity > 0);
@@ -782,6 +969,12 @@ class ProductImportService
                             }
                             $updatedCount++;
                         } else {
+                            if (Product::where('sku', $payload['sku'])->exists()) {
+                                $payload['sku'] = $payload['sku'].'-'.($payload['barcode'] ?: Str::random(4));
+                            }
+                            if (empty($payload['barcode'])) {
+                                $payload['barcode'] = Product::generateInternalBarcode();
+                            }
                             $product = Product::create($payload);
                             $insertedCount++;
                             $this->recordOpeningStockIfApplicable($product, $openingQty, $openingCost, $openingWarehouseId, $openingDate);
@@ -790,6 +983,18 @@ class ProductImportService
                         $skippedCount++;
                     }
                 } else {
+                    if (Product::where('sku', $payload['sku'])->exists()) {
+                        $candidate = $payload['sku'].'-'.($payload['barcode'] ?: Str::random(4));
+                        $c = 1;
+                        while (Product::where('sku', $candidate)->exists()) {
+                            $c++;
+                            $candidate = $payload['sku'].'-'.($payload['barcode'] ?: Str::random(4)).'-'.$c;
+                        }
+                        $payload['sku'] = $candidate;
+                    }
+                    if (empty($payload['barcode'])) {
+                        $payload['barcode'] = Product::generateInternalBarcode();
+                    }
                     $product = Product::create($payload);
                     $insertedCount++;
                     $this->recordOpeningStockIfApplicable($product, $openingQty, $openingCost, $openingWarehouseId, $openingDate);

@@ -63,6 +63,22 @@ class PythonPrintEngineService
     }
 
     /**
+     * Get the configured receipt printer name or UNC network share path.
+     */
+    public function getReceiptPrinter(): string
+    {
+        return (string) (config('printing.thermal_printer_path') ?: config('printing.default_receipt_printer', 'XP-80C'));
+    }
+
+    /**
+     * Get the configured document printer name.
+     */
+    public function getDocumentPrinter(): string
+    {
+        return (string) config('printing.default_document_printer', 'TOSHIBA Generic Printer XL');
+    }
+
+    /**
      * Execute a print job via the centralized Python print engine.
      *
      * @param  string  $templateId  Registered template identifier
@@ -107,6 +123,13 @@ class PythonPrintEngineService
             'copies' => $copies,
             'printer_name' => $targetPrinter,
         ];
+
+        if ($networkUser = config('printing.network_user')) {
+            $jobPayload['network_user'] = $networkUser;
+        }
+        if ($networkPassword = config('printing.network_password')) {
+            $jobPayload['network_password'] = $networkPassword;
+        }
 
         if (app()->environment('testing')) {
             $dryRun = true;
@@ -378,6 +401,13 @@ class PythonPrintEngineService
             'batch' => $batchItems,
         ];
 
+        if ($networkUser = config('printing.network_user')) {
+            $jobPayload['network_user'] = $networkUser;
+        }
+        if ($networkPassword = config('printing.network_password')) {
+            $jobPayload['network_password'] = $networkPassword;
+        }
+
         if (app()->environment('testing')) {
             $dryRun = true;
         }
@@ -517,8 +547,8 @@ class PythonPrintEngineService
 
         $templateId = $isDoc ? 'purchase_invoice_document' : 'purchase_invoice_receipt';
         $defaultPrinter = $isDoc
-            ? config('printing.default_document_printer', 'TOSHIBA Generic Printer XL')
-            : config('printing.default_receipt_printer', 'XP-80C');
+            ? $this->getDocumentPrinter()
+            : $this->getReceiptPrinter();
         $targetPrinter = $printer ?: $defaultPrinter;
 
         return $this->executeJob($templateId, $data, 1, $targetPrinter, $dryRun);
@@ -591,8 +621,8 @@ class PythonPrintEngineService
 
         $templateId = $isDoc ? 'purchase_invoice_document' : 'purchase_invoice_receipt';
         $defaultPrinter = $isDoc
-            ? config('printing.default_document_printer', 'TOSHIBA Generic Printer XL')
-            : config('printing.default_receipt_printer', 'XP-80C');
+            ? $this->getDocumentPrinter()
+            : $this->getReceiptPrinter();
         $targetPrinter = $printer ?: $defaultPrinter;
 
         return $this->executeJob($templateId, $data, 1, $targetPrinter, $dryRun);
@@ -670,8 +700,8 @@ class PythonPrintEngineService
 
         $templateId = $isDoc ? 'sales_invoice_document' : 'sales_invoice_receipt';
         $defaultPrinter = $isDoc
-            ? config('printing.default_document_printer', 'TOSHIBA Generic Printer XL')
-            : config('printing.default_receipt_printer', 'XP-80C');
+            ? $this->getDocumentPrinter()
+            : $this->getReceiptPrinter();
         $targetPrinter = $printer ?: $defaultPrinter;
 
         return $this->executeJob($templateId, $data, 1, $targetPrinter, $dryRun);
@@ -732,7 +762,7 @@ class PythonPrintEngineService
             'sold_items' => $soldItems,
         ];
 
-        $receiptPrinter = $printer ?: config('printing.default_receipt_printer', 'XP-80C');
+        $receiptPrinter = $printer ?: $this->getReceiptPrinter();
 
         return $this->executeJob('shift_closing_receipt', $data, 1, $receiptPrinter, $dryRun);
     }

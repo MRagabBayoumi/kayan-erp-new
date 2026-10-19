@@ -66,9 +66,27 @@ class SalesReturn extends Model
 
     public static function generateReturnNumber(): string
     {
-        $prefix = 'RET-'.date('Ymd').'-';
+        $prefix = 'SR-'.date('Ymd').'-';
         $count = static::whereDate('created_at', today())->count() + 1;
 
         return $prefix.str_pad((string) $count, 4, '0', STR_PAD_LEFT);
+    }
+
+    public function getStatusLabelAttribute(): string
+    {
+        return match ($this->status) {
+            self::STATUS_DRAFT => 'مسودة',
+            self::STATUS_POSTED => 'مُرحل للمخزن',
+            default => $this->status,
+        };
+    }
+
+    public function getStatusBadgeClassAttribute(): string
+    {
+        return match ($this->status) {
+            self::STATUS_DRAFT => 'erp-badge-neutral',
+            self::STATUS_POSTED => 'erp-badge-success',
+            default => 'erp-badge-neutral',
+        };
     }
 }

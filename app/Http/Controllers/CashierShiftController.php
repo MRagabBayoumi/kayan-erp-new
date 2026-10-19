@@ -47,7 +47,7 @@ class CashierShiftController extends Controller
         $warehouses = Warehouse::active()->orderBy('name')->get();
         $cashiers = User::orderBy('name')->get();
         $isManager = auth()->user()?->isAdmin() || auth()->user()?->can('close-shifts');
-        $eligibleCashiers = User::where('status', 'active')->orderBy('name')->get();
+        $eligibleCashiers = User::active()->orderBy('name')->get();
 
         $metrics = [
             'open_shifts_count' => CashierShift::open()->count(),
@@ -342,7 +342,7 @@ class CashierShiftController extends Controller
     public function directPrint(Request $request, CashierShift $shift, PythonPrintEngineService $printService): JsonResponse
     {
         $validated = $request->validate([
-            'printer' => ['nullable', 'string', 'max:120'],
+            'printer' => ['nullable', 'string', 'max:255'],
         ]);
 
         $printer = $validated['printer'] ?? null;

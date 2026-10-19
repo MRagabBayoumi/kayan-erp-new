@@ -275,19 +275,16 @@
                                         <a href="{{ route('shifts.show', $shift) }}" class="erp-btn erp-btn-ghost erp-btn-sm" title="تفاصيل الوردية">
                                             <x-icon name="eye" size="14" />
                                         </a>
-                                        <button type="button" 
-                                            data-action="open-print-modal"
-                                            data-print-title="تقرير الوردية: {{ $shift->shift_number }}"
-                                            data-url-a4="{{ route('shifts.print', [$shift, 'format' => 'a4']) }}"
-                                            data-url-a5="{{ route('shifts.print', [$shift, 'format' => 'a5']) }}"
-                                            data-url-thermal="{{ route('shifts.print', [$shift, 'format' => 'thermal_80mm']) }}"
-                                            data-direct-url-a4="{{ route('shifts.direct-print', [$shift, 'format' => 'a4']) }}"
-                                            data-direct-url-a5="{{ route('shifts.direct-print', [$shift, 'format' => 'a5']) }}"
-                                            data-direct-url-thermal="{{ route('shifts.direct-print', [$shift, 'format' => 'thermal_80mm']) }}"
-                                            class="erp-btn erp-btn-ghost erp-btn-sm text-[var(--primary)]" 
-                                            title="خيارات الطباعة (A4, A5, حراري)">
-                                            <x-icon name="printer" size="14" />
-                                        </button>
+                                        <!-- Print Combobox Dropdown -->
+                                        <x-print-dropdown 
+                                            size="sm"
+                                            title="طباعة"
+                                            code="{{ $shift->shift_number }}"
+                                            urlThermal="{{ route('shifts.print', [$shift, 'format' => 'thermal_80mm']) }}"
+                                            directThermal="{{ route('shifts.direct-print', [$shift, 'format' => 'thermal_80mm']) }}"
+                                            urlA4="{{ route('shifts.print', [$shift, 'format' => 'a4']) }}"
+                                            urlA5="{{ route('shifts.print', [$shift, 'format' => 'a5']) }}"
+                                        />
                                         @if($shift->status === 'open' && (auth()->id() === $shift->user_id || auth()->user()->isAdmin()))
                                             <button type="button" class="erp-btn erp-btn-ghost erp-btn-sm text-[var(--danger)] close-shift-trigger-btn"
                                                 data-shift-id="{{ $shift->id }}"

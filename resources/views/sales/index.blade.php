@@ -26,6 +26,26 @@
 
 @section('content')
     <div data-page="sales-index">
+        <!-- Enterprise Sub-Navigation Tabs Bar (Faithful to Kayan ERP Design System) -->
+        <div class="erp-card erp-tab-nav-card mb-4">
+            <nav class="erp-tab-bar" aria-label="أقسام فواتير ومرتجعات المبيعات">
+                <!-- 1. Sales Invoices -->
+                <a href="{{ route('sales.index') }}" class="erp-tab-link active">
+                    <x-icon name="shopping-cart" size="16" />
+                    <span>فواتير المبيعات</span>
+                    <span class="erp-badge erp-badge-neutral mr-1.5 px-2 py-0.5 text-xs font-bold font-numeric">
+                        {{ $metrics['total_count'] }}
+                    </span>
+                </a>
+
+                <!-- 2. Sales Returns -->
+                <a href="{{ route('sales-returns.index') }}" class="erp-tab-link">
+                    <x-icon name="rotate-ccw" size="16" />
+                    <span>مرتجعات المبيعات</span>
+                </a>
+            </nav>
+        </div>
+
         <!-- Status Alerts -->
         @if(session('status') === 'success')
             <div class="erp-alert erp-alert-success mb-4" role="alert">
@@ -41,90 +61,98 @@
             </div>
         @endif
 
-        <!-- Summary KPI Card -->
-        <div class="erp-card mb-4 p-4">
-            <div class="purchases-kpi-row">
-                <div class="purchases-kpi-stat">
-                    <div class="purchases-kpi-icon-wrap">
-                        <x-icon name="shopping-cart" size="22" />
-                    </div>
-                    <div class="purchases-kpi-info">
-                        <div class="purchases-kpi-label">إجمالي فواتير المبيعات</div>
-                        <div class="purchases-kpi-value font-numeric">{{ $metrics['total_count'] }}</div>
-                        <div class="purchases-kpi-desc">جميع فواتير البيع المسجلة</div>
-                    </div>
+        <!-- Global KPI Summary Cards (Faithful to Kayan ERP Design System) -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            <!-- 1. Total Invoices Count -->
+            <div class="kpi-card flex flex-col justify-between">
+                <div class="kpi-header mb-1">
+                    <span class="kpi-label">إجمالي فواتير المبيعات</span>
+                    <span class="kpi-icon"><x-icon name="shopping-cart" size="18" /></span>
                 </div>
-
-                <div class="purchases-kpi-stat">
-                    <div class="purchases-kpi-icon-wrap success">
-                        <x-icon name="check-circle" size="22" />
-                    </div>
-                    <div class="purchases-kpi-info">
-                        <div class="purchases-kpi-label">مبيعات مُرحلة (إيرادات مؤكدة)</div>
-                        <div class="purchases-kpi-value font-numeric text-[var(--success)]">{{ number_format($metrics['posted_total'], 2) }} ج.م</div>
-                        <div class="purchases-kpi-desc">تم صرفها وفق تسعير وتكلفة FIFO</div>
-                    </div>
+                <div class="kpi-value font-numeric text-base sm:text-lg font-black text-[var(--text-main)]">
+                    {{ number_format($metrics['total_count']) }} <span class="text-xs font-normal text-[var(--text-muted)]">فاتورة</span>
                 </div>
-
-                <div class="purchases-kpi-stat">
-                    <div class="purchases-kpi-icon-wrap {{ ($metrics['total_remaining'] ?? 0) > 0 ? 'warning' : 'success' }}">
-                        <x-icon name="dollar-sign" size="22" />
-                    </div>
-                    <div class="purchases-kpi-info">
-                        <div class="purchases-kpi-label">متبقي آجل للتحصيل (مديونيات)</div>
-                        <div class="purchases-kpi-value font-numeric {{ ($metrics['total_remaining'] ?? 0) > 0 ? 'text-rose-600' : 'text-[var(--success)]' }}">
-                            {{ number_format($metrics['total_remaining'] ?? 0, 2) }} ج.م
-                        </div>
-                        <div class="purchases-kpi-desc">أقساط ومتبقيات على العملاء</div>
-                    </div>
+                <div class="kpi-note font-numeric text-xs text-[var(--text-muted)]">
+                    <span>جميع فواتير البيع المسجلة</span>
                 </div>
-
-                @can('view-cogs')
-                <div class="purchases-kpi-stat">
-                    <div class="purchases-kpi-icon-wrap">
-                        <x-icon name="trending-up" size="22" />
-                    </div>
-                    <div class="purchases-kpi-info">
-                        <div class="purchases-kpi-label">إجمالي الأرباح المحققة</div>
-                        <div class="purchases-kpi-value font-numeric text-[var(--primary)]">{{ number_format($metrics['total_profit'], 2) }} ج.م</div>
-                        <div class="purchases-kpi-desc">الإيرادات مطروحاً منها تكلفة البضاعة</div>
-                    </div>
-                </div>
-                @else
-                <div class="purchases-kpi-stat">
-                    <div class="purchases-kpi-icon-wrap warning">
-                        <x-icon name="file-text" size="22" />
-                    </div>
-                    <div class="purchases-kpi-info">
-                        <div class="purchases-kpi-label">مسودات قيد المراجعة</div>
-                        <div class="purchases-kpi-value font-numeric text-[var(--warning)]">{{ $metrics['draft_count'] }}</div>
-                        <div class="purchases-kpi-desc">فواتير لم يتم صرفها من المخزن</div>
-                    </div>
-                </div>
-                @endcan
             </div>
+
+            <!-- 2. Posted Sales (Confirmed Revenue) -->
+            <div class="kpi-card flex flex-col justify-between border-emerald-200 bg-emerald-50/40">
+                <div class="kpi-header mb-1">
+                    <span class="kpi-label text-emerald-900 font-bold">مبيعات مُرحلة (إيرادات)</span>
+                    <span class="kpi-icon text-emerald-600 bg-emerald-100/70"><x-icon name="check-circle" size="18" /></span>
+                </div>
+                <div class="kpi-value font-numeric text-base sm:text-lg font-black text-emerald-800">
+                    {{ number_format($metrics['posted_total'], 2) }} <span class="text-xs font-bold text-emerald-700">ج.م</span>
+                </div>
+                <div class="kpi-note text-emerald-700 text-xs font-medium">
+                    <span>تم صرفها وتأكيد إيرادها</span>
+                </div>
+            </div>
+
+            <!-- 3. Receivables (Remaining / Debt) -->
+            <div class="kpi-card flex flex-col justify-between border-amber-200 bg-amber-50/40">
+                <div class="kpi-header mb-1">
+                    <span class="kpi-label text-amber-900 font-bold">متبقي آجل للتحصيل</span>
+                    <span class="kpi-icon text-amber-600 bg-amber-100/70"><x-icon name="dollar-sign" size="18" /></span>
+                </div>
+                <div class="kpi-value font-numeric text-base sm:text-lg font-black text-amber-800">
+                    {{ number_format($metrics['total_remaining'] ?? 0, 2) }} <span class="text-xs font-bold text-amber-700">ج.م</span>
+                </div>
+                <div class="kpi-note text-amber-700 text-xs font-medium">
+                    <span>أقساط ومتبقيات على العملاء</span>
+                </div>
+            </div>
+
+            <!-- 4. Profit or Drafts -->
+            @can('view-cogs')
+            <div class="kpi-card flex flex-col justify-between">
+                <div class="kpi-header mb-1">
+                    <span class="kpi-label text-indigo-900 font-semibold">إجمالي الأرباح المحققة</span>
+                    <span class="kpi-icon text-indigo-600 bg-indigo-50"><x-icon name="trending-up" size="18" /></span>
+                </div>
+                <div class="kpi-value font-numeric text-base sm:text-lg font-black text-indigo-700">
+                    {{ number_format($metrics['total_profit'], 2) }} <span class="text-xs font-normal text-indigo-600">ج.م</span>
+                </div>
+                <div class="kpi-note text-indigo-600 text-xs">
+                    <span>الإيرادات مطروحاً منها التكلفة</span>
+                </div>
+            </div>
+            @else
+            <div class="kpi-card flex flex-col justify-between">
+                <div class="kpi-header mb-1">
+                    <span class="kpi-label">مسودات قيد المراجعة</span>
+                    <span class="kpi-icon text-amber-600 bg-amber-50"><x-icon name="file-text" size="18" /></span>
+                </div>
+                <div class="kpi-value font-numeric text-base sm:text-lg font-black text-amber-800">
+                    {{ $metrics['draft_count'] }} <span class="text-xs font-normal text-[var(--text-muted)]">فاتورة</span>
+                </div>
+                <div class="kpi-note font-numeric text-xs text-[var(--text-muted)]">
+                    <span>فواتير لم تصرف من المخزن</span>
+                </div>
+            </div>
+            @endcan
         </div>
 
-        <!-- Filter Bar -->
-        <div class="erp-card mb-4 p-3">
-            <form action="{{ route('sales.index') }}" method="GET" class="erp-filter-form">
-                <div class="flex-1 min-w-[220px]">
-                    <div class="relative">
-                        <input 
-                            type="text" 
-                            name="search" 
-                            value="{{ $currentSearch }}" 
-                            class="erp-input w-full pr-8" 
-                            placeholder="بحث برقم الفاتورة أو اسم العميل..."
-                        >
-                        <span class="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none">
-                            <x-icon name="search" size="15" />
-                        </span>
+        <!-- Search & Filter Bar -->
+        <div class="erp-card p-4 mb-4">
+            <form method="GET" action="{{ route('sales.index') }}" class="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-center">
+                <div class="sm:col-span-12 lg:col-span-4 relative">
+                    <input 
+                        type="search" 
+                        name="search" 
+                        value="{{ $currentSearch }}" 
+                        class="erp-input pr-9 text-xs sm:text-sm" 
+                        placeholder="ابحث برقم الفاتورة، اسم العميل أو الهاتف..."
+                    >
+                    <div class="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none">
+                        <x-icon name="search" size="15" />
                     </div>
                 </div>
 
-                <div class="w-40 min-w-[140px]">
-                    <select name="status" class="erp-input w-full">
+                <div class="sm:col-span-6 lg:col-span-2">
+                    <select name="status" class="erp-input text-xs sm:text-sm">
                         <option value="">-- كل الحالات --</option>
                         <option value="draft" {{ $currentStatus === 'draft' ? 'selected' : '' }}>مسودة</option>
                         <option value="posted" {{ $currentStatus === 'posted' ? 'selected' : '' }}>مرحلة (تم الصرف)</option>
@@ -132,26 +160,26 @@
                     </select>
                 </div>
 
-                <div class="w-40 min-w-[140px]">
-                    <select name="payment_status" class="erp-input w-full">
+                <div class="sm:col-span-6 lg:col-span-2">
+                    <select name="payment_status" class="erp-input text-xs sm:text-sm">
                         <option value="">-- حالة السداد --</option>
                         <option value="paid" {{ ($currentPaymentStatus ?? '') === 'paid' ? 'selected' : '' }}>خالص (مسدد بالكامل)</option>
                         <option value="unpaid" {{ ($currentPaymentStatus ?? '') === 'unpaid' ? 'selected' : '' }}>آجل / به متبقي</option>
                     </select>
                 </div>
 
-                <div class="w-40 min-w-[140px]">
-                    <select name="price_tier" class="erp-input w-full">
-                        <option value="">-- فئة التسعير --</option>
+                <div class="sm:col-span-4 lg:col-span-1">
+                    <select name="price_tier" class="erp-input text-xs sm:text-sm">
+                        <option value="">-- فئة السعر --</option>
                         <option value="retail" {{ $currentPriceTier === 'retail' ? 'selected' : '' }}>قطاعي</option>
                         <option value="wholesale" {{ $currentPriceTier === 'wholesale' ? 'selected' : '' }}>جملة</option>
-                        <option value="distributor" {{ $currentPriceTier === 'distributor' ? 'selected' : '' }}>موزع / كبار العملاء</option>
+                        <option value="distributor" {{ $currentPriceTier === 'distributor' ? 'selected' : '' }}>موزع</option>
                     </select>
                 </div>
 
-                <div class="w-48 min-w-[160px]">
-                    <select name="warehouse_id" class="erp-input w-full">
-                        <option value="">-- كل المخازن --</option>
+                <div class="sm:col-span-4 lg:col-span-1">
+                    <select name="warehouse_id" class="erp-input text-xs sm:text-sm">
+                        <option value="">-- المخزن --</option>
                         @foreach($warehouses as $wh)
                             <option value="{{ $wh->id }}" {{ (string)$currentWarehouseId === (string)$wh->id ? 'selected' : '' }}>
                                 {{ $wh->name }}
@@ -160,26 +188,14 @@
                     </select>
                 </div>
 
-                <div class="w-48 min-w-[160px]">
-                    <select name="customer_id" class="erp-input w-full">
-                        <option value="">-- كل العملاء --</option>
-                        @foreach($customers as $c)
-                            <option value="{{ $c->id }}" {{ (string)$currentCustomerId === (string)$c->id ? 'selected' : '' }}>
-                                {{ $c->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-
-                <div class="flex items-center gap-2">
-                    <button type="submit" class="erp-btn erp-btn-secondary">
+                <div class="sm:col-span-4 lg:col-span-2 flex items-center gap-1.5">
+                    <button type="submit" class="erp-btn erp-btn-secondary text-xs sm:text-sm font-bold flex-1 justify-center">
                         <x-icon name="filter" size="14" />
                         <span>تصفية</span>
                     </button>
                     @if($currentSearch || $currentStatus || $currentWarehouseId || $currentCustomerId || $currentPriceTier || ($currentPaymentStatus ?? false))
-                        <a href="{{ route('sales.index') }}" class="erp-btn erp-btn-ghost text-xs" title="إلغاء الفلاتر">
+                        <a href="{{ route('sales.index') }}" class="erp-btn erp-btn-ghost text-xs text-rose-600 hover:bg-rose-50 px-2.5" title="إلغاء الفلاتر">
                             <x-icon name="x" size="14" />
-                            <span>إعادة تعيين</span>
                         </a>
                     @endif
                 </div>
@@ -293,19 +309,25 @@
                                                     </button>
                                                 </form>
                                             @endif
-                                            <button type="button" 
-                                                data-action="open-print-modal"
-                                                data-print-title="فاتورة مبيعات: {{ $inv->invoice_number }}"
-                                                data-url-a4="{{ route('sales.print', [$inv, 'format' => 'a4']) }}"
-                                                data-url-a5="{{ route('sales.print', [$inv, 'format' => 'a5']) }}"
-                                                data-url-thermal="{{ route('sales.print', [$inv, 'format' => 'thermal_80mm']) }}"
-                                                data-direct-url-a4="{{ route('sales.direct-print', [$inv, 'format' => 'a4']) }}"
-                                                data-direct-url-a5="{{ route('sales.direct-print', [$inv, 'format' => 'a5']) }}"
-                                                data-direct-url-thermal="{{ route('sales.direct-print', [$inv, 'format' => 'thermal_80mm']) }}"
-                                                class="erp-btn erp-btn-ghost erp-btn-sm text-[var(--primary)]" 
-                                                title="خيارات الطباعة (A4, A5, حراري)">
-                                                <x-icon name="printer" size="14" />
-                                            </button>
+                                            <!-- Print Combobox Dropdown -->
+                                            <x-print-dropdown 
+                                                size="sm"
+                                                title="طباعة"
+                                                code="{{ $inv->invoice_number }}"
+                                                urlThermal="{{ route('sales.print', [$inv, 'format' => 'thermal_80mm']) }}"
+                                                directThermal="{{ route('sales.direct-print', [$inv, 'format' => 'thermal_80mm']) }}"
+                                                urlA4="{{ route('sales.print', [$inv, 'format' => 'a4']) }}"
+                                                urlA5="{{ route('sales.print', [$inv, 'format' => 'a5']) }}"
+                                            />
+
+                                            <!-- حذف الفاتورة نهائياً -->
+                                            <form action="{{ route('sales.destroy', $inv) }}" method="POST" class="inline" data-confirm="هل تريد مسح الفاتورة (#{{ $inv->invoice_number }}) نهائياً؟ {{ $inv->status === 'posted' ? 'سيتم استرجاع رصيد المخزون وإلغاء المديونية أولاً.' : '' }}">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="erp-btn erp-btn-ghost erp-btn-sm text-rose-600 hover:text-rose-700" title="مسح الفاتورة">
+                                                    <x-icon name="trash" size="14" />
+                                                </button>
+                                            </form>
                                         </div>
                                     </td>
                                 </tr>

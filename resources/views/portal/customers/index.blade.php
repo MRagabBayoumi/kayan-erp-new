@@ -132,7 +132,21 @@
                                 <span class="font-bold">سبب الرفض:</span> {{ $customer->rejection_reason }}
                             </div>
                         @endif
-                    </div>
+                    @if(!empty($customer->store_image_urls))
+                        <div class="mt-2 pt-2 border-t border-[var(--border-light)]">
+                            <div class="text-[10px] text-[var(--text-muted)] font-bold mb-1.5 flex items-center gap-1">
+                                <x-icon name="camera" size="12" class="text-[var(--primary)]" strokeWidth="2.2" />
+                                <span>صور واجهة ومكان المحل ({{ count($customer->store_image_urls) }})</span>
+                            </div>
+                            <div class="flex items-center gap-2 overflow-x-auto pb-1">
+                                @foreach($customer->store_image_urls as $imgUrl)
+                                    <a href="{{ $imgUrl }}" target="_blank" class="block w-14 h-14 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 shrink-0 hover:opacity-90 shadow-xs transition-opacity" title="عرض الصورة بالحجم الكامل">
+                                        <img src="{{ $imgUrl }}" alt="صورة المحل" class="w-full h-full object-cover">
+                                    </a>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
                 </div>
 
                 <!-- Action Toolbar -->

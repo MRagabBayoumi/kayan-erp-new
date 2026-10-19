@@ -336,8 +336,9 @@ test('purchase return print page and direct print API work correctly with format
     $responseDirect->assertStatus(200);
     $responseDirect->assertJson(['success' => true]);
 
-    // 3. Show page contains universal print button
+    // 3. Show page contains print combobox dropdown
     $responseShow = $this->get(route('purchase-returns.show', $purchaseReturn));
     $responseShow->assertStatus(200);
-    $responseShow->assertSee('data-action="open-print-modal"', false);
+    $responseShow->assertSee('data-component="print-dropdown"', false);
+    $responseShow->assertSee('طباعة إذن المرتجع');
 });

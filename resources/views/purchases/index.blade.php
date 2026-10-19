@@ -28,17 +28,21 @@
 
 @section('content')
     <div data-page="purchases-index">
-        <!-- Module Tabs Navigation -->
-        <div class="flex items-center gap-2 border-b border-[var(--border-color)] mb-4 pb-2">
-            <a href="{{ route('purchases.index') }}" class="px-4 py-2 rounded text-sm font-bold bg-[var(--primary)] text-white flex items-center gap-2 shadow-sm">
-                <x-icon name="shopping-bag" size="16" />
-                <span>فواتير الشراء والتوريد</span>
-                <span class="bg-white/20 text-white text-xs px-2 py-0.5 rounded-full font-numeric">{{ $metrics['total_count'] }}</span>
-            </a>
-            <a href="{{ route('purchase-returns.index') }}" class="px-4 py-2 rounded text-sm font-semibold text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--surface-muted)] transition-colors flex items-center gap-2">
-                <x-icon name="rotate-ccw" size="16" />
-                <span>مرتجعات المشتريات</span>
-            </a>
+        <!-- Enterprise Sub-Navigation Tabs Bar (Faithful to Kayan ERP Design System) -->
+        <div class="erp-card erp-tab-nav-card mb-4">
+            <nav class="erp-tab-bar" aria-label="أقسام فواتير ومرتجعات الشراء">
+                <a href="{{ route('purchases.index') }}" class="erp-tab-link active">
+                    <x-icon name="shopping-bag" size="16" />
+                    <span>فواتير الشراء والتوريد</span>
+                    <span class="erp-badge erp-badge-neutral mr-1.5 px-2 py-0.5 text-xs font-bold font-numeric">
+                        {{ $metrics['total_count'] }}
+                    </span>
+                </a>
+                <a href="{{ route('purchase-returns.index') }}" class="erp-tab-link">
+                    <x-icon name="rotate-ccw" size="16" />
+                    <span>مرتجعات المشتريات</span>
+                </a>
+            </nav>
         </div>
 
         <!-- Status Alerts -->
@@ -213,25 +217,38 @@
                                             <x-icon name="eye" size="14" />
                                         </a>
 
-                                        <button type="button" 
-                                            data-action="open-print-modal"
-                                            data-print-title="فاتورة مشتريات: {{ $inv->invoice_number }}"
-                                            data-url-a4="{{ route('purchases.print', [$inv, 'format' => 'a4']) }}"
-                                            data-url-a5="{{ route('purchases.print', [$inv, 'format' => 'a5']) }}"
-                                            data-url-thermal="{{ route('purchases.print', [$inv, 'format' => 'thermal_80mm']) }}"
-                                            data-direct-url-a4="{{ route('purchases.direct-print', [$inv, 'format' => 'a4']) }}"
-                                            data-direct-url-a5="{{ route('purchases.direct-print', [$inv, 'format' => 'a5']) }}"
-                                            data-direct-url-thermal="{{ route('purchases.direct-print', [$inv, 'format' => 'thermal_80mm']) }}"
-                                            class="erp-btn erp-btn-ghost erp-btn-icon text-[var(--primary)]" 
-                                            title="خيارات الطباعة (A4, A5, حراري)">
-                                            <x-icon name="printer" size="14" />
-                                        </button>
+                                        <!-- Print Combobox Dropdown -->
+                                        <x-print-dropdown 
+                                            size="sm"
+                                            title="طباعة"
+                                            code="{{ $inv->invoice_number }}"
+                                            urlThermal="{{ route('purchases.print', [$inv, 'format' => 'thermal_80mm']) }}"
+                                            directThermal="{{ route('purchases.direct-print', [$inv, 'format' => 'thermal_80mm']) }}"
+                                            urlA4="{{ route('purchases.print', [$inv, 'format' => 'a4']) }}"
+                                            urlA5="{{ route('purchases.print', [$inv, 'format' => 'a5']) }}"
+                                        />
 
                                         @if($inv->status === 'draft')
                                             <form action="{{ route('purchases.post', $inv) }}" method="POST" data-confirm="هل أنت متأكد من ترحيل هذه الفاتورة وإيداع البضاعة في المستودع؟">
                                                 @csrf
                                                 <button type="submit" class="erp-btn erp-btn-ghost erp-btn-icon text-[var(--success)]" title="ترحيل للمخازن">
                                                     <x-icon name="check-circle" size="14" />
+                                                </button>
+                                            </form>
+                                            <form action="{{ route('purchases.cancel', $inv) }}" method="POST" data-confirm="هل أنت متأكد من إلغاء هذه المسودة؟">
+                                                @csrf
+                                                <button type="submit" class="erp-btn erp-btn-ghost erp-btn-icon text-amber-600 hover:text-amber-700" title="إلغاء الفاتورة">
+                                                    <x-icon name="x-circle" size="14" />
+                                                </button>
+                                            </form>
+                                        @endif
+
+                                        @if($inv->status !== 'posted')
+                                            <form action="{{ route('purchases.destroy', $inv) }}" method="POST" class="inline" data-confirm="هل أنت متأكد من مسح فاتورة الشراء (#{{ $inv->invoice_number }}) نهائياً؟">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="erp-btn erp-btn-ghost erp-btn-icon text-rose-600 hover:text-rose-700" title="مسح الفاتورة نهائياً">
+                                                    <x-icon name="trash" size="14" />
                                                 </button>
                                             </form>
                                         @endif

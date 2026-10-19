@@ -24,6 +24,7 @@ use App\Http\Controllers\SalesInvoiceController;
 use App\Http\Controllers\SalesRepAttendanceController;
 use App\Http\Controllers\SalesRepController;
 use App\Http\Controllers\SalesRepVisitController;
+use App\Http\Controllers\SalesReturnController;
 use App\Http\Controllers\ShippingOfficeController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\SupplierPaymentController;
@@ -48,6 +49,11 @@ Route::any('/_boots/browser-log', function () {
 // Authenticated Application Routes (Protected by auth middleware)
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+    // CSRF Token Refresh Endpoint for Long-Lived Sessions & Direct Printing
+    Route::get('/csrf-token', function () {
+        return response()->json(['token' => csrf_token()]);
+    })->name('csrf.token');
 
     // BayoSoft ERP Home Applications Hub
     Route::get('/', [HomeController::class, 'home'])->name('home');
@@ -123,6 +129,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/products', [ProductController::class, 'store'])->name('products.store');
         Route::get('/products/{product}/edit', [ProductController::class, 'edit'])->name('products.edit');
         Route::put('/products/{product}', [ProductController::class, 'update'])->name('products.update');
+        Route::post('/products/{product}/toggle-status', [ProductController::class, 'toggleStatus'])->name('products.toggle-status');
         Route::delete('/products/{product}', [ProductController::class, 'destroy'])->name('products.destroy');
 
         Route::resource('categories', CategoryController::class)->except(['create', 'show', 'edit']);
@@ -149,7 +156,7 @@ Route::middleware('auth')->group(function () {
 
         Route::post('/purchases/{purchase}/direct-print', [PurchaseInvoiceController::class, 'directPrint'])->name('purchases.direct-print');
         Route::get('/purchases/{purchase}/print', [PurchaseInvoiceController::class, 'print'])->name('purchases.print');
-        Route::resource('purchases', PurchaseInvoiceController::class)->except(['destroy']);
+        Route::resource('purchases', PurchaseInvoiceController::class);
 
         // Purchase Returns (مرتجعات المشتريات والتوريد)
         Route::get('/purchase-returns/{purchase_return}/print', [PurchaseReturnController::class, 'print'])->name('purchase-returns.print');
@@ -190,7 +197,15 @@ Route::middleware('auth')->group(function () {
         Route::get('/sales/payments/{payment}/receipt', [CustomerPaymentController::class, 'receipt'])->name('sales.payments.receipt');
         Route::delete('/sales/payments/{payment}', [CustomerPaymentController::class, 'destroy'])->name('sales.payments.destroy');
 
-        Route::resource('sales', SalesInvoiceController::class)->except(['edit', 'update', 'destroy']);
+        Route::resource('sales', SalesInvoiceController::class)->except(['edit', 'update']);
+
+        // Sales Returns (مرتجعات فواتير المبيعات)
+        Route::get('/sales-returns/{sales_return}/print', [SalesReturnController::class, 'print'])->name('sales-returns.print');
+        Route::post('/sales-returns/{sales_return}/direct-print', [SalesReturnController::class, 'directPrint'])->name('sales-returns.direct-print');
+        Route::post('/sales-returns/{sales_return}/post', [SalesReturnController::class, 'post'])
+            ->middleware('can:manage-sales')
+            ->name('sales-returns.post');
+        Route::resource('sales-returns', SalesReturnController::class)->except(['edit', 'update', 'destroy']);
 
         // Cashier Shifts & Cash Drawer
         Route::get('/shifts', [CashierShiftController::class, 'index'])->name('shifts.index');

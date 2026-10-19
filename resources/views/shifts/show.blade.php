@@ -3,20 +3,15 @@
 @section('control_panel')
     <x-control-panel title="تفاصيل الوردية: {{ $shift->shift_number }}" :breadcrumbs="['المبيعات' => route('sales.index'), 'ورديات الكاشير' => route('shifts.index'), $shift->shift_number => '#']">
         <x-slot:actions>
-            <!-- Universal Print Trigger -->
-            <button type="button" class="erp-btn erp-btn-secondary" 
-                data-action="open-print-modal"
-                data-print-title="تقرير الوردية: {{ $shift->shift_number }}"
-                data-url-a4="{{ route('shifts.print', [$shift, 'format' => 'a4']) }}"
-                data-url-a5="{{ route('shifts.print', [$shift, 'format' => 'a5']) }}"
-                data-url-thermal="{{ route('shifts.print', [$shift, 'format' => 'thermal_80mm']) }}"
-                data-direct-url-a4="{{ route('shifts.direct-print', [$shift, 'format' => 'a4']) }}"
-                data-direct-url-a5="{{ route('shifts.direct-print', [$shift, 'format' => 'a5']) }}"
-                data-direct-url-thermal="{{ route('shifts.direct-print', [$shift, 'format' => 'thermal_80mm']) }}"
-                title="خيارات الطباعة (A4, A5, حراري 80مم)">
-                <x-icon name="printer" size="16" />
-                <span>طباعة التقرير</span>
-            </button>
+            <!-- Print Combobox Dropdown -->
+            <x-print-dropdown 
+                title="طباعة التقرير"
+                code="{{ $shift->shift_number }}"
+                urlThermal="{{ route('shifts.print', [$shift, 'format' => 'thermal_80mm']) }}"
+                directThermal="{{ route('shifts.direct-print', [$shift, 'format' => 'thermal_80mm']) }}"
+                urlA4="{{ route('shifts.print', [$shift, 'format' => 'a4']) }}"
+                urlA5="{{ route('shifts.print', [$shift, 'format' => 'a5']) }}"
+            />
             @if($shift->status === 'open' && (auth()->id() === $shift->user_id || auth()->user()->isAdmin()))
                 <button type="button" id="closeThisShiftBtn" class="erp-btn erp-btn-danger close-shift-trigger-btn"
                     data-shift-id="{{ $shift->id }}"

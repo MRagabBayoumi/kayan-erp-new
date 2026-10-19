@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\CashierShift;
 use App\Models\CompanySetting;
 use App\Models\Customer;
+use App\Models\CustomerPayment;
 use App\Models\PrintTemplate;
 use App\Models\Product;
 use App\Models\SalesInvoice;
@@ -797,43 +798,103 @@ class SalesInvoiceController extends Controller
     }
 
     /**
-     * Void / Cancel a posted sales invoice with full compensating ledger records.
+     * Void / Cancel a sales invoice (posted or draft).
      */
     public function void(Request $request, SalesInvoice $sale, InventoryService $inventoryService): RedirectResponse
     {
         $validated = $request->validate([
-            'void_reason' => ['required', 'string', 'max:255'],
-        ], [
-            'void_reason.required' => 'يرجى كتابة سبب إلغاء الفاتورة.',
+            'void_reason' => ['nullable', 'string', 'max:255'],
         ]);
 
-        if ($sale->status !== SalesInvoice::STATUS_POSTED) {
-            return back()->with('error', 'يمكن فقط إلغاء الفواتير التي في حالة مرحلة.');
+        $reason = $validated['void_reason'] ?? 'إلغاء الفاتورة من قبل الإدارة';
+
+        if ($sale->status === SalesInvoice::STATUS_VOIDED) {
+            return back()->with('error', 'هذه الفاتورة ملغاة بالفعل.');
         }
 
-        DB::transaction(function () use ($sale, $inventoryService, $validated) {
-            $inventoryService->voidSalesInvoice($sale, auth()->id(), $validated['void_reason']);
+        DB::transaction(function () use ($sale, $inventoryService, $reason) {
+            if ($sale->status === SalesInvoice::STATUS_POSTED) {
+                $inventoryService->voidSalesInvoice($sale, auth()->id(), $reason);
 
-            // Revert customer credit balance if debt was added
-            if ((float) $sale->remaining_amount > 0 && $sale->customer_id) {
-                $customer = Customer::lockForUpdate()->find($sale->customer_id);
-                if ($customer) {
-                    $customer->decrement('current_balance', (float) $sale->remaining_amount);
+                // Revert customer credit balance if debt was added
+                if ((float) $sale->remaining_amount > 0 && $sale->customer_id) {
+                    $customer = Customer::lockForUpdate()->find($sale->customer_id);
+                    if ($customer) {
+                        $customer->decrement('current_balance', (float) $sale->remaining_amount);
+                    }
                 }
-            }
 
-            // Reverse shift cash if cash was received
-            if ($sale->cashier_shift_id && (float) $sale->paid_amount > 0) {
-                $shift = CashierShift::find($sale->cashier_shift_id);
-                if ($shift && $shift->status === CashierShift::STATUS_OPEN) {
-                    $shift->recordCashReturn((float) $sale->paid_amount, $sale->id);
+                // Reverse shift cash if cash was received
+                if ($sale->cashier_shift_id && (float) $sale->paid_amount > 0) {
+                    $shift = CashierShift::find($sale->cashier_shift_id);
+                    if ($shift && $shift->status === CashierShift::STATUS_OPEN) {
+                        $shift->recordCashReturn((float) $sale->paid_amount, $sale->id);
+                    }
                 }
+            } else {
+                // If it was draft, just mark voided
+                $sale->update([
+                    'status' => SalesInvoice::STATUS_VOIDED,
+                    'voided_at' => now(),
+                    'voided_by' => auth()->id(),
+                    'void_reason' => $reason,
+                ]);
             }
         });
 
-        return redirect()->route('sales.show', $sale)
+        return back()
             ->with('status', 'success')
-            ->with('message', 'تم إلغاء فاتورة المبيعات واسترجاع رصيد الدفعات المخزنية بحركات عكسية موثقة.');
+            ->with('message', 'تم إلغاء فاتورة المبيعات بنجاح واسترجاع رصيد الدفعات المخزنية.');
+    }
+
+    /**
+     * Delete/wipe the specified sales invoice from storage.
+     */
+    public function destroy(SalesInvoice $sale, InventoryService $inventoryService): RedirectResponse
+    {
+        if ($sale->returns()->exists()) {
+            return back()->with('status', 'error')
+                ->with('message', 'لا يمكن مسح هذه الفاتورة لوجود مرتجعات مبيعات محررة عليها. يرجى مراجعة المرتجعات أولاً.');
+        }
+
+        DB::transaction(function () use ($sale, $inventoryService) {
+            // 1. If invoice was posted, void it first to restore inventory and balances
+            if ($sale->status === SalesInvoice::STATUS_POSTED) {
+                $inventoryService->voidSalesInvoice($sale, auth()->id(), 'حذف الفاتورة من قبل الإدارة');
+
+                if ((float) $sale->remaining_amount > 0 && $sale->customer_id) {
+                    $customer = Customer::lockForUpdate()->find($sale->customer_id);
+                    if ($customer) {
+                        $customer->decrement('current_balance', (float) $sale->remaining_amount);
+                    }
+                }
+
+                if ($sale->cashier_shift_id && (float) $sale->paid_amount > 0) {
+                    $shift = CashierShift::find($sale->cashier_shift_id);
+                    if ($shift && $shift->status === CashierShift::STATUS_OPEN) {
+                        $shift->recordCashReturn((float) $sale->paid_amount, $sale->id);
+                    }
+                }
+            }
+
+            // 2. Delete customer payments linked to this invoice
+            CustomerPayment::where('sales_invoice_id', $sale->id)->delete();
+
+            // 3. Delete batch allocations
+            foreach ($sale->items as $item) {
+                $item->batchAllocations()->delete();
+            }
+
+            // 4. Delete items
+            $sale->items()->delete();
+
+            // 5. Delete invoice
+            $sale->delete();
+        });
+
+        return redirect()->route('sales.index')
+            ->with('status', 'success')
+            ->with('message', 'تم مسح فاتورة المبيعات نهائياً بنجاح.');
     }
 
     /**
@@ -878,7 +939,7 @@ class SalesInvoiceController extends Controller
     public function directPrint(Request $request, SalesInvoice $sale, PythonPrintEngineService $printService): JsonResponse
     {
         $validated = $request->validate([
-            'printer' => ['nullable', 'string', 'max:120'],
+            'printer' => ['nullable', 'string', 'max:255'],
             'format' => ['nullable', 'string', 'in:thermal_80mm,a4,a5'],
         ]);
 

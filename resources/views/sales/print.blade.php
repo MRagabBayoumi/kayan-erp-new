@@ -7,9 +7,7 @@
     <title>{{ $title }}</title>
 
     <!-- Google Fonts: Cairo -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ asset('fonts/cairo/cairo.css') }}">
 
     @vite(['resources/css/print/invoice-document.css', 'resources/js/pages/invoice-print.js'])
 </head>
@@ -23,15 +21,26 @@
                 <span>طباعة فاتورة مبيعات: {{ $invoice->invoice_number }}</span>
             </span>
 
-            <div class="toolbar-formats">
+            <div class="toolbar-formats flex items-center gap-2">
+                <select class="toolbar-format-select" onchange="window.location.href = this.value" style="font-family: inherit; font-size: 12px; font-weight: bold; padding: 5px 10px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; cursor: pointer; color: #1e293b;">
+                    <option value="{{ request()->fullUrlWithQuery(['format' => 'thermal_80mm']) }}" {{ $format === 'thermal_80mm' ? 'selected' : '' }}>
+                        🖨️ إيصال حراري (80 مم) - XP-80C
+                    </option>
+                    <option value="{{ request()->fullUrlWithQuery(['format' => 'a4']) }}" {{ $format === 'a4' ? 'selected' : '' }}>
+                        📄 فاتورة قياسية (A4)
+                    </option>
+                    <option value="{{ request()->fullUrlWithQuery(['format' => 'a5']) }}" {{ $format === 'a5' ? 'selected' : '' }}>
+                        📑 فاتورة مدمجة (A5)
+                    </option>
+                </select>
+                <a href="{{ request()->fullUrlWithQuery(['format' => 'thermal_80mm']) }}" class="toolbar-format-btn {{ $format === 'thermal_80mm' ? 'active' : '' }}">
+                    80 مم حراري
+                </a>
                 <a href="{{ request()->fullUrlWithQuery(['format' => 'a4']) }}" class="toolbar-format-btn {{ $format === 'a4' ? 'active' : '' }}">
                     A4 قياسي
                 </a>
                 <a href="{{ request()->fullUrlWithQuery(['format' => 'a5']) }}" class="toolbar-format-btn {{ $format === 'a5' ? 'active' : '' }}">
                     A5 وسط
-                </a>
-                <a href="{{ request()->fullUrlWithQuery(['format' => 'thermal_80mm']) }}" class="toolbar-format-btn {{ $format === 'thermal_80mm' ? 'active' : '' }}">
-                    80 مم حراري
                 </a>
             </div>
 

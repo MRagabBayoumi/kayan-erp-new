@@ -152,7 +152,11 @@
                                 <div class="flex items-start justify-between gap-2">
                                     <div class="min-w-0">
                                         <div class="text-xs sm:text-sm font-bold text-[var(--text-main)] truncate" x-text="item.name"></div>
-                                        <div class="text-[11px] text-[var(--text-muted)] font-numeric" x-text="item.stock_display || (item.is_available ? 'متوفر للطلب' : 'غير متوفر')"></div>
+                                        <div class="flex items-center gap-2 mt-0.5 flex-wrap">
+                                            <div class="text-[11px] text-[var(--text-muted)] font-numeric" x-text="item.stock_display || (item.is_available ? 'متوفر للطلب' : 'غير متوفر')"></div>
+                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200"
+                                                  x-text="'الوحدة: ' + (item.unit || 'قطعة') + (item.pieces_per_package > 1 ? ' (' + item.pieces_per_package + ' قطعة)' : '')"></span>
+                                        </div>
                                     </div>
                                     <button type="button" @click="removeItem(index)" class="p-1 text-slate-400 hover:text-rose-600 transition-colors" title="حذف البند">
                                         <x-icon name="trash-2" size="15" />

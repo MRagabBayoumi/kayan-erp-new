@@ -20,47 +20,55 @@
         </div>
     </div>
 
-    <!-- Financial KPIs (Faithful to Kayan ERP Design System) -->
+    <!-- Financial KPIs (Modern High-Contrast Polish) -->
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         <!-- Total Earned -->
-        <div class="kpi-card flex flex-col justify-between">
-            <div class="kpi-header mb-1">
-                <span class="kpi-label">إجمالي الأرباح المستحقة</span>
-                <span class="kpi-icon text-[var(--primary)]"><x-icon name="dollar-sign" size="18" /></span>
+        <div class="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-4 flex flex-col justify-between shadow-xs hover:shadow-sm transition-all">
+            <div class="flex items-center justify-between gap-1.5 mb-1.5">
+                <span class="text-xs sm:text-sm font-bold text-slate-500 dark:text-slate-400 truncate">إجمالي الأرباح المستحقة</span>
+                <span class="w-8 h-8 rounded-xl bg-purple-100 text-[#714B67] dark:bg-purple-950/60 dark:text-purple-300 flex items-center justify-center shrink-0">
+                    <x-icon name="dollar-sign" size="18" strokeWidth="2.4" />
+                </span>
             </div>
-            <div class="kpi-value font-numeric text-lg sm:text-xl font-black text-[var(--text-main)]">
-                {{ number_format($totalEarned, 2) }} <span class="text-xs font-normal text-[var(--text-muted)]">ج.م</span>
+            <div class="font-numeric text-xl sm:text-2xl font-black text-slate-900 dark:text-white truncate my-1">
+                {{ number_format($totalEarned, 2) }} <span class="text-xs font-bold text-slate-400">ج.م</span>
             </div>
-            <div class="kpi-note font-numeric text-xs text-[var(--text-muted)]">
-                <span>عن فواتير البيع المعتمدة</span>
+            <div class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 truncate mt-1">
+                عن كافة فواتير البيع المعتمدة
             </div>
         </div>
 
         <!-- Pending -->
-        <div class="kpi-card flex flex-col justify-between border-amber-200 bg-amber-50/40">
-            <div class="kpi-header mb-1">
-                <span class="kpi-label text-amber-900 font-bold">عمولات معلقة (قيد الانتظار)</span>
-                <span class="kpi-icon text-amber-600"><x-icon name="clock" size="18" /></span>
+        <div class="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-4 flex flex-col justify-between shadow-xs hover:shadow-sm transition-all">
+            <div class="flex items-center justify-between gap-1.5 mb-1.5">
+                <span class="text-xs sm:text-sm font-bold text-slate-500 dark:text-slate-400 truncate">عمولات معلقة (قيد الانتظار)</span>
+                <span class="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 flex items-center justify-center shrink-0">
+                    <x-icon name="clock" size="18" strokeWidth="2.4" />
+                </span>
             </div>
-            <div class="kpi-value font-numeric text-lg sm:text-xl font-black text-amber-800">
-                {{ number_format($pendingAmount, 2) }} <span class="text-xs font-bold text-amber-700">ج.م</span>
+            <div class="font-numeric text-xl sm:text-2xl font-black text-slate-900 dark:text-white truncate my-1">
+                {{ number_format($pendingAmount, 2) }} <span class="text-xs font-bold text-slate-400">ج.م</span>
             </div>
-            <div class="kpi-note text-amber-700 text-xs font-medium">
+            <div class="text-[11px] font-bold text-amber-600 dark:text-amber-400 truncate mt-1 flex items-center gap-1">
+                <x-icon name="clock" size="12" strokeWidth="2.3" />
                 <span>بانتظار الصرف من الإدارة</span>
             </div>
         </div>
 
         <!-- Paid -->
-        <div class="kpi-card flex flex-col justify-between border-emerald-200 bg-emerald-50/40">
-            <div class="kpi-header mb-1">
-                <span class="kpi-label text-emerald-900 font-bold">عمولات تم صرفها</span>
-                <span class="kpi-icon text-emerald-600"><x-icon name="check-circle" size="18" /></span>
+        <div class="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-4 flex flex-col justify-between shadow-xs hover:shadow-sm transition-all">
+            <div class="flex items-center justify-between gap-1.5 mb-1.5">
+                <span class="text-xs sm:text-sm font-bold text-slate-500 dark:text-slate-400 truncate">عمولات تم صرفها</span>
+                <span class="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 flex items-center justify-center shrink-0">
+                    <x-icon name="check-circle" size="18" strokeWidth="2.4" />
+                </span>
             </div>
-            <div class="kpi-value font-numeric text-lg sm:text-xl font-black text-emerald-800">
-                {{ number_format($paidAmount, 2) }} <span class="text-xs font-bold text-emerald-700">ج.م</span>
+            <div class="font-numeric text-xl sm:text-2xl font-black text-slate-900 dark:text-white truncate my-1">
+                {{ number_format($paidAmount, 2) }} <span class="text-xs font-bold text-slate-400">ج.م</span>
             </div>
-            <div class="kpi-note text-emerald-700 text-xs font-medium">
-                <span>تم استلامها في حسابك</span>
+            <div class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 truncate mt-1 flex items-center gap-1">
+                <x-icon name="check-circle" size="12" strokeWidth="2.3" />
+                <span>تم استلامها وتحويلها</span>
             </div>
         </div>
     </div>

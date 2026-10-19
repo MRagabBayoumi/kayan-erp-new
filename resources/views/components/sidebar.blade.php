@@ -64,6 +64,12 @@
                     <span class="erp-nav-label">فواتير المبيعات</span>
                 </div>
             </a>
+            <a href="{{ route('sales-returns.index') }}" class="erp-nav-item {{ request()->is('sales-returns*') ? 'active' : '' }}" title="مرتجعات المبيعات">
+                <div class="erp-nav-content">
+                    <span class="erp-nav-icon"><x-icon name="rotate-ccw" size="18" /></span>
+                    <span class="erp-nav-label">مرتجعات المبيعات</span>
+                </div>
+            </a>
             @can('manage-shifts')
             <a href="{{ route('shifts.index') }}" class="erp-nav-item {{ request()->is('shifts*') ? 'active' : '' }}" title="ورديات وخزينة الكاشير">
                 <div class="erp-nav-content">

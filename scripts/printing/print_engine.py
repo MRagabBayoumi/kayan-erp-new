@@ -84,7 +84,21 @@ def run_print_job(job_payload: Dict[str, Any], dry_run: bool = False, output_ima
     if not isinstance(job_payload, dict):
         raise ValueError(f"Job payload must be a JSON object, got {type(job_payload).__name__}")
 
-    printer_name = str(job_payload.get("printer") or job_payload.get("printer_name") or "Xprinter XP-233B").strip()
+    # Pass optional network authentication credentials to environment
+    if job_payload.get("network_user"):
+        os.environ["THERMAL_PRINTER_USER"] = str(job_payload["network_user"])
+    if job_payload.get("network_password"):
+        os.environ["THERMAL_PRINTER_PASSWORD"] = str(job_payload["network_password"])
+
+    raw_printer = str(job_payload.get("printer") or job_payload.get("printer_name") or "").strip()
+    if not raw_printer:
+        template_id = str(job_payload.get("template_id") or "").lower()
+        if "receipt" in template_id or "thermal" in template_id:
+            raw_printer = os.environ.get("THERMAL_PRINTER_PATH") or os.environ.get("PRINTING_DEFAULT_RECEIPT_PRINTER") or "XP-80C"
+        else:
+            raw_printer = os.environ.get("PRINTING_DEFAULT_PRINTER") or "Xprinter XP-233B"
+
+    printer_name = PrinterService.resolve_printer_name(raw_printer)
 
     # Mode A: Multi-Product Batch Payload
     batch_raw = job_payload.get("batch") or job_payload.get("items")

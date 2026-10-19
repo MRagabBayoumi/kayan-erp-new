@@ -555,7 +555,7 @@ class PurchaseInvoiceController extends Controller
     public function directPrint(Request $request, PurchaseInvoice $purchase, PythonPrintEngineService $printService): JsonResponse
     {
         $validated = $request->validate([
-            'printer' => ['nullable', 'string', 'max:120'],
+            'printer' => ['nullable', 'string', 'max:255'],
             'format' => ['nullable', 'string', 'in:thermal_80mm,a4,a5'],
         ]);
 
@@ -682,6 +682,27 @@ class PurchaseInvoiceController extends Controller
         return redirect()->route('purchases.show', $purchase)
             ->with('status', 'success')
             ->with('message', 'تم إلغاء فاتورة الشراء.');
+    }
+
+    /**
+     * Remove the specified purchase invoice from storage.
+     */
+    public function destroy(PurchaseInvoice $purchase): RedirectResponse
+    {
+        if ($purchase->status === PurchaseInvoice::STATUS_POSTED) {
+            return back()->with('status', 'error')
+                ->with('message', 'لا يمكن مسح فاتورة مشتريات مرحلة للمخازن مباشرة حفاظاً على توازن جرد FIFO؛ يمكنك تسجيل مرتجع مشتريات أو إلغاء استلام.');
+        }
+
+        DB::transaction(function () use ($purchase) {
+            $purchase->payments()->delete();
+            $purchase->items()->delete();
+            $purchase->delete();
+        });
+
+        return redirect()->route('purchases.index')
+            ->with('status', 'success')
+            ->with('message', 'تم مسح فاتورة المشتريات بنجاح.');
     }
 
     /**

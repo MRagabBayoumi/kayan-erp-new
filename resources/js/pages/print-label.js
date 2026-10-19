@@ -55,7 +55,8 @@ export function initPrintLabelPage() {
                 payload = { quantity: quantity, size: size };
             }
 
-            const response = await fetch(url, {
+            const fetchFn = (typeof window !== 'undefined' && window.fetchWithCsrfRetry) ? window.fetchWithCsrfRetry : fetch;
+            const response = await fetchFn(url, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

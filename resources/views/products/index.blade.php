@@ -105,6 +105,18 @@
                     </div>
                 </div>
 
+                <!-- Unit Filter -->
+                <div class="min-w-[140px]">
+                    <select name="unit" class="erp-input w-full">
+                        <option value="">-- كل وحدات القياس --</option>
+                        @foreach($units as $unitItem)
+                            <option value="{{ $unitItem->name }}" {{ $currentUnit === $unitItem->name || $currentUnit === $unitItem->code ? 'selected' : '' }}>
+                                {{ $unitItem->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
                 <!-- Status Filter -->
                 <div class="min-w-[130px]">
                     <select name="status" class="erp-input w-full">
@@ -119,7 +131,7 @@
                     <span>تصفية</span>
                 </button>
 
-                @if($currentSearch || !empty($selectedCategoryIds) || $currentStatus)
+                @if($currentSearch || !empty($selectedCategoryIds) || $currentStatus || $currentUnit)
                     <a href="{{ route('products.index') }}" class="erp-btn erp-btn-secondary py-1.5 px-3" title="إلغاء التصفية">
                         <x-icon name="x" size="14" />
                         <span>إلغاء الفلترة</span>
@@ -127,16 +139,34 @@
                 @endif
             </form>
 
-            @if(!empty($selectedCategoryIds))
+            @if(!empty($selectedCategoryIds) || $currentUnit || $currentStatus)
                 <div class="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-[var(--border-color)]">
-                    <span class="text-xs text-[var(--text-muted)] font-bold">التصنيفات المحددة ({{ count($selectedCategoryIds) }}):</span>
-                    @foreach($categories->whereIn('id', $selectedCategoryIds) as $selCat)
-                        <span class="erp-badge erp-badge-info text-xs flex items-center gap-1">
-                            <span>{{ $selCat->name }}</span>
+                    @if(!empty($selectedCategoryIds))
+                        <span class="text-xs text-[var(--text-muted)] font-bold">التصنيفات ({{ count($selectedCategoryIds) }}):</span>
+                        @foreach($categories->whereIn('id', $selectedCategoryIds) as $selCat)
+                            <span class="erp-badge erp-badge-info text-xs flex items-center gap-1">
+                                <span>{{ $selCat->name }}</span>
+                            </span>
+                        @endforeach
+                    @endif
+
+                    @if($currentUnit)
+                        <span class="erp-badge erp-badge-primary text-xs flex items-center gap-1">
+                            <x-icon name="maximize-2" size="12" />
+                            <span>الوحدة: {{ $currentUnit }}</span>
+                            <a href="{{ request()->fullUrlWithQuery(['unit' => null]) }}" class="hover:text-red-500 mr-1 font-bold text-xs" title="إزالة فلتر الوحدة">×</a>
                         </span>
-                    @endforeach
-                    <a href="{{ request()->fullUrlWithQuery(['category_ids' => null, 'category_id' => null, 'categories' => null]) }}" class="text-xs text-[var(--danger)] hover:underline mr-2">
-                        مسح التصنيفات
+                    @endif
+
+                    @if($currentStatus)
+                        <span class="erp-badge erp-badge-neutral text-xs flex items-center gap-1">
+                            <span>الحالة: {{ $currentStatus === 'active' ? 'نشط' : 'معطل' }}</span>
+                            <a href="{{ request()->fullUrlWithQuery(['status' => null]) }}" class="hover:text-red-500 mr-1 font-bold text-xs" title="إزالة فلتر الحالة">×</a>
+                        </span>
+                    @endif
+
+                    <a href="{{ route('products.index') }}" class="text-xs text-[var(--danger)] hover:underline mr-2">
+                        مسح كافة الفلاتر
                     </a>
                 </div>
             @endif
@@ -208,9 +238,14 @@
                                                 </a>
                                             @endif
                                             <div class="min-w-0">
-                                                <a href="{{ route('products.show', $product) }}" class="font-bold text-[var(--text-main)] hover:text-[var(--primary)] block truncate" title="عرض تفاصيل الصنف">
-                                                    {{ $product->name }}
-                                                </a>
+                                                <div class="flex items-center gap-1.5">
+                                                    <a href="{{ route('products.show', $product) }}" class="font-bold text-[var(--text-main)] hover:text-[var(--primary)] truncate" title="عرض تفاصيل الصنف">
+                                                        {{ $product->name }}
+                                                    </a>
+                                                    @if(! $product->is_active)
+                                                        <span class="erp-badge erp-badge-danger text-[10px] py-0 px-1 font-normal">معطل</span>
+                                                    @endif
+                                                </div>
                                             </div>
                                         </div>
                                     </td>
@@ -288,6 +323,16 @@
                                             <a href="{{ route('products.edit', $product) }}" class="erp-btn erp-btn-ghost erp-btn-icon" title="تعديل">
                                                 <x-icon name="pencil" size="15" />
                                             </a>
+                                            <form action="{{ route('products.toggle-status', $product) }}" method="POST" class="inline" data-confirm="هل تريد {{ $product->is_active ? 'تعطيل' : 'تنشيط' }} هذا الصنف: {{ $product->name }}؟">
+                                                @csrf
+                                                <button type="submit" class="erp-btn erp-btn-ghost erp-btn-icon {{ $product->is_active ? 'text-amber-600 hover:text-amber-700' : 'text-emerald-600 hover:text-emerald-700' }}" title="{{ $product->is_active ? 'تعطيل الصنف' : 'تنشيط الصنف' }}">
+                                                    @if($product->is_active)
+                                                        <x-icon name="lock" size="15" />
+                                                    @else
+                                                        <x-icon name="check-circle" size="15" />
+                                                    @endif
+                                                </button>
+                                            </form>
                                             <form action="{{ route('products.destroy', $product) }}" method="POST" data-confirm="هل أنت متأكد من حذف المنتج: {{ $product->name }}؟" class="inline">
                                                 @csrf
                                                 @method('DELETE')

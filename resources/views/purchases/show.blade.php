@@ -36,20 +36,26 @@
                 </a>
             @endif
 
-            <!-- Universal Print Trigger -->
-            <button type="button" class="erp-btn erp-btn-secondary" 
-                data-action="open-print-modal"
-                data-print-title="فاتورة مشتريات: {{ $invoice->invoice_number }}"
-                data-url-a4="{{ route('purchases.print', [$invoice, 'format' => 'a4']) }}"
-                data-url-a5="{{ route('purchases.print', [$invoice, 'format' => 'a5']) }}"
-                data-url-thermal="{{ route('purchases.print', [$invoice, 'format' => 'thermal_80mm']) }}"
-                data-direct-url-a4="{{ route('purchases.direct-print', [$invoice, 'format' => 'a4']) }}"
-                data-direct-url-a5="{{ route('purchases.direct-print', [$invoice, 'format' => 'a5']) }}"
-                data-direct-url-thermal="{{ route('purchases.direct-print', [$invoice, 'format' => 'thermal_80mm']) }}"
-                title="خيارات ونماذج الطباعة (A4, A5, حراري 80مم)">
-                <x-icon name="printer" size="16" />
-                <span>طباعة الفاتورة</span>
-            </button>
+            @if($invoice->status !== 'posted')
+                <form action="{{ route('purchases.destroy', $invoice) }}" method="POST" data-confirm="هل أنت متأكد من مسح فاتورة الشراء (#{{ $invoice->invoice_number }}) نهائياً من النظام؟">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="erp-btn erp-btn-secondary text-rose-600 hover:text-rose-700" title="مسح الفاتورة نهائياً">
+                        <x-icon name="trash" size="16" />
+                        <span>مسح الفاتورة</span>
+                    </button>
+                </form>
+            @endif
+
+            <!-- Print Combobox Dropdown -->
+            <x-print-dropdown 
+                title="طباعة الفاتورة"
+                code="{{ $invoice->invoice_number }}"
+                urlThermal="{{ route('purchases.print', [$invoice, 'format' => 'thermal_80mm']) }}"
+                directThermal="{{ route('purchases.direct-print', [$invoice, 'format' => 'thermal_80mm']) }}"
+                urlA4="{{ route('purchases.print', [$invoice, 'format' => 'a4']) }}"
+                urlA5="{{ route('purchases.print', [$invoice, 'format' => 'a5']) }}"
+            />
 
             @if($invoice->status === 'posted' && (float)$invoice->remaining_amount > 0)
                 <button type="button" onclick="document.getElementById('recordSupplierPaymentModal').classList.remove('hidden')" class="erp-btn erp-btn-success">

@@ -3,6 +3,43 @@
  * Handles Print Now, Close Window, and Automatic Trigger
  */
 
+/**
+ * Safely fetch with dynamic CSRF token refresh on HTTP 419 (CSRF Token Mismatch/Expired Session)
+ */
+async function fetchWithCsrfRetry(url, options = {}) {
+    if (window.fetchWithCsrfRetry) {
+        return window.fetchWithCsrfRetry(url, options);
+    }
+    options.headers = options.headers || {};
+    let csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    options.headers['X-CSRF-TOKEN'] = csrfToken;
+    options.headers['Accept'] = 'application/json';
+
+    let res = await fetch(url, options);
+    if (res.status === 419) {
+        try {
+            const tokenRes = await fetch('/csrf-token', {
+                headers: { 'Accept': 'application/json' },
+            });
+            if (tokenRes.ok) {
+                const tokenData = await tokenRes.json();
+                if (tokenData.token) {
+                    csrfToken = tokenData.token;
+                    const meta = document.querySelector('meta[name="csrf-token"]');
+                    if (meta) {
+                        meta.setAttribute('content', csrfToken);
+                    }
+                    options.headers['X-CSRF-TOKEN'] = csrfToken;
+                    res = await fetch(url, options);
+                }
+            }
+        } catch (e) {
+            console.error('[CSRF] Failed to refresh token:', e);
+        }
+    }
+    return res;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     // 1. Print Now Button
     const printNowBtn = document.querySelector('[data-action="print-now"]');
@@ -43,19 +80,16 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
 
             try {
-                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
                 const bodyFormat = document.body?.dataset?.format || 'a4';
                 const payload = {
                     format: btn.dataset.format || bodyFormat,
                     printer: btn.dataset.printer || undefined,
                 };
 
-                const res = await fetch(url, {
+                const res = await fetchWithCsrfRetry(url, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': csrfToken,
-                        'Accept': 'application/json',
                     },
                     body: JSON.stringify(payload),
                 });

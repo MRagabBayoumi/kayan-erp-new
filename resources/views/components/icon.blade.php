@@ -7,6 +7,8 @@
 
 @php
     $pixelSize = $size ?? 18;
+    $effectiveStroke = $attributes->get('stroke-width') ?? $strokeWidth ?? 2;
+    $cleanAttributes = $attributes->except(['stroke-width']);
 @endphp
 
 <svg 
@@ -16,10 +18,10 @@
     viewBox="0 0 24 24" 
     fill="none" 
     stroke="currentColor" 
-    stroke-width="{{ $strokeWidth }}" 
+    stroke-width="{{ $effectiveStroke }}" 
     stroke-linecap="round" 
     stroke-linejoin="round" 
-    {{ $attributes->merge(['class' => 'erp-icon ' . $class]) }} 
+    {{ $cleanAttributes->merge(['class' => 'erp-icon ' . $class]) }} 
     aria-hidden="true"
 >
     @switch($name)
@@ -261,6 +263,7 @@
             @break
 
         @case('upload')
+        @case('upload-cloud')
         @case('import')
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
             <polyline points="17 8 12 3 7 8"/>

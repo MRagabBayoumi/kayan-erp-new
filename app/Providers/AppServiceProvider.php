@@ -29,13 +29,18 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         View::composer('*', function ($view) {
-            $settings = null;
-            try {
-                if (Schema::hasTable('company_settings')) {
-                    $settings = CompanySetting::getSettings();
+            static $settings = null;
+            static $hasChecked = false;
+
+            if (! $hasChecked) {
+                try {
+                    if (Schema::hasTable('company_settings')) {
+                        $settings = CompanySetting::getSettings();
+                    }
+                } catch (\Throwable $e) {
+                    // Silently fallback if database is not reachable during early boot
                 }
-            } catch (\Throwable $e) {
-                // Silently fallback if database is not reachable during early boot
+                $hasChecked = true;
             }
 
             $view->with('globalCompanySetting', $settings);
@@ -90,6 +95,18 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('view-products', fn (User $user) => $user->hasPermission('view-products') || $user->hasRole([User::ROLE_ADMIN, User::ROLE_WAREHOUSE, User::ROLE_CASHIER]));
         Gate::define('access-sales-portal', fn (User $user) => $user->isSalesRep() || $user->isAdmin() || $user->hasPermission('access-sales-portal'));
         Gate::define('manage-sales-reps', fn (User $user) => $user->isAdmin() || $user->hasPermission('manage-sales-reps'));
+
+        // Sales Returns & Cashier Operations
+        Gate::define('access-sales-returns', fn (User $user) => $user->hasPermission('access-sales-returns') || $user->hasRole([User::ROLE_ADMIN, User::ROLE_CASHIER, User::ROLE_WAREHOUSE]));
+        Gate::define('create-sales-returns', fn (User $user) => $user->hasPermission('create-sales-returns') || $user->hasRole([User::ROLE_ADMIN, User::ROLE_CASHIER]));
+        Gate::define('post-sales-return', fn (User $user) => $user->hasPermission('post-sales-return') || $user->hasRole([User::ROLE_ADMIN, User::ROLE_CASHIER]));
+        Gate::define('manage-purchase-returns', fn (User $user) => $user->hasPermission('manage-purchase-returns') || $user->hasRole([User::ROLE_ADMIN, User::ROLE_WAREHOUSE]));
+        Gate::define('access-shifts', fn (User $user) => $user->hasPermission('access-shifts') || $user->hasRole([User::ROLE_ADMIN, User::ROLE_CASHIER]));
+        Gate::define('unpost-sales-invoice', fn (User $user) => $user->hasPermission('unpost-sales-invoice') || $user->isAdmin());
+        Gate::define('apply-sales-discounts', fn (User $user) => $user->hasPermission('apply-sales-discounts') || $user->isAdmin() || $user->hasRole(User::ROLE_CASHIER));
+        Gate::define('override-credit-limit', fn (User $user) => $user->hasPermission('override-credit-limit') || $user->isAdmin());
+        Gate::define('approve-rep-customers', fn (User $user) => $user->hasPermission('approve-rep-customers') || $user->isAdmin());
+        Gate::define('track-rep-gps', fn (User $user) => $user->hasPermission('track-rep-gps') || $user->isAdmin());
 
         // Auto copy backup zip to optional custom folder
         Event::listen(

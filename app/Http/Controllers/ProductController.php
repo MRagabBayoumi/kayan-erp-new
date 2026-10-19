@@ -37,6 +37,7 @@ class ProductController extends Controller
     public function index(Request $request): View
     {
         $categories = Category::active()->orderBy('name')->get();
+        $units = Unit::active()->orderBy('name')->get();
 
         $query = Product::with(['category', 'stockBalances']);
 
@@ -55,6 +56,23 @@ class ProductController extends Controller
 
         if (! empty($selectedCategoryIds)) {
             $query->whereIn('category_id', $selectedCategoryIds);
+        }
+
+        if ($request->filled('unit')) {
+            $unitFilter = trim((string) $request->input('unit'));
+            if (in_array($unitFilter, ['دستة', 'دسته', 'DZ'], true)) {
+                $query->whereIn('unit', ['دستة', 'دسته', 'DZ']);
+            } elseif (in_array($unitFilter, ['قطعة', 'قطعه', 'PCS'], true)) {
+                $query->whereIn('unit', ['قطعة', 'قطعه', 'PCS']);
+            } elseif (in_array($unitFilter, ['كرتونة', 'كرتونه', 'CTN'], true)) {
+                $query->whereIn('unit', ['كرتونة', 'كرتونه', 'CTN']);
+            } elseif (in_array($unitFilter, ['باكت', 'PKT'], true)) {
+                $query->whereIn('unit', ['باكت', 'PKT']);
+            } elseif (in_array($unitFilter, ['طقم', 'SET'], true)) {
+                $query->whereIn('unit', ['طقم', 'SET']);
+            } else {
+                $query->where('unit', $unitFilter);
+            }
         }
 
         if ($request->filled('status')) {
@@ -79,9 +97,11 @@ class ProductController extends Controller
             'moduleName' => 'المخزون والمنتجات',
             'products' => $products,
             'categories' => $categories,
+            'units' => $units,
             'currentSearch' => $request->input('search'),
             'currentCategoryId' => count($selectedCategoryIds) === 1 ? $selectedCategoryIds[0] : null,
             'selectedCategoryIds' => $selectedCategoryIds,
+            'currentUnit' => $request->input('unit'),
             'currentStatus' => $request->input('status'),
             'currentPerPage' => $perPage,
             'barcodeSettings' => BarcodeSetting::getSettings(),
@@ -356,7 +376,7 @@ class ProductController extends Controller
             'product_image.max' => 'الحد الأقصى لحجم صورة المنتج هو 2 ميجابايت.',
         ]);
 
-        $validated['is_active'] = $request->boolean('is_active', true);
+        $validated['is_active'] = $request->boolean('is_active');
 
         // Auto-fill pieces_per_package from unit conversion factor if omitted
         if (empty($validated['pieces_per_package']) && ! empty($validated['unit'])) {
@@ -642,6 +662,22 @@ class ProductController extends Controller
                 ->with('status', 'error')
                 ->with('message', 'تعذر حذف المنتج: '.$e->getMessage());
         }
+    }
+
+    /**
+     * Toggle the active status of a product (enable / disable).
+     */
+    public function toggleStatus(Product $product): RedirectResponse
+    {
+        $product->update([
+            'is_active' => ! $product->is_active,
+        ]);
+
+        $statusText = $product->is_active ? 'تنشيط' : 'تعطيل';
+
+        return back()
+            ->with('status', 'success')
+            ->with('message', "تم {$statusText} الصنف ({$product->name}) بنجاح.");
     }
 
     /**

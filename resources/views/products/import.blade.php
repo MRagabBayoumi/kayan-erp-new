@@ -61,7 +61,7 @@
                         سيقوم النظام بفحص محتويات الملف سطر بسطر ومقارنتها بقاعدة البيانات الحالية <code>kayan_erp</code> لاكتشاف الأصناف الجديدة، والتحقق من الأسعار، وتمييز الأصناف الموجودة مسبقاً قبل تنفيذ أي عملية حفظ.
                     </p>
 
-                    <form action="{{ route('products.import.review') }}" method="POST" enctype="multipart/form-data">
+                    <form id="uploadForm" action="{{ route('products.import.review') }}" method="POST" enctype="multipart/form-data">
                         @csrf
 
                         <div class="erp-form-group mb-5">
@@ -82,7 +82,7 @@
                         </div>
 
                         <div class="flex items-center justify-between border-t border-[var(--border-color)] pt-4">
-                            <button type="submit" class="erp-btn erp-btn-primary py-2.5 px-6 font-bold">
+                            <button type="submit" id="uploadSubmitBtn" class="erp-btn erp-btn-primary py-2.5 px-6 font-bold">
                                 <x-icon name="search" size="16" />
                                 <span>فحص ومراجعة محتويات الملف</span>
                             </button>
@@ -114,12 +114,12 @@
                     <div>
                         <strong class="block text-xs text-[var(--text-main)] mb-1.5 font-bold">الأعمدة المدعومة في الملف:</strong>
                         <ul class="text-[11px] text-[var(--text-muted)] my-0 mx-4 leading-loose">
-                            <li><strong>كود الصنف (SKU):</strong> إلزامي وفريد.</li>
+                            <li><strong>الباركود (Barcode):</strong> الأساس الأول في التكويد والمطابقة لتمييز الأصناف بدقة.</li>
+                            <li><strong>كود الصنف (SKU):</strong> كود تمييز الصنف (يُنشأ أو يُضبط آلياً لمنع التضارب).</li>
                             <li><strong>اسم المنتج:</strong> إلزامي بالعربية.</li>
                             <li><strong>التصنيف:</strong> اختياري (يُنشأ تلقائياً إن لم يوجد).</li>
-                            <li><strong>الباركود:</strong> اختياري (يدعم ماسحات الباركود).</li>
-                            <li><strong>الأسعار:</strong> التكلفة، الجملة، القطاعي، وسعر الموزع (يدعم الأرقام العشرية بالفاصلة أو النقطة).</li>
-                            <li><strong>المواصفات:</strong> وحدة القياس وعدد القطع في الطرد / الكرتونة.</li>
+                            <li><strong>الأسعار:</strong> التكلفة، الجملة، القطاعي، وسعر الموزع (أرقام صحيحة أو عشرية).</li>
+                            <li><strong>المواصفات:</strong> وحدة القياس وعدد القطع في الطرد / الكرتونة (أرقام صحيحة).</li>
                             <li><strong>حد الطلب الأدنى:</strong> رقم صحيح لتنبيه النواقص.</li>
                             <li><strong>الرصيد الافتتاحي:</strong> كمية أول المدة، تكلفة الرصيد، واسم المستودع المستلم (لتسجيل FIFO آلياً).</li>
                         </ul>
@@ -323,7 +323,7 @@
                                 <!-- Pieces Per Package -->
                                 <td class="text-center font-numeric">
                                     @if(!empty($row['pieces_per_package']))
-                                        <span class="text-xs">{{ $row['pieces_per_package'] }}</span>
+                                        <span class="text-xs">{{ (int)$row['pieces_per_package'] }}</span>
                                     @else
                                         <span class="text-[var(--text-light)] text-[11px]">—</span>
                                     @endif
@@ -332,9 +332,13 @@
                                 <!-- Opening Stock -->
                                 <td class="text-center font-numeric">
                                     @if(!empty($row['opening_quantity']) && (float)$row['opening_quantity'] > 0)
-                                        <span class="erp-badge erp-badge-info text-[11px] font-bold">{{ number_format((float)$row['opening_quantity'], 2) }}</span>
+                                        @php
+                                            $qtyVal = (float)$row['opening_quantity'];
+                                            $displayQty = ($qtyVal == floor($qtyVal)) ? (int)$qtyVal : number_format($qtyVal, 2);
+                                        @endphp
+                                        <span class="erp-badge erp-badge-info text-[11px] font-bold">{{ $displayQty }}</span>
                                     @else
-                                        <span class="text-[var(--text-light)] text-[11px]">0.00</span>
+                                        <span class="text-[var(--text-light)] text-[11px]">0</span>
                                     @endif
                                 </td>
 
@@ -346,11 +350,37 @@
                                 <!-- Audit Notes -->
                                 <td>
                                     @if($row['action'] === 'new')
-                                        <span class="text-[var(--success-text)] text-xs">صنف جديد سيتم إدراجه في قاعدة البيانات.</span>
+                                        @if(!empty($row['sku_adjusted']))
+                                            <div class="text-[var(--success-text)] text-xs flex flex-col gap-0.5">
+                                                <span>• صنف جديد سيتم إدراجه.</span>
+                                                <span class="text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded text-[11px] font-medium border border-amber-200">
+                                                    تم ضبط الكود آلياً إلى (<strong>{{ $row['sku'] }}</strong>) لمنع التضارب مع صنف آخر.
+                                                </span>
+                                            </div>
+                                        @elseif(!empty($row['barcode_generated']))
+                                            <div class="text-[var(--success-text)] text-xs flex flex-col gap-0.5">
+                                                <span>• صنف جديد سيتم إدراجه.</span>
+                                                <span class="text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded text-[11px] font-mono border border-blue-200">
+                                                    تم توليد باركود تلقائي: {{ $row['barcode'] }}
+                                                </span>
+                                            </div>
+                                        @else
+                                            <span class="text-[var(--success-text)] text-xs">صنف جديد سيتم إدراجه في قاعدة البيانات.</span>
+                                        @endif
                                     @elseif($row['action'] === 'update')
-                                        <span class="text-[var(--warning)] text-xs">
-                                            صنف مسجل مسبقاً (<strong>{{ $row['existing_product']['name'] }}</strong>) — سيتم تحديث الأسعار والمواصفات.
-                                        </span>
+                                        @if(!empty($row['name_mismatch']))
+                                            <div class="text-rose-600 font-bold text-xs flex flex-col gap-0.5 bg-rose-50/60 p-1.5 rounded border border-rose-200">
+                                                <span class="inline-flex items-center gap-1 text-rose-700">
+                                                    <x-icon name="alert-triangle" size="13" />
+                                                    <strong>تحذير تضارب الباركود:</strong>
+                                                </span>
+                                                <span>الباركود مسجل لمنتج آخر: (<strong>{{ $row['existing_product']['name'] }}</strong>) بينما اسم الصنف بالملف هو (<strong>{{ $row['name'] }}</strong>). التأكيد سيستبدل بيانات الصنف القديم!</span>
+                                            </div>
+                                        @else
+                                            <span class="text-[var(--warning)] text-xs">
+                                                صنف مسجل مسبقاً (<strong>{{ $row['existing_product']['name'] }}</strong>) — سيتم تحديث الأسعار والمواصفات.
+                                            </span>
+                                        @endif
                                     @else
                                         <div class="text-[var(--danger)] text-[11px]">
                                             @foreach($row['errors'] as $err)
@@ -367,3 +397,50 @@
         </div>
     @endif
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const uploadForm = document.getElementById('uploadForm');
+    const uploadBtn = document.getElementById('uploadSubmitBtn');
+
+    if (uploadForm && uploadBtn) {
+        uploadForm.addEventListener('submit', function() {
+            setTimeout(function() {
+                uploadBtn.disabled = true;
+                uploadBtn.innerHTML = `
+                    <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>جاري قراءة وفحص ومقارنة الأصناف...</span>
+                `;
+                uploadBtn.style.opacity = '0.85';
+                uploadBtn.style.cursor = 'wait';
+            }, 50);
+        });
+    }
+
+    const confirmForm = document.getElementById('confirmImportForm');
+    if (confirmForm) {
+        confirmForm.addEventListener('submit', function() {
+            setTimeout(function() {
+                const btns = document.querySelectorAll('button[type="submit"][form="confirmImportForm"], #confirmImportForm button[type="submit"]');
+                btns.forEach(b => {
+                    b.disabled = true;
+                    b.innerHTML = `
+                        <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span>جاري حفظ الأصناف وتحديث الأرصدة...</span>
+                    `;
+                    b.style.opacity = '0.85';
+                    b.style.cursor = 'wait';
+                });
+            }, 50);
+        });
+    }
+});
+</script>
+@endpush

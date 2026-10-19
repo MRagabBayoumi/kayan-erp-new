@@ -22,8 +22,16 @@ return [
 
     'default_printer' => env('PRINTING_DEFAULT_PRINTER', 'Xprinter XP-233B'),
 
-    'default_receipt_printer' => env('PRINTING_DEFAULT_RECEIPT_PRINTER', 'XP-80C'),
+    // Thermal receipt printer path or name (supports UNC network shares e.g. \\192.168.0.41\XP-80C)
+    'thermal_printer_path' => env('THERMAL_PRINTER_PATH', env('PRINTING_DEFAULT_RECEIPT_PRINTER', 'XP-80C')),
+
+    'default_receipt_printer' => env('THERMAL_PRINTER_PATH', env('PRINTING_DEFAULT_RECEIPT_PRINTER', 'XP-80C')),
 
     'default_document_printer' => env('PRINTING_DEFAULT_DOCUMENT_PRINTER', 'TOSHIBA Generic Printer XL'),
+
+    // Optional network share authentication
+    'network_user' => env('THERMAL_PRINTER_USER', env('PRINTER_NETWORK_USER', null)),
+
+    'network_password' => env('THERMAL_PRINTER_PASSWORD', env('PRINTER_NETWORK_PASSWORD', null)),
 
 ];

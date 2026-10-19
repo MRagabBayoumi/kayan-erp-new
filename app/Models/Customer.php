@@ -117,7 +117,7 @@ class Customer extends Model
         $urls = [];
         foreach ($this->store_images as $path) {
             if ($path && Storage::disk('public')->exists($path)) {
-                $urls[] = asset('storage/'.$path);
+                $urls[] = '/storage/'.$path;
             }
         }
 

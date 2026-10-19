@@ -232,6 +232,7 @@ function initPortalOrderForm() {
                         stock_display: product.stock_display,
                         is_available: product.is_available,
                         unit: product.unit,
+                        pieces_per_package: product.pieces_per_package || 1,
                         quantity: 1,
                         unit_price: this.getProductPrice(product),
                         line_discount: 0

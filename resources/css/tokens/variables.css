@@ -85,8 +85,8 @@
     --density-padding-x: 14px;
     --density-table-py: 10px;
     --density-table-px: 14px;
-    --density-font-size: 13px;
-    --density-font-size-sm: 12px;
+    --density-font-size: 14px;
+    --density-font-size-sm: 13px;
     --density-icon-size: 16px;
 }
 
@@ -98,7 +98,7 @@
     --density-padding-x: 10px;
     --density-table-py: 6px;
     --density-table-px: 10px;
-    --density-font-size: 12px;
-    --density-font-size-sm: 11px;
+    --density-font-size: 13px;
+    --density-font-size-sm: 12px;
     --density-icon-size: 14px;
 }

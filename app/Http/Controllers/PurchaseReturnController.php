@@ -331,7 +331,7 @@ class PurchaseReturnController extends Controller
     public function directPrint(Request $request, PurchaseReturn $purchase_return, PythonPrintEngineService $printService): JsonResponse
     {
         $validated = $request->validate([
-            'printer' => ['nullable', 'string', 'max:120'],
+            'printer' => ['nullable', 'string', 'max:255'],
             'format' => ['nullable', 'string', 'in:thermal_80mm,a4,a5'],
         ]);
 

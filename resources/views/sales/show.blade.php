@@ -17,6 +17,13 @@
                     </button>
                 </form>
                 @endcan
+                <form action="{{ route('sales.void', $invoice) }}" method="POST" data-confirm="هل تريد إلغاء هذه المسودة؟">
+                    @csrf
+                    <button type="submit" class="erp-btn erp-btn-secondary text-amber-600">
+                        <x-icon name="x-circle" size="16" />
+                        <span>إلغاء المسودة</span>
+                    </button>
+                </form>
             @endif
 
             @if($invoice->status === 'posted')
@@ -38,7 +45,23 @@
                     </button>
                 </form>
                 @endcan
+                @can('access-sales')
+                <a href="{{ route('sales-returns.create', ['sales_invoice_id' => $invoice->id]) }}" class="erp-btn erp-btn-secondary text-purple-700 hover:text-purple-800">
+                    <x-icon name="rotate-ccw" size="16" />
+                    <span>تحرير إذن إرجاع</span>
+                </a>
+                @endcan
             @endif
+
+            <!-- مسح الفاتورة نهائياً -->
+            <form action="{{ route('sales.destroy', $invoice) }}" method="POST" data-confirm="تحذير: هل أنت متأكد من مسح هذه الفاتورة (#{{ $invoice->invoice_number }}) نهائياً من النظام؟ {{ $invoice->status === 'posted' ? 'سيتم إلغاء تأثيرها المخزني والمالي أولاً ثم حذفها.' : '' }}">
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="erp-btn erp-btn-secondary text-rose-600 hover:text-rose-700" title="مسح الفاتورة نهائياً">
+                    <x-icon name="trash" size="16" />
+                    <span>مسح الفاتورة</span>
+                </button>
+            </form>
 
             @if($invoice->status === 'posted' && (float)$invoice->remaining_amount > 0)
                 <button type="button" class="erp-btn erp-btn-success" data-action="open-payment-modal" title="تسجيل دفعة سداد أو قسط لهذه الفاتورة">
@@ -47,20 +70,15 @@
                 </button>
             @endif
 
-            <!-- Universal Print Trigger -->
-            <button type="button" class="erp-btn erp-btn-secondary" 
-                data-action="open-print-modal"
-                data-print-title="فاتورة مبيعات: {{ $invoice->invoice_number }}"
-                data-url-a4="{{ route('sales.print', [$invoice, 'format' => 'a4']) }}"
-                data-url-a5="{{ route('sales.print', [$invoice, 'format' => 'a5']) }}"
-                data-url-thermal="{{ route('sales.print', [$invoice, 'format' => 'thermal_80mm']) }}"
-                data-direct-url-a4="{{ route('sales.direct-print', [$invoice, 'format' => 'a4']) }}"
-                data-direct-url-a5="{{ route('sales.direct-print', [$invoice, 'format' => 'a5']) }}"
-                data-direct-url-thermal="{{ route('sales.direct-print', [$invoice, 'format' => 'thermal_80mm']) }}"
-                title="خيارات ونماذج الطباعة (A4, A5, حراري 80مم)">
-                <x-icon name="printer" size="16" />
-                <span>طباعة الفاتورة</span>
-            </button>
+            <!-- Print Combobox Dropdown -->
+            <x-print-dropdown 
+                title="طباعة الفاتورة"
+                code="{{ $invoice->invoice_number }}"
+                urlThermal="{{ route('sales.print', [$invoice, 'format' => 'thermal_80mm']) }}"
+                directThermal="{{ route('sales.direct-print', [$invoice, 'format' => 'thermal_80mm']) }}"
+                urlA4="{{ route('sales.print', [$invoice, 'format' => 'a4']) }}"
+                urlA5="{{ route('sales.print', [$invoice, 'format' => 'a5']) }}"
+            />
 
             <a href="{{ route('sales.index') }}" class="erp-btn erp-btn-ghost">
                 <x-icon name="arrow-left" size="16" />

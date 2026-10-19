@@ -23,6 +23,7 @@ try:
     import win32ui
     import win32con
     import win32gui
+    import win32file
     from PIL import ImageWin
     HAS_WIN32 = True
 except ImportError:
@@ -77,20 +78,132 @@ class PrinterService:
             return []
 
     @classmethod
-    def validate_printer(cls, printer_name: str) -> None:
-        """Verify that the requested printer exists in Windows devices."""
+    def resolve_printer_name(cls, requested_name: Optional[str] = None) -> str:
+        """
+        Intelligently resolves target Windows printer against installed printers.
+        Matches exact, case-insensitive, fuzzy aliases (XP-80C, POS-80, XP80),
+        network share paths, or falls back to Windows default printer.
+        """
         if not HAS_WIN32:
+            return requested_name or "XP-80C"
+
+        printers = cls.get_available_printers()
+        if not printers:
+            return requested_name or "XP-80C"
+
+        req = (requested_name or "").strip()
+        if not req:
+            try:
+                return win32print.GetDefaultPrinter() or printers[0]
+            except Exception:
+                return printers[0]
+
+        # 0. UNC Network Share Check (e.g. \\192.168.0.41\XP-80C or //192.168.0.41/XP-80C)
+        # Preserve UNC path intact without stripping host/IP or falling back to local printers!
+        if req.startswith(r"\\") or req.startswith("//"):
+            return req.replace("/", "\\")
+
+        # 1. Exact match
+        if req in printers:
+            return req
+
+        req_lower = req.lower()
+
+        # 2. Case-insensitive match
+        for p in printers:
+            if p.lower() == req_lower:
+                return p
+
+        # 3. Handle network share relative names only if not UNC (e.g. DOMAIN\Printer)
+        if "\\" in req:
+            share_part = req.split("\\")[-1].lower()
+            for p in printers:
+                if share_part in p.lower():
+                    return p
+
+        # 4. If looking for 80mm thermal receipt printer
+        thermal_keywords = ["xp-80", "pos-80", "xp80", "pos80", "80c", "receipt"]
+        if any(k in req_lower for k in thermal_keywords):
+            for p in printers:
+                p_l = p.lower()
+                if any(k in p_l for k in thermal_keywords):
+                    return p
+
+        # 5. If looking for barcode label printer
+        label_keywords = ["233", "xp-233", "barcode", "label", "sticker"]
+        if any(k in req_lower for k in label_keywords):
+            for p in printers:
+                p_l = p.lower()
+                if any(k in p_l for k in label_keywords):
+                    return p
+
+        # 6. If looking for office/doc printer
+        doc_keywords = ["toshiba", "laser", "office", "generic printer"]
+        if any(k in req_lower for k in doc_keywords):
+            for p in printers:
+                p_l = p.lower()
+                if any(k in p_l for k in doc_keywords):
+                    return p
+
+        # 7. Fallback to Windows default printer if available
+        try:
+            default_p = win32print.GetDefaultPrinter()
+            if default_p:
+                return default_p
+        except Exception:
+            pass
+
+        return req
+
+    @classmethod
+    def _ensure_network_share_access(cls, printer_path: str) -> None:
+        """
+        Ensure network credentials or connection to UNC share host if configured.
+        Supports environment variables:
+        - THERMAL_PRINTER_USER / PRINTER_NETWORK_USER
+        - THERMAL_PRINTER_PASSWORD / PRINTER_NETWORK_PASSWORD
+        """
+        user = os.environ.get("THERMAL_PRINTER_USER") or os.environ.get("PRINTER_NETWORK_USER")
+        pwd = os.environ.get("THERMAL_PRINTER_PASSWORD") or os.environ.get("PRINTER_NETWORK_PASSWORD") or ""
+
+        norm_path = printer_path.replace("/", "\\")
+        parts = [p for p in norm_path.split("\\") if p]
+        if not parts:
+            return
+        host = parts[0]
+        ipc_share = f"\\\\{host}\\IPC$"
+
+        if user:
+            try:
+                import subprocess
+                cmd = ["net", "use", ipc_share, pwd, f"/user:{user}"]
+                subprocess.run(cmd, capture_output=True, timeout=5)
+            except Exception as e:
+                sys.stderr.write(f"[printer_service] Warning: net use authentication attempt: {e}\n")
+
+    @classmethod
+    def validate_printer(cls, printer_name: str) -> None:
+        """Verify that the requested printer exists in Windows devices or is an accessible network path."""
+        if not HAS_WIN32:
+            return
+
+        # If it's a UNC network share printer path (e.g. \\192.168.0.41\XP-80C)
+        if printer_name.startswith(r"\\") or printer_name.startswith("//"):
+            cls._ensure_network_share_access(printer_name)
             return
 
         printers = cls.get_available_printers()
         if not printers:
             return
 
-        if printer_name not in printers:
-            available_list = ", ".join(f"'{p}'" for p in printers)
-            raise PrinterNotFoundError(
-                f"Printer '{printer_name}' was not found on this system. Available printers: [{available_list}]."
-            )
+        resolved = cls.resolve_printer_name(printer_name)
+        if resolved in printers:
+            return
+
+        available_list = ", ".join(f"'{p}'" for p in printers)
+        raise PrinterNotFoundError(
+            f"Printer '{printer_name}' was not found on this system. Available printers: [{available_list}]."
+        )
 
     @classmethod
     def is_tspl_compatible(cls, printer_name: str) -> bool:
@@ -101,8 +214,8 @@ class PrinterService:
         """
         name_lower = printer_name.lower()
         if any(keyword in name_lower for keyword in cls.TSPL_KEYWORDS):
-            # XP-80 receipt printers are ESC/POS, not TSPL
-            if "xp-80" in name_lower or "pos-80" in name_lower:
+            # XP-80 / POS-80 receipt printers are ESC/POS, not TSPL
+            if "xp-80" in name_lower or "pos-80" in name_lower or "xp80" in name_lower or "80c" in name_lower:
                 return False
             return True
 
@@ -113,7 +226,7 @@ class PrinterService:
                     info = win32print.GetPrinter(hprinter, 2)
                     driver_lower = str(info.get("pDriverName", "")).lower()
                     if any(keyword in driver_lower for keyword in cls.TSPL_KEYWORDS):
-                        if "xp-80" in driver_lower or "pos-80" in driver_lower:
+                        if "xp-80" in driver_lower or "pos-80" in driver_lower or "xp80" in driver_lower or "80c" in driver_lower:
                             return False
                         return True
                 finally:
@@ -122,6 +235,20 @@ class PrinterService:
                 pass
 
         return False
+
+    @classmethod
+    def is_escpos_compatible(cls, printer_name: str) -> bool:
+        """
+        Detect whether the printer uses ESC/POS command language (thermal receipt printers).
+        Matches Xprinter XP-80C, POS-80, Epson TM-T20, and generic receipt printers,
+        or any network share path targeting an 80mm/58mm thermal receipt printer.
+        """
+        name_lower = (printer_name or "").lower()
+        receipt_keywords = [
+            "xp-80", "pos-80", "xp80", "pos80", "80c", "receipt", "thermal",
+            "epson tm", "tm-t", "rp80", "xp-58", "pos-58", "58mm", "80mm"
+        ]
+        return any(keyword in name_lower for keyword in receipt_keywords)
 
     @classmethod
     def build_batch_tspl_payload(
@@ -555,6 +682,190 @@ class PrinterService:
                     pass
 
     @classmethod
+    def build_escpos_payload(cls, items: List[Dict[str, Any]], cut: bool = True) -> bytes:
+        """
+        Convert a list of rendered receipt image items into a single continuous ESC/POS byte stream.
+        Uses standard GS v 0 raster bit image commands (compatible with Xprinter XP-80C / POS-80 / Epson).
+        """
+        payload = bytearray()
+        # Initialize printer: ESC @
+        payload.extend(b"\x1b@")
+
+        for item in items:
+            img = item["image"]
+            copies = max(1, min(500, int(item.get("copies") or 1)))
+
+            # Convert to monochrome 1-bit
+            if img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in getattr(img, "info", {})):
+                bg = Image.new("RGB", img.size, (255, 255, 255))
+                if img.mode == "P":
+                    img = img.convert("RGBA")
+                bg.paste(img, mask=img.split()[-1])
+                img = bg
+
+            gray = img.convert("L")
+            w, h = gray.size
+
+            # Standard 80mm printable width is 576 dots; ensure width is divisible by 8
+            target_w = ((w + 7) // 8) * 8
+            if target_w != w:
+                padded = Image.new("L", (target_w, h), 255)
+                padded.paste(gray, (0, 0))
+                gray = padded
+                w = target_w
+
+            # Threshold to 1-bit: black = 1, white = 0
+            bw = gray.point(lambda p: 1 if p < 180 else 0, mode="1")
+            raw_bits = bw.tobytes()
+
+            xL = (w // 8) % 256
+            xH = (w // 8) // 256
+            yL = h % 256
+            yH = h // 256
+
+            # GS v 0 m xL xH yL yH [data]
+            raster_cmd = b"\x1dv0\x00" + bytes([xL, xH, yL, yH]) + raw_bits
+
+            for _ in range(copies):
+                payload.extend(raster_cmd)
+
+        # Feed 4 lines: ESC d 4
+        payload.extend(b"\x1bd\x04")
+        if cut:
+            # Partial paper cut: GS V 66 0
+            payload.extend(b"\x1dV\x42\x00")
+
+        return bytes(payload)
+
+    @classmethod
+    def submit_batch_job_raw_escpos(
+        cls,
+        printer_name: str,
+        items: List[Dict[str, Any]],
+        doc_name: str = "Kayan ERP ESC/POS Receipt",
+        cut: bool = True,
+        dry_run: bool = False
+    ) -> Dict[str, Any]:
+        """
+        Send thermal receipt images as native ESC/POS RAW raster bytes directly to the printer.
+        Supports both Windows Print Spooler RAW mode and direct UNC network share writing (\\\\host\\share).
+        """
+        payload = cls.build_escpos_payload(items, cut=cut)
+        total_receipts = sum(max(1, int(item.get("copies") or 1)) for item in items)
+
+        if dry_run or not HAS_WIN32:
+            return {
+                "success": True,
+                "status": "DRY_RUN_RENDERED",
+                "mode": "RAW_ESCPOS",
+                "printer": printer_name,
+                "total_receipts": total_receipts,
+                "payload_bytes": len(payload),
+                "message": f"Dry-run ESC/POS simulation succeeded for '{printer_name}' ({len(payload)} bytes rendered)."
+            }
+
+        cls.validate_printer(printer_name)
+
+        is_unc = printer_name.startswith(r"\\") or printer_name.startswith("//")
+        last_error = None
+
+        # Method 1: Try Windows Print Spooler RAW mode
+        try:
+            hprinter = win32print.OpenPrinter(printer_name)
+            try:
+                win32print.StartDocPrinter(hprinter, 1, (doc_name, None, "RAW"))
+                try:
+                    bytes_written = win32print.WritePrinter(hprinter, payload)
+                    if bytes_written != len(payload):
+                        raise PrinterSpoolerError(
+                            f"Truncated ESC/POS write: wrote {bytes_written} of {len(payload)} bytes."
+                        )
+                finally:
+                    win32print.EndDocPrinter(hprinter)
+            finally:
+                win32print.ClosePrinter(hprinter)
+
+            return {
+                "success": True,
+                "status": "SPOOLED",
+                "mode": "RAW_ESCPOS",
+                "printer": printer_name,
+                "total_receipts": total_receipts,
+                "payload_bytes": len(payload),
+                "message": f"Successfully spooled ESC/POS receipt to '{printer_name}' via Windows Spooler."
+            }
+        except Exception as e:
+            last_error = e
+            sys.stderr.write(f"[printer_service] Windows Spooler RAW for '{printer_name}' failed: {e}\n")
+
+        # Method 2: If UNC network path, try direct writing to the shared printer port/queue
+        if is_unc:
+            norm_unc = printer_name.replace("/", "\\")
+            # Try win32file.CreateFile
+            try:
+                handle = win32file.CreateFile(
+                    norm_unc,
+                    win32con.GENERIC_WRITE,
+                    win32con.FILE_SHARE_READ | win32con.FILE_SHARE_WRITE,
+                    None,
+                    win32con.OPEN_EXISTING,
+                    0,
+                    None
+                )
+                try:
+                    err, bytes_written = win32file.WriteFile(handle, payload)
+                    if err == 0:
+                        return {
+                            "success": True,
+                            "status": "DIRECT_UNC_WRITTEN",
+                            "mode": "RAW_ESCPOS_DIRECT",
+                            "printer": printer_name,
+                            "total_receipts": total_receipts,
+                            "payload_bytes": len(payload),
+                            "message": f"Successfully wrote ESC/POS receipt directly to network share '{norm_unc}'."
+                        }
+                finally:
+                    win32file.CloseHandle(handle)
+            except Exception as e_file:
+                sys.stderr.write(f"[printer_service] Direct win32file write to '{norm_unc}' failed: {e_file}\n")
+
+            # Try cmd /c copy /b temporary file to UNC path (standard Windows network printing)
+            import tempfile, subprocess
+            tmp_path = None
+            try:
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".bin") as tmp:
+                    tmp.write(payload)
+                    tmp_path = tmp.name
+
+                cmd = f'copy /b "{tmp_path}" {norm_unc}'
+                res = subprocess.run(["cmd", "/c", cmd], capture_output=True, text=True, timeout=10)
+                if res.returncode == 0:
+                    return {
+                        "success": True,
+                        "status": "DIRECT_UNC_COPIED",
+                        "mode": "RAW_ESCPOS_COPY",
+                        "printer": printer_name,
+                        "total_receipts": total_receipts,
+                        "payload_bytes": len(payload),
+                        "message": f"Successfully copied ESC/POS payload to network share '{norm_unc}'."
+                    }
+                else:
+                    err_msg = (res.stderr or res.stdout or "").strip()
+                    sys.stderr.write(f"[printer_service] copy /b failed: {err_msg}\n")
+            except Exception as e_copy:
+                sys.stderr.write(f"[printer_service] Direct copy /b to '{norm_unc}' failed: {e_copy}\n")
+            finally:
+                if tmp_path and os.path.exists(tmp_path):
+                    try:
+                        os.unlink(tmp_path)
+                    except Exception:
+                        pass
+
+        raise PrinterSpoolerError(
+            f"Failed to submit ESC/POS receipt print job to '{printer_name}': {last_error}"
+        )
+
+    @classmethod
     def submit_batch_job_gdi(
         cls,
         printer_name: str,
@@ -636,6 +947,21 @@ class PrinterService:
                 "message": f"Successfully spooled {total_labels} page(s) via GDI to '{printer_name}'."
             }
         except Exception as e:
+            # If GDI fails and target is an ESC/POS printer or UNC path, try fallback to RAW ESC/POS
+            if cls.is_escpos_compatible(printer_name) or printer_name.startswith(r"\\") or printer_name.startswith("//"):
+                sys.stderr.write(f"[printer_service] GDI failed for '{printer_name}', trying RAW ESC/POS fallback: {e}\n")
+                try:
+                    return cls.submit_batch_job_raw_escpos(
+                        printer_name=printer_name,
+                        items=items,
+                        doc_name=doc_name,
+                        dry_run=dry_run
+                    )
+                except Exception as fallback_e:
+                    raise PrinterSpoolerError(
+                        f"Failed GDI and RAW ESC/POS print jobs to '{printer_name}': {e} | Fallback error: {fallback_e}"
+                    ) from fallback_e
+
             raise PrinterSpoolerError(
                 f"Failed to submit GDI batch print job to printer '{printer_name}': {str(e)}"
             ) from e
@@ -660,7 +986,7 @@ class PrinterService:
     ) -> Dict[str, Any]:
         """
         Submit a batch sequence of product labels to the Windows print spooler.
-        Supports print_mode: 'auto' (default), 'raw_tspl', or 'gdi'.
+        Supports print_mode: 'auto' (default), 'raw_tspl', 'raw_escpos', or 'gdi'.
         """
         if not items:
             raise ValueError("No items provided for printing.")
@@ -683,6 +1009,21 @@ class PrinterService:
                     raise
                 sys.stderr.write(
                     f"Warning: TSPL RAW batch mode failed for '{printer_name}', falling back to GDI: {e}\n"
+                )
+
+        if mode_req == "raw_escpos" or (mode_req == "auto" and cls.is_escpos_compatible(printer_name)):
+            try:
+                return cls.submit_batch_job_raw_escpos(
+                    printer_name=printer_name,
+                    items=items,
+                    doc_name=doc_name,
+                    dry_run=dry_run
+                )
+            except Exception as e:
+                if mode_req == "raw_escpos":
+                    raise
+                sys.stderr.write(
+                    f"Warning: ESC/POS RAW mode failed for '{printer_name}', falling back to GDI: {e}\n"
                 )
 
         return cls.submit_batch_job_gdi(

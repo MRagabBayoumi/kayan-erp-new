@@ -169,7 +169,11 @@ class PortalController extends Controller
      */
     public function createCustomer(): View
     {
-        return view('portal.customers.create');
+        $todayAttendance = auth()->user()->todayAttendance();
+
+        return view('portal.customers.create', [
+            'todayAttendance' => $todayAttendance,
+        ]);
     }
 
     /**
@@ -190,12 +194,12 @@ class PortalController extends Controller
             'longitude' => ['nullable', 'numeric'],
             'notes' => ['nullable', 'string', 'max:1000'],
             'store_images' => ['nullable', 'array', 'max:5'],
-            'store_images.*' => ['image', 'mimes:jpeg,png,jpg,webp', 'max:5120'],
+            'store_images.*' => ['image', 'mimes:jpeg,png,jpg,webp', 'max:10240'],
         ], [
             'name.required' => 'اسم العميل مطلوب.',
             'phone.required' => 'رقم هاتف العميل مطلوب.',
             'store_images.*.image' => 'يجب أن يكون الملف المرفوع صورة صحيحة.',
-            'store_images.*.max' => 'أقصى حجم مسموح به للصورة الواحدة هو 5 ميجابايت.',
+            'store_images.*.max' => 'أقصى حجم مسموح به للصورة الواحدة هو 10 ميجابايت.',
         ]);
 
         $uploadedImages = [];
@@ -297,6 +301,7 @@ class PortalController extends Controller
                     'retail_price' => $isAdmin ? (float) $p->retail_price : (float) $p->wholesale_price,
                     'distributor_price' => $isAdmin ? (float) $p->distributor_price : (float) $p->wholesale_price,
                     'unit' => $p->unit ?? 'قطعة',
+                    'pieces_per_package' => (int) ($p->pieces_per_package ?? 1),
                     'is_available' => $isAvailable,
                     'available_stock' => $isAdmin ? $totalStock : ($isAvailable ? 'متوفر للطلب' : 'غير متوفر'),
                     'stock_display' => $isAdmin

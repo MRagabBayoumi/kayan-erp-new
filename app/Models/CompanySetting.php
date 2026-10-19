@@ -28,16 +28,42 @@ class CompanySetting extends Model
     ];
 
     /**
+     * Bootstrap the model and its traits.
+     */
+    protected static function booted(): void
+    {
+        static::saved(function () {
+            static::clearSettingsCache();
+        });
+    }
+
+    /**
      * Get the global singleton company settings instance.
      */
     public static function getSettings(): self
     {
-        return static::firstOrCreate([], [
+        if (app()->bound('company_setting.singleton')) {
+            return app('company_setting.singleton');
+        }
+
+        $settings = static::firstOrCreate([], [
             'company_name' => 'Kayan Fashion Accessories',
             'company_phone' => null,
             'logo_path' => null,
             'program_status' => 'active',
         ]);
+
+        app()->instance('company_setting.singleton', $settings);
+
+        return $settings;
+    }
+
+    /**
+     * Clear cached singleton settings.
+     */
+    public static function clearSettingsCache(): void
+    {
+        app()->forgetInstance('company_setting.singleton');
     }
 
     /**
@@ -46,7 +72,7 @@ class CompanySetting extends Model
     public function getLogoUrlAttribute(): ?string
     {
         if ($this->logo_path && Storage::disk('public')->exists($this->logo_path)) {
-            return asset('storage/'.$this->logo_path);
+            return '/storage/'.$this->logo_path;
         }
 
         return null;

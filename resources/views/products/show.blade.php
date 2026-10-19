@@ -26,6 +26,18 @@
                 <x-icon name="pencil" size="16" />
                 <span>تعديل الصنف</span>
             </a>
+            <form action="{{ route('products.toggle-status', $product) }}" method="POST" class="inline" data-confirm="هل تريد {{ $product->is_active ? 'تعطيل' : 'تنشيط' }} هذا الصنف؟">
+                @csrf
+                <button type="submit" class="erp-btn {{ $product->is_active ? 'erp-btn-warning' : 'erp-btn-success' }}">
+                    @if($product->is_active)
+                        <x-icon name="lock" size="16" />
+                        <span>تعطيل الصنف</span>
+                    @else
+                        <x-icon name="check-circle" size="16" />
+                        <span>تنشيط الصنف</span>
+                    @endif
+                </button>
+            </form>
             <a href="{{ route('products.index') }}" class="erp-btn erp-btn-secondary">
                 <x-icon name="arrow-left" size="16" />
                 <span>العودة للقائمة</span>

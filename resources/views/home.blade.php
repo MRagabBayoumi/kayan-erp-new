@@ -219,7 +219,7 @@
             @endcan
 
             <!-- 7. Customers Directory -->
-            @can('access-sales')
+            @if(auth()->user()->can('access-customers') || auth()->user()->can('manage-customers') || auth()->user()->can('access-sales'))
             <div class="app-card app-card-teal">
                 <div class="app-card-header">
                     <div class="app-icon-box bg-teal-500/10 text-teal-500">
@@ -238,7 +238,7 @@
                     </a>
                 </div>
             </div>
-            @endcan
+            @endif
 
             <!-- 8. Suppliers Directory -->
             @can('access-purchases')
@@ -262,7 +262,29 @@
             </div>
             @endcan
 
-            <!-- 9. Management KPIs Dashboard (Hidden from cashiers) -->
+            <!-- 9. Finance, Treasuries & Expenses -->
+            @if(auth()->user()->can('manage-treasuries') || auth()->user()->can('manage-expenses') || auth()->user()->can('manage-company-settings') || auth()->user()->isAdmin())
+            <div class="app-card app-card-emerald">
+                <div class="app-card-header">
+                    <div class="app-icon-box bg-emerald-500/10 text-emerald-600">
+                        <x-icon name="landmark" size="28" />
+                    </div>
+                    <span class="app-badge badge-emerald">المالية والحسابات</span>
+                </div>
+                <div class="app-card-body">
+                    <h3 class="app-title">الخزائن والمالية والمصروفات</h3>
+                    <p class="app-desc">إدارة أرصدة الخزائن والبنوك، التحويلات النقدية، تسجيل المصروفات وسندات الصرف، ومتابعة مدفوعات ومتحصلات العملاء والموردين.</p>
+                </div>
+                <div class="app-card-footer">
+                    <a href="{{ route('treasuries.index') }}" class="erp-btn erp-btn-secondary w-full justify-center">
+                        <x-icon name="banknote" size="16" />
+                        <span>فتح الخزائن والمالية</span>
+                    </a>
+                </div>
+            </div>
+            @endif
+
+            <!-- 10. Management KPIs Dashboard (Hidden from cashiers) -->
             @can('access-dashboard')
             <div class="app-card app-card-rose">
                 <div class="app-card-header">

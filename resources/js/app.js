@@ -335,6 +335,16 @@ function initDropdowns() {
             });
 
             menu.classList.toggle('open', !isOpen);
+            if (!isOpen) {
+                const rect = menu.getBoundingClientRect();
+                if (rect.left < 8) {
+                    menu.style.left = '0';
+                    menu.style.right = 'auto';
+                } else if (rect.right > window.innerWidth - 8) {
+                    menu.style.right = '0';
+                    menu.style.left = 'auto';
+                }
+            }
             return;
         }
 
@@ -408,6 +418,43 @@ function initGlobalSearch() {
 }
 
 /**
+ * Safely fetch with dynamic CSRF token refresh on HTTP 419 (CSRF Token Mismatch/Expired Session)
+ */
+export async function fetchWithCsrfRetry(url, options = {}) {
+    options.headers = options.headers || {};
+    let csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    options.headers['X-CSRF-TOKEN'] = csrfToken;
+    options.headers['Accept'] = 'application/json';
+
+    let res = await fetch(url, options);
+    if (res.status === 419) {
+        try {
+            const tokenRes = await fetch('/csrf-token', {
+                headers: { 'Accept': 'application/json' },
+            });
+            if (tokenRes.ok) {
+                const tokenData = await tokenRes.json();
+                if (tokenData.token) {
+                    csrfToken = tokenData.token;
+                    const meta = document.querySelector('meta[name="csrf-token"]');
+                    if (meta) {
+                        meta.setAttribute('content', csrfToken);
+                    }
+                    options.headers['X-CSRF-TOKEN'] = csrfToken;
+                    res = await fetch(url, options);
+                }
+            }
+        } catch (e) {
+            console.error('[CSRF] Failed to refresh token:', e);
+        }
+    }
+    return res;
+}
+if (typeof window !== 'undefined') {
+    window.fetchWithCsrfRetry = fetchWithCsrfRetry;
+}
+
+/**
  * Global Direct Python Printing Handler
  */
 function initDirectPythonPrint() {
@@ -430,15 +477,20 @@ function initDirectPythonPrint() {
         `;
 
         try {
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-            const res = await fetch(url, {
+            const payload = {};
+            if (btn.dataset.format) {
+                payload.format = btn.dataset.format;
+            }
+            if (btn.dataset.printer) {
+                payload.printer = btn.dataset.printer;
+            }
+
+            const res = await fetchWithCsrfRetry(url, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
-                    'Accept': 'application/json',
                 },
-                body: JSON.stringify({}),
+                body: JSON.stringify(payload),
             });
 
             const data = await res.json();

@@ -15,19 +15,15 @@
                 @endcan
             @endif
 
-            <button type="button" class="erp-btn erp-btn-secondary" 
-                data-action="open-print-modal"
-                data-print-title="مرتجع مشتريات: {{ $return->return_number }}"
-                data-url-a4="{{ route('purchase-returns.print', [$return, 'format' => 'a4']) }}"
-                data-url-a5="{{ route('purchase-returns.print', [$return, 'format' => 'a5']) }}"
-                data-url-thermal="{{ route('purchase-returns.print', [$return, 'format' => 'thermal_80mm']) }}"
-                data-direct-url-a4="{{ route('purchase-returns.direct-print', [$return, 'format' => 'a4']) }}"
-                data-direct-url-a5="{{ route('purchase-returns.direct-print', [$return, 'format' => 'a5']) }}"
-                data-direct-url-thermal="{{ route('purchase-returns.direct-print', [$return, 'format' => 'thermal_80mm']) }}"
-                title="خيارات الطباعة (A4, A5, حراري 80مم)">
-                <x-icon name="printer" size="16" />
-                <span>طباعة إذن المرتجع</span>
-            </button>
+            <!-- Print Combobox Dropdown -->
+            <x-print-dropdown 
+                title="طباعة إذن المرتجع"
+                code="{{ $return->return_number }}"
+                urlThermal="{{ route('purchase-returns.print', [$return, 'format' => 'thermal_80mm']) }}"
+                directThermal="{{ route('purchase-returns.direct-print', [$return, 'format' => 'thermal_80mm']) }}"
+                urlA4="{{ route('purchase-returns.print', [$return, 'format' => 'a4']) }}"
+                urlA5="{{ route('purchase-returns.print', [$return, 'format' => 'a5']) }}"
+            />
 
             <a href="{{ route('purchase-returns.index') }}" class="erp-btn erp-btn-ghost">
                 <x-icon name="arrow-right" size="16" />

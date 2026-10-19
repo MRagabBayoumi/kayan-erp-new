@@ -7,9 +7,7 @@
     <title>{{ $title ?? 'طباعة ملصقات الباركود - كيان ERP' }}</title>
     
     <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ asset('fonts/cairo/cairo.css') }}">
 
     @vite(['resources/css/print/thermal-label.css', 'resources/js/pages/print-label.js'])
 </head>

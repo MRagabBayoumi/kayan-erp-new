@@ -756,3 +756,68 @@ test('POST /inventory/low-stock/direct-print prints low stock shortages report',
             'success' => true,
         ]);
 });
+
+test('GET /csrf-token returns valid csrf token for ajax direct print refresh', function () {
+    $user = User::factory()->create(['role' => User::ROLE_ADMIN]);
+
+    $response = $this->actingAs($user)->getJson(route('csrf.token'));
+
+    $response->assertOk()
+        ->assertJsonStructure(['token']);
+    expect($response->json('token'))->not->toBeEmpty();
+});
+
+test('PythonPrintEngineService resolves thermal receipt printer path correctly', function () {
+    $service = app(PythonPrintEngineService::class);
+
+    config(['printing.thermal_printer_path' => '\\\\192.168.0.41\\XP-80C']);
+    expect($service->getReceiptPrinter())->toBe('\\\\192.168.0.41\\XP-80C');
+});
+
+test('POST /sales/{sale}/direct-print accepts UNC network share printer path', function () {
+    $service = app(PythonPrintEngineService::class);
+    if (! $service->isAvailable()) {
+        $this->markTestSkipped('Python print engine is not available.');
+    }
+
+    $user = User::factory()->create(['role' => User::ROLE_ADMIN]);
+    $customer = Customer::create([
+        'name' => 'عميل اختبار الطابعة',
+        'phone' => '01012345678',
+        'is_active' => true,
+    ]);
+    $warehouse = Warehouse::create([
+        'name' => 'مستودع تجربة',
+        'code' => 'WH-UNC-01',
+        'is_active' => true,
+    ]);
+
+    $sale = SalesInvoice::create([
+        'invoice_number' => 'INV-UNC-2026-001',
+        'customer_id' => $customer->id,
+        'warehouse_id' => $warehouse->id,
+        'invoice_date' => now(),
+        'subtotal' => 150.0,
+        'tax_amount' => 0.0,
+        'discount_amount' => 0.0,
+        'total_amount' => 150.0,
+        'paid_amount' => 150.0,
+        'remaining_amount' => 0.0,
+        'payment_status' => 'paid',
+        'status' => SalesInvoice::STATUS_POSTED,
+    ]);
+
+    $uncPrinter = '\\\\192.168.0.41\\XP-80C';
+
+    $response = $this->actingAs($user)->postJson(route('sales.direct-print', $sale), [
+        'printer' => $uncPrinter,
+        'format' => 'thermal_80mm',
+    ]);
+
+    $response->assertOk()
+        ->assertJson([
+            'success' => true,
+            'template_id' => 'sales_invoice_receipt',
+            'printer' => $uncPrinter,
+        ]);
+});

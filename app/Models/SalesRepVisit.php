@@ -114,7 +114,7 @@ class SalesRepVisit extends Model
     public function getVisitImageUrlAttribute(): ?string
     {
         if ($this->visit_image_path && Storage::disk('public')->exists($this->visit_image_path)) {
-            return asset('storage/'.$this->visit_image_path);
+            return '/storage/'.$this->visit_image_path;
         }
 
         return null;
