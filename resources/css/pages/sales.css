@@ -344,13 +344,18 @@
 
 /* Ensure quick entry containers never clip the absolute dropdown */
 [data-page="sales-create"] .purchases-quick-entry,
+[data-page="sales-edit"] .purchases-quick-entry,
 [data-page="sales-create"] .purchases-quick-entry-body,
+[data-page="sales-edit"] .purchases-quick-entry-body,
 [data-page="sales-create"] .purchases-quick-row-2,
-[data-page="sales-create"] .erp-form-group.relative {
+[data-page="sales-edit"] .purchases-quick-row-2,
+[data-page="sales-create"] .erp-form-group.relative,
+[data-page="sales-edit"] .erp-form-group.relative {
     overflow: visible !important;
 }
 
-[data-page="sales-create"] #quickSearchResults.purchases-autocomplete-dropdown {
+[data-page="sales-create"] #quickSearchResults.purchases-autocomplete-dropdown,
+[data-page="sales-edit"] #quickSearchResults.purchases-autocomplete-dropdown {
     position: absolute;
     top: calc(100% + 4px);
     right: 0;

@@ -107,14 +107,30 @@ document.addEventListener('DOMContentLoaded', () => {
                         btn.disabled = originalDisabled;
                     }, 3000);
                 } else {
-                    alert(`فشل أمر الطباعة: ${data.message || 'خطأ غير محدد'}`);
-                    btn.innerHTML = originalHtml;
-                    btn.disabled = originalDisabled;
+                    console.warn('[DirectPrint] Python engine error or network printer unreachable, initiating browser print fallback:', data);
+                    btn.innerHTML = `
+                        <svg style="animation: spin 1s linear infinite;" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                        </svg>
+                        <span>جاري التحويل لطباعة المتصفح...</span>
+                    `;
+                    // Automatically trigger native browser print so printing never fails
+                    setTimeout(() => {
+                        window.print();
+                        btn.innerHTML = originalHtml;
+                        btn.disabled = originalDisabled;
+                    }, 300);
                 }
             } catch (err) {
-                alert('حدث خطأ في الاتصال بالخادم أثناء إرسال أمر الطباعة المباشرة.');
-                btn.innerHTML = originalHtml;
-                btn.disabled = originalDisabled;
+                console.warn('[DirectPrint] Network connection error, initiating browser print fallback:', err);
+                btn.innerHTML = `
+                    <span>جاري التحويل لطباعة المتصفح...</span>
+                `;
+                setTimeout(() => {
+                    window.print();
+                    btn.innerHTML = originalHtml;
+                    btn.disabled = originalDisabled;
+                }, 300);
             }
         });
     });

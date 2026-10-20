@@ -53,13 +53,13 @@
         </div>
 
         <div class="toolbar-actions">
-            <button type="button" data-action="python-direct-print" data-url="{{ route('purchases.direct-print', [$invoice, 'format' => $format]) }}" class="toolbar-btn toolbar-btn-primary" title="طباعة فورية مباشرة عبر بايثون ({{ $format === 'thermal_80mm' ? 'XP-80C' : 'TOSHIBA' }})">
+            <button type="button" data-action="print-now" class="toolbar-btn toolbar-btn-primary" title="طباعة فورية عبر المتصفح">
                 <x-icon name="printer" size="16" />
-                <span>{{ $format === 'thermal_80mm' ? 'طباعة فورية (XP-80C) ⚡' : 'طباعة بايثون المباشرة' }}</span>
+                <span>{{ $format === 'thermal_80mm' ? 'طباعة الإيصال (XP-80C) 🖨️' : 'طباعة الفاتورة 🖨️' }}</span>
             </button>
-            <button type="button" data-action="print-now" class="toolbar-btn toolbar-btn-secondary">
-                <x-icon name="printer" size="16" />
-                <span>طباعة المتصفح</span>
+            <button type="button" data-action="python-direct-print" data-url="{{ route('purchases.direct-print', [$invoice, 'format' => $format]) }}" class="toolbar-btn toolbar-btn-secondary" title="إرسال مباشر عبر بايثون للسيرفر">
+                <x-icon name="zap" size="14" />
+                <span>طباعة بايثون (خادم)</span>
             </button>
             <button type="button" data-action="close-window" class="toolbar-btn toolbar-btn-secondary">
                 <x-icon name="x" size="14" />

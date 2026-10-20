@@ -22,6 +22,7 @@ import { initShifts } from './pages/shifts.js';
 import { initPrintTemplatesPage } from './pages/print-templates.js';
 import { initPortalPage } from './pages/portal.js';
 import { initSalesRepsPage } from './pages/sales-reps.js';
+import { initCustomerInstallments } from './pages/customer-installments.js';
 
 // Expose Turbo globally
 window.Turbo = Turbo;
@@ -82,6 +83,7 @@ document.addEventListener('turbo:load', () => {
     initPrintTemplatesPage();
     initPortalPage();
     initSalesRepsPage();
+    initCustomerInstallments();
 });
 
 /**
@@ -506,12 +508,33 @@ function initDirectPythonPrint() {
                     btn.disabled = originalDisabled;
                 }, 3000);
             } else {
-                alert(`فشل أمر الطباعة: ${data.message || 'خطأ غير محدد'}`);
-                btn.innerHTML = originalHtml;
-                btn.disabled = originalDisabled;
+                console.warn('[DirectPrint] Python engine error or network printer unreachable, triggering fallback:', data);
+                const fallbackUrl = btn.dataset.fallbackUrl;
+                if (fallbackUrl) {
+                    btn.innerHTML = `<span>جاري فتح شاشة الطباعة...</span>`;
+                    window.open(fallbackUrl + (fallbackUrl.includes('?') ? '&' : '?') + 'auto=1', '_blank');
+                    setTimeout(() => {
+                        btn.innerHTML = originalHtml;
+                        btn.disabled = originalDisabled;
+                    }, 1500);
+                } else if (typeof window.print === 'function') {
+                    window.print();
+                    btn.innerHTML = originalHtml;
+                    btn.disabled = originalDisabled;
+                } else {
+                    alert(`فشل أمر الطباعة: ${data.message || 'خطأ غير محدد'}`);
+                    btn.innerHTML = originalHtml;
+                    btn.disabled = originalDisabled;
+                }
             }
         } catch (err) {
-            alert('حدث خطأ في الاتصال بالخادم أثناء إرسال أمر الطباعة المباشرة.');
+            console.warn('[DirectPrint] Network error, triggering fallback:', err);
+            const fallbackUrl = btn.dataset.fallbackUrl;
+            if (fallbackUrl) {
+                window.open(fallbackUrl + (fallbackUrl.includes('?') ? '&' : '?') + 'auto=1', '_blank');
+            } else {
+                window.print();
+            }
             btn.innerHTML = originalHtml;
             btn.disabled = originalDisabled;
         }

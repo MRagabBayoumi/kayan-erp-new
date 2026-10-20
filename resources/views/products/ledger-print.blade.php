@@ -132,7 +132,7 @@
                     @endif
                     <div class="dispatch-field">
                         <span class="dispatch-field-label">الرصيد الفعلي :</span>
-                        <strong class="dispatch-field-val font-numeric">{{ number_format((float)$product->total_stock, 2) }} {{ $product->unit }}</strong>
+                        <strong class="dispatch-field-val font-numeric">{{ $product->formatStockBreakdown() }}</strong>
                     </div>
                 </div>
             </header>
@@ -251,7 +251,7 @@
             </table>
 
             <div class="doc-footer-note font-numeric">
-                الرصيد الحالي: {{ number_format((float)$product->total_stock, 2) }} {{ $product->unit }} · {{ now()->format('Y-m-d H:i') }}
+                الرصيد الحالي: {{ $product->formatStockBreakdown() }} · {{ now()->format('Y-m-d H:i') }}
             </div>
         @endif
         </article>

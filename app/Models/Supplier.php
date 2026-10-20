@@ -99,4 +99,9 @@ class Supplier extends Model
     {
         return $this->hasMany(SupplierPayment::class)->latest('payment_date');
     }
+
+    public function installments(): HasMany
+    {
+        return $this->hasMany(SupplierInstallment::class)->orderBy('due_date');
+    }
 }

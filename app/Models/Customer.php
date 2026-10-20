@@ -179,4 +179,9 @@ class Customer extends Model
     {
         return $this->hasMany(CustomerPayment::class)->latest('payment_date');
     }
+
+    public function installments(): HasMany
+    {
+        return $this->hasMany(CustomerInstallment::class)->orderBy('due_date');
+    }
 }

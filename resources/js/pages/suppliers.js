@@ -10,8 +10,81 @@ export function initSuppliersPage() {
     const addModal = page.querySelector('#addSupplierModal');
     const editModal = page.querySelector('#editSupplierModal');
 
+    // Toggle China specific fields for Add Modal
+    function updateAddModalChinaFields(type) {
+        const chinaBox = page.querySelector('#add_china_fields');
+        const currencySelect = page.querySelector('#add_sup_currency');
+        const countryInput = page.querySelector('#add_sup_country');
+
+        if (type === 'china_factory') {
+            if (chinaBox) chinaBox.style.display = 'block';
+            if (currencySelect && (currencySelect.value === 'EGP' || !currencySelect.value)) {
+                currencySelect.value = 'CNY';
+            }
+            if (countryInput && (!countryInput.value || countryInput.value === 'مصر')) {
+                countryInput.value = 'China';
+            }
+        } else {
+            if (chinaBox) chinaBox.style.display = 'none';
+            if (currencySelect && (currencySelect.value === 'CNY' || !currencySelect.value)) {
+                currencySelect.value = 'EGP';
+            }
+            if (countryInput && (!countryInput.value || countryInput.value === 'China')) {
+                countryInput.value = 'مصر';
+            }
+        }
+    }
+
+    // Toggle China specific fields for Edit Modal
+    function updateEditModalChinaFields(type) {
+        const chinaBox = page.querySelector('#edit_china_fields');
+        const currencySelect = page.querySelector('#edit_sup_currency');
+        const countryInput = page.querySelector('#edit_sup_country');
+
+        if (type === 'china_factory') {
+            if (chinaBox) chinaBox.style.display = 'block';
+            if (currencySelect && (currencySelect.value === 'EGP' || !currencySelect.value)) {
+                currencySelect.value = 'CNY';
+            }
+            if (countryInput && (!countryInput.value || countryInput.value === 'مصر')) {
+                countryInput.value = 'China';
+            }
+        } else {
+            if (chinaBox) chinaBox.style.display = 'none';
+            if (currencySelect && (currencySelect.value === 'CNY' || !currencySelect.value)) {
+                currencySelect.value = 'EGP';
+            }
+            if (countryInput && (!countryInput.value || countryInput.value === 'China')) {
+                countryInput.value = 'مصر';
+            }
+        }
+    }
+
+    const addTypeSelect = page.querySelector('#add_sup_supplier_type');
+    if (addTypeSelect) {
+        addTypeSelect.addEventListener('change', () => {
+            updateAddModalChinaFields(addTypeSelect.value);
+        });
+    }
+
+    const editTypeSelect = page.querySelector('#edit_sup_supplier_type');
+    if (editTypeSelect) {
+        editTypeSelect.addEventListener('change', () => {
+            updateEditModalChinaFields(editTypeSelect.value);
+        });
+    }
+
     function openAddModal() {
         if (addModal) {
+            const addForm = addModal.querySelector('form');
+            if (addForm) {
+                addForm.reset();
+            }
+            if (addTypeSelect) {
+                addTypeSelect.value = 'local_supplier';
+            }
+            updateAddModalChinaFields('local_supplier');
+
             addModal.classList.add('open');
             addModal.style.display = 'flex';
             const firstInput = addModal.querySelector('input[name="name"]');
@@ -37,15 +110,16 @@ export function initSuppliersPage() {
             if (el) el.value = val ?? '';
         };
 
+        const supplierType = supplier.supplier_type || 'local_supplier';
         setVal('#edit_sup_name', supplier.name);
-        setVal('#edit_sup_supplier_type', supplier.supplier_type || 'china_factory');
+        setVal('#edit_sup_supplier_type', supplierType);
         setVal('#edit_sup_contact_person', supplier.contact_person);
         setVal('#edit_sup_wechat_id', supplier.wechat_id);
         setVal('#edit_sup_phone', supplier.phone);
         setVal('#edit_sup_email', supplier.email);
-        setVal('#edit_sup_country', supplier.country || 'China');
+        setVal('#edit_sup_country', supplier.country || (supplierType === 'china_factory' ? 'China' : 'مصر'));
         setVal('#edit_sup_city', supplier.city);
-        setVal('#edit_sup_currency', supplier.currency || 'CNY');
+        setVal('#edit_sup_currency', supplier.currency || (supplierType === 'china_factory' ? 'CNY' : 'EGP'));
         setVal('#edit_sup_current_balance', supplier.current_balance || 0);
         setVal('#edit_sup_address', supplier.address);
         setVal('#edit_sup_notes', supplier.notes);
@@ -53,6 +127,11 @@ export function initSuppliersPage() {
         const activeCb = page.querySelector('#edit_sup_is_active');
         if (activeCb) {
             activeCb.checked = Boolean(supplier.is_active);
+        }
+
+        const chinaBox = page.querySelector('#edit_china_fields');
+        if (chinaBox) {
+            chinaBox.style.display = (supplierType === 'china_factory') ? 'block' : 'none';
         }
 
         if (editModal) {

@@ -184,7 +184,7 @@
 
                             <div class="erp-specs-item">
                                 <span class="erp-specs-label">إجمالي الرصيد المخزني:</span>
-                                <span class="font-numeric font-bold erp-specs-value text-[var(--primary)]">{{ number_format($product->total_stock, 2) }} {{ $product->unit }}</span>
+                                <span class="font-numeric font-bold erp-specs-value text-[var(--primary)]">{{ $product->formatStockBreakdown() }}</span>
                             </div>
                         </div>
                     </div>
@@ -317,10 +317,10 @@
                                                 @else
                                                     <span>{{ number_format((float)$rm->quantity, 2) }}</span>
                                                 @endif
-                                                <small class="text-[10px] text-[var(--text-muted)]">{{ $product->unit }}</small>
+                                                <small class="text-[10px] text-[var(--text-muted)]">قطعة</small>
                                             </td>
                                             <td class="font-numeric text-center text-xs font-bold text-[var(--primary)]">
-                                                {{ $rm->running_balance !== null ? number_format((float)$rm->running_balance, 2) : '—' }}
+                                                {{ $rm->running_balance !== null ? $product->formatStockBreakdown((float)$rm->running_balance) : '—' }}
                                             </td>
                                             <td class="text-xs text-[var(--text-muted)]">{{ $rm->notes ?: ($rm->reference_type ? $rm->reference_type.' #'.$rm->reference_id : '—') }}</td>
                                         </tr>

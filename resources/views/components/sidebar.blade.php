@@ -79,10 +79,16 @@
             </a>
             @endcan
             @can('manage-customers')
-            <a href="{{ route('customers.index') }}" class="erp-nav-item {{ request()->is('customers*') ? 'active' : '' }}" title="العملاء وتجار الجملة">
+            <a href="{{ route('customers.index') }}" class="erp-nav-item {{ request()->is('customers*') && !request()->is('customer-installments*') ? 'active' : '' }}" title="العملاء وتجار الجملة">
                 <div class="erp-nav-content">
                     <span class="erp-nav-icon"><x-icon name="users" size="18" /></span>
                     <span class="erp-nav-label">العملاء</span>
+                </div>
+            </a>
+            <a href="{{ route('customer-installments.index') }}" class="erp-nav-item {{ request()->is('customer-installments*') ? 'active' : '' }}" title="جدول مواعيد وأقساط تحصيل العملاء">
+                <div class="erp-nav-content">
+                    <span class="erp-nav-icon"><x-icon name="calendar" size="18" /></span>
+                    <span class="erp-nav-label">مواعيد تحصيل العملاء</span>
                 </div>
             </a>
             @endcan
@@ -207,10 +213,22 @@
                     <span class="erp-nav-label">مقبوضات العملاء</span>
                 </div>
             </a>
+            <a href="{{ route('customer-installments.index') }}" class="erp-nav-item {{ request()->is('customer-installments*') ? 'active' : '' }}" title="جدول مواعيد وأقساط تحصيل العملاء">
+                <div class="erp-nav-content">
+                    <span class="erp-nav-icon"><x-icon name="calendar" size="18" /></span>
+                    <span class="erp-nav-label">أقساط وتحصيل العملاء</span>
+                </div>
+            </a>
             <a href="{{ route('supplier-payments.index') }}" class="erp-nav-item {{ request()->is('supplier-payments*') ? 'active' : '' }}" title="مدفوعات وسندات صرف الموردين">
                 <div class="erp-nav-content">
                     <span class="erp-nav-icon"><x-icon name="credit-card" size="18" /></span>
                     <span class="erp-nav-label">مدفوعات الموردين</span>
+                </div>
+            </a>
+            <a href="{{ route('supplier-installments.index') }}" class="erp-nav-item {{ request()->is('supplier-installments*') ? 'active' : '' }}" title="جدول أقساط ومستحقات الموردين">
+                <div class="erp-nav-content">
+                    <span class="erp-nav-icon"><x-icon name="calendar" size="18" /></span>
+                    <span class="erp-nav-label">أقساط الموردين</span>
                 </div>
             </a>
             <a href="{{ route('expenses.index') }}" class="erp-nav-item {{ request()->is('expenses*') ? 'active' : '' }}" title="المصروفات التشغيلية والعمومية">

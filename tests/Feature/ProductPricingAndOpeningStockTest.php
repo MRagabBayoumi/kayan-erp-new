@@ -447,3 +447,78 @@ test('admin can update product name even when opening_balance_date has legacy 19
     $updateResponse->assertRedirect(route('products.index'));
     expect($product->fresh()->name)->toBe('اسم صنف جديد ومعدل بنجاح');
 });
+
+test('admin updating product with dozen unit properly converts opening stock to base pieces and cost', function () {
+    $admin = User::factory()->create([
+        'role' => 'admin',
+    ]);
+
+    $product = Product::create([
+        'sku' => 'DOZEN-TEST-001',
+        'name' => 'فرشه صافي ومبرد قدم تست',
+        'category_id' => $this->category->id,
+        'cost_price' => 135.00,
+        'wholesale_price' => 162.00,
+        'retail_price' => 240.00,
+        'distributor_price' => 150.00,
+        'unit' => 'دستة',
+        'pieces_per_package' => 12,
+        'min_stock_alert' => 5,
+        'opening_quantity' => 10.00,
+        'opening_cost' => 135.00,
+        'opening_warehouse_id' => $this->defaultWarehouse->id,
+        'opening_balance_date' => '2026-10-15',
+    ]);
+
+    $service = app(InventoryService::class);
+    $service->addStock(
+        productId: $product->id,
+        warehouseId: $this->defaultWarehouse->id,
+        quantity: 120.00, // 10 dozens = 120 pieces
+        costPrice: 11.25, // 135 / 12
+        referenceType: 'opening_balance',
+        referenceId: $product->id,
+        sourceType: 'opening_balance',
+        sourceId: $product->id
+    );
+
+    // Now admin updates product opening stock to 23 dozens at 135 EGP per dozen
+    $response = $this->actingAs($admin)->put(route('products.update', $product), [
+        'sku' => 'DOZEN-TEST-001',
+        'name' => 'فرشه صافي ومبرد قدم تست',
+        'category_id' => $this->category->id,
+        'cost_price' => 135.00,
+        'wholesale_price' => 162.00,
+        'retail_price' => 240.00,
+        'distributor_price' => 150.00,
+        'unit' => 'دستة',
+        'pieces_per_package' => 12,
+        'min_stock_alert' => 5,
+        'opening_quantity' => 23.00,
+        'opening_cost' => 135.00,
+        'opening_warehouse_id' => $this->defaultWarehouse->id,
+        'opening_balance_date' => '2026-10-19',
+    ]);
+
+    $response->assertRedirect(route('products.index'));
+
+    $product->refresh();
+    // In product model, user inputs are retained
+    expect((float) $product->opening_quantity)->toEqual(23.00)
+        ->and((float) $product->opening_cost)->toEqual(135.00)
+        ->and((float) $product->total_stock)->toEqual(276.00) // 23 * 12
+        ->and($product->formatStockBreakdown())->toBe('23 دستة (276 قطعة)');
+
+    // In batch, converted to base pieces and base piece cost
+    $batch = InventoryBatch::where('product_id', $product->id)->first();
+    expect($batch)->not->toBeNull()
+        ->and((float) $batch->initial_quantity)->toEqual(276.00)
+        ->and((float) $batch->remaining_quantity)->toEqual(276.00)
+        ->and((float) $batch->cost_price)->toEqual(11.25)
+        ->and((float) $batch->total_initial_cost)->toEqual(3105.00);
+
+    // In stock balance
+    $balance = StockBalance::where('product_id', $product->id)->where('warehouse_id', $this->defaultWarehouse->id)->first();
+    expect($balance)->not->toBeNull()
+        ->and((float) $balance->quantity)->toEqual(276.00);
+});

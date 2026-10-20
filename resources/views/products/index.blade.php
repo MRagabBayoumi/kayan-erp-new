@@ -202,22 +202,22 @@
                                 <th class="w-10 text-center">
                                     <input type="checkbox" id="selectAllCheckbox" title="تحديد جميع الأصناف" class="cursor-pointer w-4 h-4">
                                 </th>
-                                <th>اسم الصنف</th>
-                                <th class="w-[130px]">التصنيف</th>
-                                <th class="w-[120px]">كود الصنف</th>
-                                <th class="w-[130px]">باركود</th>
-                                <th class="w-[100px] text-left">سعر الشراء</th>
-                                <th class="w-[100px] text-left">سعر التجزئة</th>
-                                <th class="w-[100px] text-left">الجملة</th>
-                                <th class="w-[100px] text-left">الموزع</th>
-                                <th class="w-20 text-center">وحدة القياس</th>
-                                <th class="w-24 text-center">رصيد الصنف</th>
-                                <th class="w-[130px] text-center">إجراءات</th>
+                                <th class="min-w-[180px] max-w-[240px]">اسم الصنف</th>
+                                <th class="w-[110px]">التصنيف</th>
+                                <th class="w-[100px]">كود الصنف</th>
+                                <th class="w-[120px]">باركود</th>
+                                <th class="w-[90px] text-left">سعر الشراء</th>
+                                <th class="w-[90px] text-left">سعر التجزئة</th>
+                                <th class="w-[90px] text-left">الجملة</th>
+                                <th class="w-[90px] text-left">الموزع</th>
+                                <th class="w-16 text-center">وحدة القياس</th>
+                                <th class="w-[145px] text-center whitespace-nowrap">رصيد الصنف</th>
+                                <th class="w-[120px] text-center">إجراءات</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach($products as $product)
-                                <tr id="product-row-{{ $product->id }}" class="product-row-clickable" data-url="{{ route('products.show', $product) }}" title="عرض تفاصيل الصنف: {{ $product->name }}">
+                                <tr id="product-row-{{ $product->id }}" class="product-row-clickable h-10" data-url="{{ route('products.show', $product) }}" title="عرض تفاصيل الصنف: {{ $product->name }}">
                                     <!-- Checkbox -->
                                     <td class="text-center">
                                         <input type="checkbox" 
@@ -229,21 +229,21 @@
                                                data-barcode="{{ $product->barcode ?: $product->sku }}">
                                     </td>
 
-                                    <!-- 1. اسم الصنف (عرض الصورة فقط إذا وجدت دون أي صورة فارغة) -->
-                                    <td>
+                                    <!-- 1. اسم الصنف -->
+                                    <td class="max-w-[240px]">
                                         <div class="flex items-center gap-2">
                                             @if($product->image_url)
                                                 <a href="{{ route('products.show', $product) }}" class="inline-block shrink-0" title="{{ $product->name }}">
-                                                    <img src="{{ $product->image_url }}" alt="{{ $product->name }}" class="w-7 h-7 object-cover rounded border border-[var(--border-color)]">
+                                                    <img src="{{ $product->image_url }}" alt="{{ $product->name }}" class="w-6 h-6 object-cover rounded border border-[var(--border-color)]">
                                                 </a>
                                             @endif
-                                            <div class="min-w-0">
+                                            <div class="min-w-0 flex-1">
                                                 <div class="flex items-center gap-1.5">
-                                                    <a href="{{ route('products.show', $product) }}" class="font-bold text-[var(--text-main)] hover:text-[var(--primary)] truncate" title="عرض تفاصيل الصنف">
+                                                    <a href="{{ route('products.show', $product) }}" class="font-bold text-[var(--text-main)] hover:text-[var(--primary)] truncate block" title="{{ $product->name }}">
                                                         {{ $product->name }}
                                                     </a>
                                                     @if(! $product->is_active)
-                                                        <span class="erp-badge erp-badge-danger text-[10px] py-0 px-1 font-normal">معطل</span>
+                                                        <span class="erp-badge erp-badge-danger text-[10px] py-0 px-1 font-normal shrink-0">معطل</span>
                                                     @endif
                                                 </div>
                                             </div>
@@ -251,68 +251,68 @@
                                     </td>
 
                                     <!-- 2. التصنيف -->
-                                    <td>
-                                        <span class="erp-badge erp-badge-neutral text-xs">
+                                    <td class="whitespace-nowrap">
+                                        <span class="erp-badge erp-badge-neutral text-xs whitespace-nowrap">
                                             {{ $product->category?->name ?? 'غير محدد' }}
                                         </span>
                                     </td>
 
                                     <!-- 3. كود الصنف -->
-                                    <td>
-                                        <a href="{{ route('products.show', $product) }}" class="font-numeric font-bold text-[var(--primary)] hover:underline inline-block" title="عرض تفاصيل الصنف">
+                                    <td class="whitespace-nowrap">
+                                        <a href="{{ route('products.show', $product) }}" class="font-numeric font-bold text-[var(--primary)] hover:underline inline-block whitespace-nowrap" title="عرض تفاصيل الصنف">
                                             {{ $product->sku }}
                                         </a>
                                     </td>
 
                                     <!-- 4. باركود -->
-                                    <td>
+                                    <td class="whitespace-nowrap">
                                         @if($product->barcode)
-                                            <span class="font-numeric font-mono bg-[var(--bg-surface-alt)] py-0.5 px-1.5 rounded text-xs border border-[var(--border-color)]">
+                                            <span class="font-numeric font-mono bg-[var(--bg-surface-alt)] py-0.5 px-1.5 rounded text-xs border border-[var(--border-color)] whitespace-nowrap">
                                                 {{ $product->barcode }}
                                             </span>
                                         @else
-                                            <span class="text-[var(--text-light)] text-[11px]">بدون باركود</span>
+                                            <span class="text-[var(--text-light)] text-[11px] whitespace-nowrap">بدون باركود</span>
                                         @endif
                                     </td>
 
                                     <!-- 5. سعر الشراء -->
-                                    <td class="text-left font-numeric">
+                                    <td class="text-left font-numeric whitespace-nowrap">
                                         <span>{{ number_format((float)$product->cost_price, 2) }}</span>
                                         <small class="text-[var(--text-muted)] text-[10px]">ج.م</small>
                                     </td>
 
                                     <!-- 6. سعر التجزئة -->
-                                    <td class="text-left font-numeric">
+                                    <td class="text-left font-numeric whitespace-nowrap">
                                         <strong class="text-[var(--primary)]">{{ number_format((float)$product->retail_price, 2) }}</strong>
                                         <small class="text-[var(--text-muted)] text-[10px]">ج.م</small>
                                     </td>
 
                                     <!-- 7. الجملة -->
-                                    <td class="text-left font-numeric">
+                                    <td class="text-left font-numeric whitespace-nowrap">
                                         <strong class="text-[var(--success-text)]">{{ number_format((float)$product->wholesale_price, 2) }}</strong>
                                         <small class="text-[var(--text-muted)] text-[10px]">ج.م</small>
                                     </td>
 
                                     <!-- 8. الموزع -->
-                                    <td class="text-left font-numeric">
+                                    <td class="text-left font-numeric whitespace-nowrap">
                                         <span>{{ number_format((float)($product->distributor_price ?? 0), 2) }}</span>
                                         <small class="text-[var(--text-muted)] text-[10px]">ج.م</small>
                                     </td>
 
                                     <!-- 9. وحدة القياس -->
-                                    <td class="text-center text-xs text-[var(--text-muted)]">
+                                    <td class="text-center text-xs text-[var(--text-muted)] whitespace-nowrap">
                                         {{ $product->unit }}
                                     </td>
 
                                     <!-- 10. رصيد الصنف -->
-                                    <td class="text-center font-numeric font-bold text-xs">
-                                        <span class="erp-badge {{ $product->total_stock <= 0 ? 'erp-badge-danger' : ($product->is_low_stock ? 'erp-badge-warning' : 'erp-badge-success') }}">
-                                            {{ number_format($product->total_stock) }}
+                                    <td class="text-center font-numeric font-bold text-xs whitespace-nowrap">
+                                        <span class="erp-badge whitespace-nowrap inline-flex items-center justify-center py-0.5 px-2 leading-tight {{ $product->total_stock <= 0 ? 'erp-badge-danger' : ($product->is_low_stock ? 'erp-badge-warning' : 'erp-badge-success') }}" title="{{ $product->formatStockBreakdown() }}">
+                                            {{ $product->formatStockBreakdown() }}
                                         </span>
                                     </td>
 
                                     <!-- 11. إجراءات -->
-                                    <td class="text-center">
+                                    <td class="text-center whitespace-nowrap">
                                         <div class="flex items-center justify-center gap-1">
                                             <button type="button" class="erp-btn erp-btn-ghost erp-btn-icon" title="طباعة فورية للملصق ({{ (int) ($barcodeSettings->label_width_mm ?? 38) }}×{{ (int) ($barcodeSettings->label_height_mm ?? 15) }} مم) بدون نوافذ" data-action="direct-print-row" data-product-id="{{ $product->id }}">
                                                 <x-icon name="printer" size="15" />

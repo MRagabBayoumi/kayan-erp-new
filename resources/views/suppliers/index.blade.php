@@ -36,6 +36,14 @@
                 </div>
             </div>
 
+            <a href="{{ route('supplier-payments.index') }}" class="erp-btn erp-btn-secondary">
+                <x-icon name="receipt" size="16" />
+                <span>مدفوعات وسندات الصرف</span>
+            </a>
+            <a href="{{ route('supplier-installments.index') }}" class="erp-btn erp-btn-secondary">
+                <x-icon name="calendar" size="16" />
+                <span>جدول الأقساط والمستحقات</span>
+            </a>
             <a href="{{ route('customers.index') }}" class="erp-btn erp-btn-secondary">
                 <x-icon name="users" size="16" />
                 <span>دليل العملاء</span>
@@ -282,6 +290,26 @@
                                 </td>
                                 <td class="text-center">
                                     <div class="flex items-center justify-center gap-1">
+                                        <button 
+                                            type="button" 
+                                            data-action="quick-pay-supplier"
+                                            data-supplier-id="{{ $supplier->id }}"
+                                            data-supplier-name="{{ $supplier->name }}"
+                                            data-supplier-balance="{{ (float)$supplier->current_balance }}"
+                                            data-supplier-currency="{{ $supplier->currency }}"
+                                            class="erp-btn erp-btn-sm text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200"
+                                            title="صرف دفعة / سند صرف">
+                                            <x-icon name="credit-card" size="14" />
+                                        </button>
+                                        <button 
+                                            type="button" 
+                                            data-action="add-installment-supplier"
+                                            data-supplier-id="{{ $supplier->id }}"
+                                            data-supplier-name="{{ $supplier->name }}"
+                                            class="erp-btn erp-btn-sm text-sky-700 bg-sky-50 hover:bg-sky-100 border border-sky-200"
+                                            title="جدولة قسط مستحق">
+                                            <x-icon name="calendar" size="14" />
+                                        </button>
                                         <a href="{{ route('suppliers.show', $supplier) }}" class="erp-btn erp-btn-sm erp-btn-secondary" title="ملف المورد">
                                             <x-icon name="truck" size="14" />
                                         </a>
@@ -340,19 +368,19 @@
                     <button type="button" data-action="close-add-supplier" class="erp-modal-close" title="إغلاق">✕</button>
                 </div>
 
-                <form action="{{ route('suppliers.store') }}" method="POST">
+                <form id="addSupplierForm" action="{{ route('suppliers.store') }}" method="POST">
                     @csrf
                     <div class="erp-modal-body p-5">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5 mb-3.5">
                             <div>
                                 <label class="erp-label block mb-1.5 text-xs font-semibold">اسم المورد / المصنع *</label>
-                                <input type="text" name="name" class="erp-input w-full" placeholder="مثال: Guangzhou Bag Factory" required>
+                                <input type="text" name="name" class="erp-input w-full" placeholder="مثال: شركة الأمل للتجارة" required>
                             </div>
                             <div>
                                 <label class="erp-label block mb-1.5 text-xs font-semibold">نوع المورد *</label>
-                                <select name="supplier_type" class="erp-input w-full" required>
+                                <select id="add_sup_supplier_type" name="supplier_type" class="erp-input w-full" required>
+                                    <option value="local_supplier" selected>مورد محلي (مصر)</option>
                                     <option value="china_factory">مصنع في الصين (استيراد)</option>
-                                    <option value="local_supplier">مورد محلي (مصر)</option>
                                     <option value="shipping_agent">وكيل شحن وتخليص جمركي</option>
                                 </select>
                             </div>
@@ -361,44 +389,18 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5 mb-3.5">
                             <div>
                                 <label class="erp-label block mb-1.5 text-xs font-semibold">المسؤول أو جهة الاتصال</label>
-                                <input type="text" name="contact_person" class="erp-input w-full" placeholder="مثال: Mr. Wang / أ. أحمد">
+                                <input type="text" name="contact_person" class="erp-input w-full" placeholder="مثال: أ. أحمد / Mr. Wang">
                             </div>
                             <div>
-                                <label class="erp-label block mb-1.5 text-xs font-semibold">معرّف وي شات (WeChat ID)</label>
-                                <input type="text" name="wechat_id" class="erp-input font-numeric w-full" placeholder="WeChat ID لمصانع الصين">
+                                <label class="erp-label block mb-1.5 text-xs font-semibold">رقم الهاتف / الواتساب</label>
+                                <input type="text" name="phone" class="erp-input font-numeric w-full" placeholder="01xxxxxxxxx / +86 xxxxxxxxx">
                             </div>
                         </div>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5 mb-3.5">
-                            <div>
-                                <label class="erp-label block mb-1.5 text-xs font-semibold">رقم الهاتف / الواتساب</label>
-                                <input type="text" name="phone" class="erp-input font-numeric w-full" placeholder="+86 xxxxxxxxx / 01xxxxxxxxx">
-                            </div>
                             <div>
                                 <label class="erp-label block mb-1.5 text-xs font-semibold">البريد الإلكتروني</label>
                                 <input type="email" name="email" class="erp-input font-numeric w-full" placeholder="supplier@domain.com">
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5 mb-3.5">
-                            <div>
-                                <label class="erp-label block mb-1.5 text-xs font-semibold">الدولة</label>
-                                <input type="text" name="country" value="China" class="erp-input w-full" placeholder="China / مصر">
-                            </div>
-                            <div>
-                                <label class="erp-label block mb-1.5 text-xs font-semibold">المدينة أو المقاطعة</label>
-                                <input type="text" name="city" class="erp-input w-full" placeholder="Guangzhou, Yiwu, القاهرة">
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5 mb-3.5">
-                            <div>
-                                <label class="erp-label block mb-1.5 text-xs font-semibold">عملة الحساب المعتمدة *</label>
-                                <select name="currency" class="erp-input w-full" required>
-                                    <option value="CNY">اليوان الصيني (CNY ¥)</option>
-                                    <option value="USD">الدولار الأمريكي (USD $)</option>
-                                    <option value="EGP">الجنيه المصري (EGP ج.م)</option>
-                                </select>
                             </div>
                             <div>
                                 <label class="erp-label block mb-1.5 text-xs font-semibold">الرصيد المالي الافتتاحي</label>
@@ -406,8 +408,41 @@
                             </div>
                         </div>
 
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5 mb-3.5">
+                            <div>
+                                <label class="erp-label block mb-1.5 text-xs font-semibold">الدولة</label>
+                                <input type="text" id="add_sup_country" name="country" value="مصر" class="erp-input w-full" placeholder="مصر / China">
+                            </div>
+                            <div>
+                                <label class="erp-label block mb-1.5 text-xs font-semibold">المدينة أو المحافظة</label>
+                                <input type="text" name="city" class="erp-input w-full" placeholder="القاهرة، الإسكندرية، Guangzhou...">
+                            </div>
+                        </div>
+
+                        <!-- China Specific Fields (shown only when china_factory is selected) -->
+                        <div id="add_china_fields" class="p-3.5 mb-3.5 rounded-lg border border-[var(--border-light)] bg-[var(--bg-surface-alt)]/50" style="display: none;">
+                            <div class="text-xs font-semibold text-[var(--primary)] mb-2.5 flex items-center gap-1.5">
+                                <x-icon name="globe" size="14" />
+                                <span>بيانات خاصة بمصانع الصين والاستيراد</span>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                                <div>
+                                    <label class="erp-label block mb-1.5 text-xs font-semibold">معرّف وي شات (WeChat ID)</label>
+                                    <input type="text" id="add_sup_wechat_id" name="wechat_id" class="erp-input font-numeric w-full" placeholder="WeChat ID لمصانع الصين">
+                                </div>
+                                <div>
+                                    <label class="erp-label block mb-1.5 text-xs font-semibold">عملة الصين / عملة الحساب *</label>
+                                    <select id="add_sup_currency" name="currency" class="erp-input w-full">
+                                        <option value="EGP" selected>الجنيه المصري (EGP ج.م)</option>
+                                        <option value="CNY">اليوان الصيني (CNY ¥)</option>
+                                        <option value="USD">الدولار الأمريكي (USD $)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="mb-3.5">
-                            <label class="erp-label block mb-1.5 text-xs font-semibold">العنوان التفصيلي وموقع المصنع</label>
+                            <label class="erp-label block mb-1.5 text-xs font-semibold">العنوان التفصيلي وموقع المصنع / المحل</label>
                             <input type="text" name="address" class="erp-input w-full" placeholder="عنوان المصنع، رقم المستودع، أو المحل">
                         </div>
 
@@ -455,8 +490,8 @@
                             <div>
                                 <label class="erp-label block mb-1.5 text-xs font-semibold">نوع المورد *</label>
                                 <select id="edit_sup_supplier_type" name="supplier_type" class="erp-input w-full" required>
-                                    <option value="china_factory">مصنع في الصين (استيراد)</option>
                                     <option value="local_supplier">مورد محلي (مصر)</option>
+                                    <option value="china_factory">مصنع في الصين (استيراد)</option>
                                     <option value="shipping_agent">وكيل شحن وتخليص جمركي</option>
                                 </select>
                             </div>
@@ -468,19 +503,19 @@
                                 <input type="text" id="edit_sup_contact_person" name="contact_person" class="erp-input w-full">
                             </div>
                             <div>
-                                <label class="erp-label block mb-1.5 text-xs font-semibold">معرّف وي شات (WeChat ID)</label>
-                                <input type="text" id="edit_sup_wechat_id" name="wechat_id" class="erp-input font-numeric w-full">
+                                <label class="erp-label block mb-1.5 text-xs font-semibold">رقم الهاتف / الواتساب</label>
+                                <input type="text" id="edit_sup_phone" name="phone" class="erp-input font-numeric w-full">
                             </div>
                         </div>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5 mb-3.5">
                             <div>
-                                <label class="erp-label block mb-1.5 text-xs font-semibold">رقم الهاتف / الواتساب</label>
-                                <input type="text" id="edit_sup_phone" name="phone" class="erp-input font-numeric w-full">
-                            </div>
-                            <div>
                                 <label class="erp-label block mb-1.5 text-xs font-semibold">البريد الإلكتروني</label>
                                 <input type="email" id="edit_sup_email" name="email" class="erp-input font-numeric w-full">
+                            </div>
+                            <div>
+                                <label class="erp-label block mb-1.5 text-xs font-semibold">الرصيد المالي الحالي</label>
+                                <input type="number" step="0.01" id="edit_sup_current_balance" name="current_balance" class="erp-input font-numeric w-full">
                             </div>
                         </div>
 
@@ -495,18 +530,25 @@
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5 mb-3.5">
-                            <div>
-                                <label class="erp-label block mb-1.5 text-xs font-semibold">عملة الحساب المعتمدة *</label>
-                                <select id="edit_sup_currency" name="currency" class="erp-input w-full" required>
-                                    <option value="CNY">اليوان الصيني (CNY ¥)</option>
-                                    <option value="USD">الدولار الأمريكي (USD $)</option>
-                                    <option value="EGP">الجنيه المصري (EGP ج.م)</option>
-                                </select>
+                        <!-- China Specific Fields (shown only when china_factory is selected) -->
+                        <div id="edit_china_fields" class="p-3.5 mb-3.5 rounded-lg border border-[var(--border-light)] bg-[var(--bg-surface-alt)]/50" style="display: none;">
+                            <div class="text-xs font-semibold text-[var(--primary)] mb-2.5 flex items-center gap-1.5">
+                                <x-icon name="globe" size="14" />
+                                <span>بيانات خاصة بمصانع الصين والاستيراد</span>
                             </div>
-                            <div>
-                                <label class="erp-label block mb-1.5 text-xs font-semibold">الرصيد المالي الحالي</label>
-                                <input type="number" step="0.01" id="edit_sup_current_balance" name="current_balance" class="erp-input font-numeric w-full">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                                <div>
+                                    <label class="erp-label block mb-1.5 text-xs font-semibold">معرّف وي شات (WeChat ID)</label>
+                                    <input type="text" id="edit_sup_wechat_id" name="wechat_id" class="erp-input font-numeric w-full" placeholder="WeChat ID لمصانع الصين">
+                                </div>
+                                <div>
+                                    <label class="erp-label block mb-1.5 text-xs font-semibold">عملة الصين / عملة الحساب *</label>
+                                    <select id="edit_sup_currency" name="currency" class="erp-input w-full" required>
+                                        <option value="CNY">اليوان الصيني (CNY ¥)</option>
+                                        <option value="USD">الدولار الأمريكي (USD $)</option>
+                                        <option value="EGP">الجنيه المصري (EGP ج.م)</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
 
@@ -535,5 +577,331 @@
                 </form>
             </div>
         </div>
+
+        <!-- Modal: Quick Supplier Payment -->
+        <div id="quickSupplierPaymentModal" class="erp-modal-overlay">
+            <div class="erp-modal-container max-w-lg">
+                <div class="erp-modal-header">
+                    <div class="erp-modal-title">
+                        <x-icon name="credit-card" size="18" />
+                        <span>تسجيل سند صرف دفعة للمورد</span>
+                    </div>
+                    <button type="button" data-action="close-quick-pay" class="erp-modal-close">✕</button>
+                </div>
+
+                <form id="quickSupplierPaymentForm" method="POST">
+                    @csrf
+                    <div class="erp-modal-body p-5">
+                        <div class="p-3 mb-3.5 rounded-lg bg-sky-50/70 border border-sky-200">
+                            <div class="flex items-center justify-between text-xs">
+                                <div>
+                                    <span class="text-sky-800">المورد: </span>
+                                    <strong id="qsp_supplier_name" class="text-sm font-bold text-[var(--text-main)]"></strong>
+                                </div>
+                                <div>
+                                    <span class="text-sky-800">الرصيد المستحق: </span>
+                                    <strong id="qsp_supplier_balance" class="text-sm font-numeric text-rose-600"></strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5 mb-3.5">
+                            <div>
+                                <label class="erp-label block mb-1.5 text-xs font-semibold">سداد على قسط محدد (اختياري)</label>
+                                <select name="supplier_installment_id" id="qsp_installment_id" class="erp-input w-full" onchange="handleQspInstallmentChange(this)">
+                                    <option value="">-- بدون قسط (سداد عام) --</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="erp-label block mb-1.5 text-xs font-semibold">سداد على فاتورة محددة (اختياري)</label>
+                                <select name="purchase_invoice_id" id="qsp_invoice_id" class="erp-input w-full" onchange="handleQspInvoiceChange(this)">
+                                    <option value="">-- بدون فاتورة (سداد عام) --</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5 mb-3.5">
+                            <div>
+                                <label class="erp-label block mb-1.5 text-xs font-semibold">المبلغ المنصرف *</label>
+                                <input type="number" step="0.01" min="0.01" name="amount" id="qsp_amount" class="erp-input font-numeric font-bold text-base text-[var(--danger)] w-full" required placeholder="0.00">
+                            </div>
+                            <div>
+                                <label class="erp-label block mb-1.5 text-xs font-semibold">الخزينة / المصدر *</label>
+                                <select name="treasury_id" class="erp-input w-full" required>
+                                    @foreach($treasuries ?? [] as $tr)
+                                        <option value="{{ $tr->id }}">
+                                            {{ $tr->name }} (رصيد: {{ number_format((float)$tr->current_balance, 2) }} ج.م)
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5 mb-3.5">
+                            <div>
+                                <label class="erp-label block mb-1.5 text-xs font-semibold">تاريخ الصرف *</label>
+                                <input type="date" name="payment_date" value="{{ date('Y-m-d') }}" class="erp-input font-numeric w-full" required>
+                            </div>
+                            <div>
+                                <label class="erp-label block mb-1.5 text-xs font-semibold">طريقة الصرف *</label>
+                                <select name="payment_method" class="erp-input w-full" required>
+                                    <option value="cash" selected>نقداً من الخزينة / الدرج</option>
+                                    <option value="bank_transfer">تحويل بنكي</option>
+                                    <option value="cheque">شيك مصرفي</option>
+                                    <option value="card">بطاقة دفع / فيزا</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mb-3.5">
+                            <label class="erp-label block mb-1.5 text-xs font-semibold">رقم المرجع / الشيك (اختياري)</label>
+                            <input type="text" name="reference_number" class="erp-input font-numeric w-full" placeholder="رقم الشيك أو الحوالة البنكية...">
+                        </div>
+
+                        <div class="mb-3.5">
+                            <label class="erp-label block mb-1.5 text-xs font-semibold">ملاحظات وبيان الصرف</label>
+                            <textarea name="notes" class="erp-input w-full" rows="2" placeholder="بيان الصرف..."></textarea>
+                        </div>
+                    </div>
+
+                    <div class="erp-modal-footer p-4 flex justify-end gap-2.5 bg-[var(--bg-surface-alt)] border-t border-[var(--border-light)]">
+                        <button type="button" data-action="close-quick-pay" class="erp-btn erp-btn-secondary">إلغاء</button>
+                        <button type="submit" class="erp-btn erp-btn-success">تأكيد وصرف السند</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Modal: Quick Add Installment for Supplier -->
+        <div id="quickInstallmentModal" class="erp-modal-overlay">
+            <div class="erp-modal-container max-w-lg">
+                <div class="erp-modal-header">
+                    <div class="erp-modal-title">
+                        <x-icon name="calendar-plus" size="18" />
+                        <span>جدولة قسط مستحق للمورد</span>
+                    </div>
+                    <button type="button" data-action="close-quick-installment" class="erp-modal-close">✕</button>
+                </div>
+
+                <form action="{{ route('supplier-installments.store') }}" method="POST">
+                    @csrf
+                    <input type="hidden" name="supplier_id" id="qinst_supplier_id">
+                    <input type="hidden" name="plan_type" value="single">
+
+                    <div class="erp-modal-body p-5">
+                        <div class="p-3 mb-3.5 rounded-lg bg-sky-50/70 border border-sky-200">
+                            <span class="text-xs text-sky-800">المورد: </span>
+                            <strong id="qinst_supplier_name" class="text-sm font-bold text-[var(--text-main)]"></strong>
+                        </div>
+
+                        <div class="mb-3.5">
+                            <label class="erp-label block mb-1.5 text-xs font-semibold">الفاتورة المرتبطة (اختياري)</label>
+                            <select name="purchase_invoice_id" id="qinst_invoice_id" class="erp-input w-full">
+                                <option value="">-- حساب عام للمورد --</option>
+                            </select>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5 mb-3.5">
+                            <div>
+                                <label class="erp-label block mb-1.5 text-xs font-semibold">عنوان القسط *</label>
+                                <input type="text" name="installment_title" class="erp-input w-full" placeholder="مثال: قسط مستحق شهر..." required>
+                            </div>
+                            <div>
+                                <label class="erp-label block mb-1.5 text-xs font-semibold">مبلغ القسط *</label>
+                                <input type="number" step="0.01" min="0.01" name="amount" class="erp-input font-numeric font-bold w-full" required placeholder="0.00">
+                            </div>
+                        </div>
+
+                        <div class="mb-3.5">
+                            <label class="erp-label block mb-1.5 text-xs font-semibold">تاريخ الاستحقاق *</label>
+                            <input type="date" name="due_date" value="{{ date('Y-m-d', strtotime('+7 days')) }}" class="erp-input font-numeric w-full" required>
+                        </div>
+
+                        <div class="mb-3.5">
+                            <label class="erp-label block mb-1.5 text-xs font-semibold">ملاحظات إضافية</label>
+                            <textarea name="notes" class="erp-input w-full" rows="2" placeholder="ملاحظات وشروط الدفعة..."></textarea>
+                        </div>
+                    </div>
+
+                    <div class="erp-modal-footer p-4 flex justify-end gap-2.5 bg-[var(--bg-surface-alt)] border-t border-[var(--border-light)]">
+                        <button type="button" data-action="close-quick-installment" class="erp-btn erp-btn-secondary">إلغاء</button>
+                        <button type="submit" class="erp-btn erp-btn-primary">حفظ القسط</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
+
+    <script>
+        function handleQspInstallmentChange(select) {
+            const opt = select.selectedOptions[0];
+            const amountInput = document.getElementById('qsp_amount');
+            const invSelect = document.getElementById('qsp_invoice_id');
+
+            if (opt && opt.dataset.remaining) {
+                if (amountInput) {
+                    amountInput.value = opt.dataset.remaining;
+                    amountInput.max = opt.dataset.remaining;
+                }
+                if (opt.dataset.invoiceId && invSelect) {
+                    invSelect.value = opt.dataset.invoiceId;
+                }
+            } else {
+                if (amountInput) amountInput.removeAttribute('max');
+            }
+        }
+
+        function handleQspInvoiceChange(select) {
+            const opt = select.selectedOptions[0];
+            const amountInput = document.getElementById('qsp_amount');
+
+            if (opt && opt.dataset.remaining) {
+                if (amountInput && (!amountInput.value || Number(amountInput.value) <= 0)) {
+                    amountInput.value = opt.dataset.remaining;
+                }
+                if (amountInput) {
+                    amountInput.max = opt.dataset.remaining;
+                }
+            } else {
+                if (amountInput) amountInput.removeAttribute('max');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const payModal = document.getElementById('quickSupplierPaymentModal');
+            const instModal = document.getElementById('quickInstallmentModal');
+
+            // Handle Quick Pay Click on table row
+            document.querySelectorAll('[data-action="quick-pay-supplier"]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const supId = btn.dataset.supplierId;
+                    const supName = btn.dataset.supplierName;
+                    const supBalance = btn.dataset.supplierBalance;
+                    const supCurrency = btn.dataset.supplierCurrency || 'EGP';
+
+                    const form = document.getElementById('quickSupplierPaymentForm');
+                    if (form) form.action = `/suppliers/${supId}/payments`;
+
+                    document.getElementById('qsp_supplier_name').textContent = supName;
+                    document.getElementById('qsp_supplier_balance').textContent = `${Number(supBalance).toLocaleString('ar-EG', {minimumFractionDigits: 2})} ${supCurrency}`;
+
+                    const instSelect = document.getElementById('qsp_installment_id');
+                    const invSelect = document.getElementById('qsp_invoice_id');
+                    const amountInput = document.getElementById('qsp_amount');
+
+                    instSelect.innerHTML = '<option value="">-- جاري التحميل... --</option>';
+                    invSelect.innerHTML = '<option value="">-- جاري التحميل... --</option>';
+
+                    if (Number(supBalance) > 0) {
+                        amountInput.value = supBalance;
+                    } else {
+                        amountInput.value = '';
+                    }
+
+                    if (payModal) {
+                        payModal.classList.add('open');
+                        payModal.style.display = 'flex';
+                    }
+
+                    fetch(`/suppliers/${supId}/payables-data`)
+                        .then(res => res.json())
+                        .then(data => {
+                            instSelect.innerHTML = '<option value="">-- بدون قسط (سداد عام) --</option>';
+                            invSelect.innerHTML = '<option value="">-- بدون فاتورة (سداد عام) --</option>';
+
+                            if (!data.success) return;
+
+                            if (data.installments && data.installments.length > 0) {
+                                data.installments.forEach(inst => {
+                                    const opt = document.createElement('option');
+                                    opt.value = inst.id;
+                                    opt.dataset.remaining = inst.remaining_amount;
+                                    opt.dataset.invoiceId = inst.purchase_invoice_id || '';
+                                    opt.textContent = `${inst.installment_title} (متبقي ${inst.remaining_amount} ج.م - ${inst.status_label})`;
+                                    instSelect.appendChild(opt);
+                                });
+                            }
+
+                            if (data.invoices && data.invoices.length > 0) {
+                                data.invoices.forEach(inv => {
+                                    const opt = document.createElement('option');
+                                    opt.value = inv.id;
+                                    opt.dataset.remaining = inv.remaining_amount;
+                                    opt.textContent = `فاتورة #${inv.invoice_number} (متبقي ${Number(inv.remaining_amount).toLocaleString('ar-EG', {minimumFractionDigits: 2})} ${inv.currency})`;
+                                    invSelect.appendChild(opt);
+                                });
+                            }
+                        })
+                        .catch(e => {
+                            console.error('Error fetching payables:', e);
+                            instSelect.innerHTML = '<option value="">-- بدون قسط (سداد عام) --</option>';
+                            invSelect.innerHTML = '<option value="">-- بدون فاتورة (سداد عام) --</option>';
+                        });
+                });
+            });
+
+            document.querySelectorAll('[data-action="close-quick-pay"]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    if (payModal) {
+                        payModal.classList.remove('open');
+                        payModal.style.display = 'none';
+                    }
+                });
+            });
+
+            // Handle Quick Add Installment Click on table row
+            document.querySelectorAll('[data-action="add-installment-supplier"]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const supId = btn.dataset.supplierId;
+                    const supName = btn.dataset.supplierName;
+
+                    document.getElementById('qinst_supplier_id').value = supId;
+                    document.getElementById('qinst_supplier_name').textContent = supName;
+
+                    const invSelect = document.getElementById('qinst_invoice_id');
+                    invSelect.innerHTML = '<option value="">-- حساب عام للمورد --</option>';
+
+                    if (instModal) {
+                        instModal.classList.add('open');
+                        instModal.style.display = 'flex';
+                    }
+
+                    fetch(`/suppliers/${supId}/payables-data`)
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.success && data.invoices) {
+                                data.invoices.forEach(inv => {
+                                    const opt = document.createElement('option');
+                                    opt.value = inv.id;
+                                    opt.textContent = `فاتورة #${inv.invoice_number} (متبقي ${Number(inv.remaining_amount).toLocaleString('ar-EG', {minimumFractionDigits: 2})} ${inv.currency})`;
+                                    invSelect.appendChild(opt);
+                                });
+                            }
+                        })
+                        .catch(e => console.error('Error fetching invoices:', e));
+                });
+            });
+
+            document.querySelectorAll('[data-action="close-quick-installment"]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    if (instModal) {
+                        instModal.classList.remove('open');
+                        instModal.style.display = 'none';
+                    }
+                });
+            });
+
+            // Backdrop dismissal
+            [payModal, instModal].forEach(m => {
+                if (m) {
+                    m.addEventListener('click', (e) => {
+                        if (e.target === m) {
+                            m.classList.remove('open');
+                            m.style.display = 'none';
+                        }
+                    });
+                }
+            });
+        });
+    </script>
 @endsection

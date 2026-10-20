@@ -73,7 +73,7 @@ class InventoryService
             $product = Product::findOrFail($productId);
             $warehouse = Warehouse::findOrFail($warehouseId);
 
-            $effectiveCost = $costPrice !== null ? $costPrice : (float) $product->cost_price;
+            $effectiveCost = $costPrice !== null ? (float) $costPrice : (float) ($product->base_cost_price ?? $product->cost_price);
             $effectiveInitialCost = $totalInitialCost !== null ? $totalInitialCost : round($quantity * $effectiveCost, 2);
 
             // 1. Create FIFO Inventory Batch with pricing tiers and cost conservation
@@ -273,7 +273,7 @@ class InventoryService
                     'batch_id' => null,
                     'quantity' => $remainingToDeduct,
                     'running_balance' => $runningBalance,
-                    'unit_cost' => (float) $product->cost_price,
+                    'unit_cost' => (float) ($product->base_cost_price ?? $product->cost_price),
                     'reference_type' => $referenceType,
                     'reference_id' => $referenceId,
                     'user_id' => $userId,
@@ -281,7 +281,7 @@ class InventoryService
                     'notes' => $notes,
                 ]);
                 $movements[] = $movement;
-                $totalCogs += $remainingToDeduct * (float) $product->cost_price;
+                $totalCogs += $remainingToDeduct * (float) ($product->base_cost_price ?? $product->cost_price);
             }
 
             return [
@@ -444,9 +444,9 @@ class InventoryService
 
         // If some items don't have batches yet, calculate from products and stock_balances
         if ($batchValuation <= 0 && $totalStockUnits > 0) {
-            $batchValuation = (float) DB::table('stock_balances')
-                ->join('products', 'stock_balances.product_id', '=', 'products.id')
-                ->sum(DB::raw('stock_balances.quantity * products.cost_price'));
+            $batchValuation = (float) Product::with('stockBalances')->get()->sum(function (Product $p) {
+                return $p->total_stock * $p->base_cost_price;
+            });
         }
 
         $lowStockCount = Product::whereHas('stockBalances')

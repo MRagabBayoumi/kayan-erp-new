@@ -217,7 +217,7 @@ class SalesReturnController extends Controller
 
                     // Estimate COGS base
                     $allocation = $invItem->batchAllocations->first();
-                    $unitCostBase = $allocation ? (float) $allocation->unit_cost_base : (float) $invItem->product->cost_price;
+                    $unitCostBase = $allocation ? (float) $allocation->unit_cost_base : (float) ($invItem->product->base_cost_price ?? $invItem->product->cost_price);
                     $lineCogsReversed = round($baseQty * $unitCostBase, 2);
 
                     $itemsData[] = [
@@ -383,7 +383,7 @@ class SalesReturnController extends Controller
                 }
             }
 
-            $effectiveCost = $batch ? (float) $batch->cost_price : (float) $item->product->cost_price;
+            $effectiveCost = $batch ? (float) $batch->cost_price : (float) ($item->product->base_cost_price ?? $item->product->cost_price);
             $cogsForLine = round($baseQty * $effectiveCost, 2);
             $totalCogsReturned += $cogsForLine;
 

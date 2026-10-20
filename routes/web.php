@@ -7,6 +7,7 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CompanySettingController;
 use App\Http\Controllers\CustomerApprovalController;
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\CustomerInstallmentController;
 use App\Http\Controllers\CustomerPaymentController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\HomeController;
@@ -27,6 +28,7 @@ use App\Http\Controllers\SalesRepVisitController;
 use App\Http\Controllers\SalesReturnController;
 use App\Http\Controllers\ShippingOfficeController;
 use App\Http\Controllers\SupplierController;
+use App\Http\Controllers\SupplierInstallmentController;
 use App\Http\Controllers\SupplierPaymentController;
 use App\Http\Controllers\TreasuryController;
 use App\Http\Controllers\UnitController;
@@ -125,6 +127,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/products/import/cancel', [ProductImportController::class, 'cancel'])->name('products.import.cancel');
 
         Route::get('/products/generate-barcode', [ProductController::class, 'generateBarcode'])->name('products.generate-barcode');
+        Route::post('/products/quick-store', [ProductController::class, 'quickStore'])->name('products.quick-store');
         Route::get('/products/create', [ProductController::class, 'create'])->name('products.create');
         Route::post('/products', [ProductController::class, 'store'])->name('products.store');
         Route::get('/products/{product}/edit', [ProductController::class, 'edit'])->name('products.edit');
@@ -252,7 +255,14 @@ Route::middleware('auth')->group(function () {
         Route::get('/customers/{customer}/purchased-items/print', [CustomerController::class, 'printPurchasedItems'])->name('customers.purchased-items.print');
         Route::get('/customers/{customer}/whatsapp', [CustomerController::class, 'whatsappShare'])->name('customers.whatsapp');
         Route::post('/customers/{customer}/payments', [CustomerPaymentController::class, 'storeForCustomer'])->name('customers.payments.store');
+        Route::get('/customers/{customer}/unpaid-invoices', [CustomerInstallmentController::class, 'invoicesForCustomer'])->name('customers.unpaid-invoices');
         Route::resource('customers', CustomerController::class)->except(['store']);
+
+        // Customer Installments & Collection Scheduling
+        Route::get('/customer-installments', [CustomerInstallmentController::class, 'index'])->name('customer-installments.index');
+        Route::post('/customer-installments', [CustomerInstallmentController::class, 'store'])->name('customer-installments.store');
+        Route::post('/customer-installments/{installment}/collect', [CustomerInstallmentController::class, 'collect'])->name('customer-installments.collect');
+        Route::delete('/customer-installments/{installment}', [CustomerInstallmentController::class, 'destroy'])->name('customer-installments.destroy');
     });
 
     // Directory of Suppliers & Shipping Offices (Purchases & Inventory)
@@ -265,8 +275,14 @@ Route::middleware('auth')->group(function () {
         Route::resource('suppliers', SupplierController::class);
 
         Route::resource('shipping-offices', ShippingOfficeController::class)->except(['create', 'show', 'edit']);
+        Route::get('/suppliers/{supplier}/payables-data', [SupplierPaymentController::class, 'payablesData'])->name('suppliers.payables-data');
         Route::post('/purchases/{purchase}/payments', [SupplierPaymentController::class, 'storeForInvoice'])->name('purchases.payments.store');
         Route::post('/suppliers/{supplier}/payments', [SupplierPaymentController::class, 'storeForSupplier'])->name('suppliers.payments.store');
+
+        // Supplier Installments & Payment Scheduling
+        Route::get('/supplier-installments', [SupplierInstallmentController::class, 'index'])->name('supplier-installments.index');
+        Route::post('/supplier-installments', [SupplierInstallmentController::class, 'store'])->name('supplier-installments.store');
+        Route::delete('/supplier-installments/{installment}', [SupplierInstallmentController::class, 'destroy'])->name('supplier-installments.destroy');
     });
 
     // Finance, Treasuries & Accounting (المرحلة الأولى: دورة النقدية والصرف)

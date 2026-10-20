@@ -22,6 +22,7 @@ class CustomerPayment extends Model
         'payment_number',
         'customer_id',
         'sales_invoice_id',
+        'customer_installment_id',
         'cashier_shift_id',
         'payment_date',
         'amount',
@@ -47,6 +48,11 @@ class CustomerPayment extends Model
     public function salesInvoice(): BelongsTo
     {
         return $this->belongsTo(SalesInvoice::class);
+    }
+
+    public function installment(): BelongsTo
+    {
+        return $this->belongsTo(CustomerInstallment::class, 'customer_installment_id');
     }
 
     public function shift(): BelongsTo

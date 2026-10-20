@@ -90,7 +90,7 @@ class PurchaseReturnController extends Controller
         $suppliers = Supplier::active()->orderBy('name')->get();
         $warehouses = Warehouse::active()->orderBy('name')->get();
         $defaultWarehouse = Warehouse::where('is_default', true)->first() ?? $warehouses->first();
-        $products = Product::active()->orderBy('name')->get();
+        $products = Product::active()->with('stockBalances')->orderBy('name')->get();
         $units = class_exists(Unit::class) ? Unit::active()->orderBy('is_default', 'desc')->orderBy('name')->get() : collect();
         $treasuries = Treasury::where('is_active', true)->orderBy('name')->get();
         $suggestedNumber = PurchaseReturn::generateReturnNumber();
@@ -110,6 +110,11 @@ class PurchaseReturnController extends Controller
             'cost_price' => (float) $p->cost_price,
             'unit' => $p->unit ?? 'قطعة',
             'unit_factor' => (float) ($p->unit_factor ?? 1.0),
+            'package_factor' => (float) ($p->package_factor ?? 12.0),
+            'pieces_per_package' => (int) ($p->pieces_per_package ?: (int) round($p->package_factor ?? 12.0)),
+            'stocks' => $p->stockBalances->pluck('quantity', 'warehouse_id')->map(fn ($q) => (float) $q)->toArray(),
+            'total_stock' => (float) $p->total_stock,
+            'formatted_stock' => $p->formatStockBreakdown(),
         ])->values();
 
         $unitsJson = $units->map(fn ($u) => [
@@ -185,6 +190,8 @@ class PurchaseReturnController extends Controller
                     $lineTotal = round($qty * $cost, 2);
                     $totalAmount += $lineTotal;
 
+                    $prodId = (int) $itemInput['product_id'];
+                    $product = Product::find($prodId);
                     $unitId = ! empty($itemInput['unit_id']) ? (int) $itemInput['unit_id'] : null;
                     $factor = 1.0000;
                     if (! empty($itemInput['conversion_factor']) && (float) $itemInput['conversion_factor'] > 0) {
@@ -194,6 +201,8 @@ class PurchaseReturnController extends Controller
                         if ($unit && (float) $unit->conversion_factor > 0) {
                             $factor = (float) $unit->conversion_factor;
                         }
+                    } elseif ($product && (float) $product->unit_factor > 1) {
+                        $factor = (float) $product->unit_factor;
                     }
 
                     $baseQty = round($qty * $factor, 4);

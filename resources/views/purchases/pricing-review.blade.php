@@ -132,13 +132,18 @@
                                         </td>
                                         <td class="text-center text-xs">
                                             <span class="font-numeric font-semibold text-[var(--primary)]">{{ $baseQty }}</span>
-                                            <span class="text-[var(--text-muted)]">{{ $prod->unit ?? 'قطعة' }}</span>
+                                            <span class="text-[var(--text-muted)]">قطعة</span>
                                             @if($factor != 1.0)
-                                                <div class="text-[10px] text-[var(--text-muted)] font-numeric">معامل: {{ $factor }}</div>
+                                                <div class="text-[10px] text-[var(--text-muted)] font-numeric">معامل: {{ $factor }} قطعة / {{ $item->unit->name ?? 'وحدة' }}</div>
                                             @endif
                                         </td>
                                         <td class="text-center font-numeric font-bold text-amber-600 text-xs">
                                             {{ number_format($baseCost, 2) }} ج.م
+                                            @if($factor > 1)
+                                                <div class="text-[10px] text-[var(--text-muted)] font-normal font-numeric">
+                                                    ({{ number_format((float)$item->unit_cost, 2) }} ج.م / {{ $item->unit->name ?? $prod->unit }})
+                                                </div>
+                                            @endif
                                         </td>
                                         <td>
                                             <div class="flex flex-col gap-1">

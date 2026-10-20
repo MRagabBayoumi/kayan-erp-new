@@ -174,6 +174,20 @@ class PrinterService:
         ipc_share = f"\\\\{host}\\IPC$"
 
         if user:
+            if HAS_WIN32:
+                try:
+                    import win32wnet, win32netcon
+                    win32wnet.WNetAddConnection2(
+                        win32netcon.RESOURCETYPE_ANY,
+                        None,
+                        ipc_share,
+                        None,
+                        user,
+                        pwd,
+                        0
+                    )
+                except Exception as e_wnet:
+                    sys.stderr.write(f"[printer_service] WNetAddConnection2 notice: {e_wnet}\n")
             try:
                 import subprocess
                 cmd = ["net", "use", ipc_share, pwd, f"/user:{user}"]
@@ -860,6 +874,13 @@ class PrinterService:
                         os.unlink(tmp_path)
                     except Exception:
                         pass
+
+        if is_unc and "1326" in str(last_error):
+            raise PrinterSpoolerError(
+                f"تعذر الاتصال بطابعة الشبكة '{printer_name}': ويندوز يرفض الاتصال لطلب كلمة مرور (Error 1326). "
+                f"يرجى إيقاف 'Password Protected Sharing' في إعدادات مشاركة ويندوز على جهاز الكاشير (192.168.0.41)، "
+                f"أو ضبط THERMAL_PRINTER_USER و THERMAL_PRINTER_PASSWORD في .env، أو استخدام طباعة المتصفح المباشرة."
+            )
 
         raise PrinterSpoolerError(
             f"Failed to submit ESC/POS receipt print job to '{printer_name}': {last_error}"

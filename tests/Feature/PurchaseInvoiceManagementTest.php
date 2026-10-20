@@ -354,3 +354,63 @@ test('purchase invoice correctly calculates fixed amount discount on subtotal', 
         ->and((float) $invoice->total_amount)->toEqual(350.00)
         ->and($invoice->notes)->toContain('خصم نقدي: 150 ج.م');
 });
+
+test('purchase create and edit pages render quick supplier modal and add supplier button', function () {
+    $createResponse = $this->get(route('purchases.create'));
+    $createResponse->assertOk();
+    $createResponse->assertSee('quickAddSupplierBtn');
+    $createResponse->assertSee('quickSupplierModal');
+    $createResponse->assertSee('+ إضافة مورد جديد...');
+
+    $invoice = PurchaseInvoice::create([
+        'invoice_number' => 'PUR-EDIT-TEST',
+        'supplier_id' => $this->supplier->id,
+        'warehouse_id' => $this->warehouse->id,
+        'invoice_date' => now()->toDateString(),
+        'status' => 'draft',
+        'subtotal' => 100,
+        'shipping_cost' => 0,
+        'total_amount' => 100,
+        'paid_amount' => 0,
+        'remaining_amount' => 100,
+        'payment_status' => 'unpaid',
+        'created_by' => null,
+    ]);
+
+    $editResponse = $this->get(route('purchases.edit', $invoice));
+    $editResponse->assertOk();
+    $editResponse->assertSee('quickAddSupplierBtn');
+    $editResponse->assertSee('quickSupplierModal');
+    $editResponse->assertSee('+ إضافة مورد جديد...');
+});
+
+test('supplier store endpoint returns json response for ajax request in quick purchase modal', function () {
+    $response = $this->postJson(route('suppliers.store'), [
+        'name' => 'مصنع إي وو للإكسسوارات السريعة',
+        'supplier_type' => 'china_factory',
+        'contact_person' => 'Mr. Zhang',
+        'phone' => '+8613900001111',
+        'wechat_id' => 'zhang_yiwu_fast',
+        'country' => 'China',
+        'city' => 'Yiwu',
+        'currency' => 'CNY',
+        'current_balance' => 0.00,
+    ]);
+
+    $response->assertOk();
+    $response->assertJson([
+        'success' => true,
+        'message' => 'تم تسجيل المورد بنجاح.',
+        'supplier' => [
+            'name' => 'مصنع إي وو للإكسسوارات السريعة',
+            'supplier_type' => 'china_factory',
+            'currency' => 'CNY',
+        ],
+    ]);
+
+    $this->assertDatabaseHas('suppliers', [
+        'name' => 'مصنع إي وو للإكسسوارات السريعة',
+        'wechat_id' => 'zhang_yiwu_fast',
+        'currency' => 'CNY',
+    ]);
+});

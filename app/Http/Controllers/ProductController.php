@@ -473,6 +473,15 @@ class ProductController extends Controller
             if ($request->user()?->isAdmin() && $openingQty !== null) {
                 $oldWarehouseId = (int) ($product->opening_warehouse_id ?? 0);
 
+                // Fill product attributes so unit & pieces_per_package reflect the submitted data
+                $product->fill($validated);
+                $unitFactor = (float) ($product->unit_factor > 0 ? $product->unit_factor : 1.0);
+                $baseOpeningQty = round($openingQty * $unitFactor, 4);
+                $baseOpeningCost = round($openingCost / $unitFactor, 4);
+                $baseRetailPrice = ! is_null($product->retail_price) ? round((float) $product->retail_price / $unitFactor, 4) : null;
+                $baseWholesalePrice = ! is_null($product->wholesale_price) ? round((float) $product->wholesale_price / $unitFactor, 4) : null;
+                $baseDistributorPrice = ! is_null($product->distributor_price) ? round((float) $product->distributor_price / $unitFactor, 4) : (! is_null($product->wholesale_price) ? round((float) $product->wholesale_price / $unitFactor, 4) : null);
+
                 // Find existing opening stock movement & batch
                 $openingMovement = StockMovement::where('product_id', $product->id)
                     ->where('reference_type', 'opening_balance')
@@ -493,24 +502,30 @@ class ProductController extends Controller
 
                 if ($openingBatch) {
                     $consumedQty = (float) $openingBatch->initial_quantity - (float) $openingBatch->remaining_quantity;
-                    if ($openingQty < $consumedQty) {
+                    if ($baseOpeningQty < $consumedQty) {
+                        $consumedUnits = round($consumedQty / $unitFactor, 2);
                         throw ValidationException::withMessages([
-                            'opening_quantity' => "لا يمكن تقليل الكمية الافتتاحية إلى {$openingQty} لأن هناك {$consumedQty} تم صرفها أو بيعها بالفعل من هذا الرصيد.",
+                            'opening_quantity' => "لا يمكن تقليل الكمية الافتتاحية إلى {$openingQty} لأن هناك {$consumedUnits} {$product->unit} ({$consumedQty} قطعة) تم صرفها أو بيعها بالفعل من هذا الرصيد.",
                         ]);
                     }
 
-                    $qtyDiff = $openingQty - (float) $openingBatch->initial_quantity;
+                    $oldBatchInitialQty = (float) $openingBatch->initial_quantity;
+                    $qtyDiff = $baseOpeningQty - $oldBatchInitialQty;
                     $newRemaining = (float) $openingBatch->remaining_quantity + $qtyDiff;
                     $targetWarehouseId = $openingWarehouseId ?: $openingBatch->warehouse_id;
 
                     // 1. Update batch
-                    $openingBatch->initial_quantity = $openingQty;
+                    $openingBatch->initial_quantity = $baseOpeningQty;
                     $openingBatch->remaining_quantity = $newRemaining;
-                    $openingBatch->cost_price = $openingCost;
+                    $openingBatch->cost_price = $baseOpeningCost;
+                    $openingBatch->retail_price = $baseRetailPrice;
+                    $openingBatch->wholesale_price = $baseWholesalePrice;
+                    $openingBatch->distributor_price = $baseDistributorPrice;
                     $openingBatch->total_initial_cost = round($openingQty * $openingCost, 2);
                     $openingBatch->warehouse_id = $targetWarehouseId;
                     $openingBatch->received_at = $openingDate;
                     $openingBatch->is_exhausted = ($newRemaining <= 0);
+                    $openingBatch->notes = 'رصيد افتتاحي (معدل بواسطة مدير النظام): '.$product->name.($unitFactor > 1 ? " ({$openingQty} {$product->unit} = {$baseOpeningQty} قطعة)" : '');
                     $openingBatch->save();
 
                     // 2. Update stock balance in warehouse(s)
@@ -520,14 +535,14 @@ class ProductController extends Controller
                             ->where('warehouse_id', $currentBatchWarehouseId)
                             ->first();
                         if ($oldBalance) {
-                            $oldBalance->decrement('quantity', min((float) $oldBalance->quantity, (float) $openingBatch->initial_quantity));
+                            $oldBalance->decrement('quantity', min((float) $oldBalance->quantity, $oldBatchInitialQty));
                         }
 
                         $newBalance = StockBalance::firstOrCreate(
                             ['product_id' => $product->id, 'warehouse_id' => $targetWarehouseId],
                             ['quantity' => 0.00, 'reserved_quantity' => 0.00]
                         );
-                        $newBalance->increment('quantity', $openingQty);
+                        $newBalance->increment('quantity', $baseOpeningQty);
                     } elseif ($qtyDiff != 0) {
                         $balance = StockBalance::firstOrCreate(
                             ['product_id' => $product->id, 'warehouse_id' => $targetWarehouseId],
@@ -542,10 +557,10 @@ class ProductController extends Controller
 
                     // 3. Update stock movement
                     if ($openingMovement) {
-                        $openingMovement->quantity = $openingQty;
-                        $openingMovement->unit_cost = $openingCost;
+                        $openingMovement->quantity = $baseOpeningQty;
+                        $openingMovement->unit_cost = $baseOpeningCost;
                         $openingMovement->to_warehouse_id = $targetWarehouseId;
-                        $openingMovement->notes = 'رصيد افتتاحي (معدل بواسطة مدير النظام): '.$product->name;
+                        $openingMovement->notes = 'رصيد افتتاحي (معدل بواسطة مدير النظام): '.$product->name.($unitFactor > 1 ? " ({$openingQty} {$product->unit} = {$baseOpeningQty} قطعة)" : '');
                         $openingMovement->save();
                     }
 
@@ -556,8 +571,8 @@ class ProductController extends Controller
                     BatchCostMovement::where('batch_id', $openingBatch->id)
                         ->where('movement_type', 'opening_in')
                         ->update([
-                            'quantity_base' => $openingQty,
-                            'unit_cost_base' => $openingCost,
+                            'quantity_base' => $baseOpeningQty,
+                            'unit_cost_base' => $baseOpeningCost,
                             'total_cost' => round($openingQty * $openingCost, 2),
                             'warehouse_id' => $targetWarehouseId,
                             'running_batch_quantity' => $newRemaining,
@@ -567,16 +582,16 @@ class ProductController extends Controller
                     $inventoryService->addStock(
                         productId: $product->id,
                         warehouseId: $openingWarehouseId,
-                        quantity: $openingQty,
-                        costPrice: $openingCost,
-                        notes: 'رصيد افتتاحي (مضاف بواسطة مدير النظام): '.$product->name,
+                        quantity: $baseOpeningQty,
+                        costPrice: $baseOpeningCost,
+                        notes: 'رصيد افتتاحي (مضاف بواسطة مدير النظام): '.$product->name.($unitFactor > 1 ? " ({$openingQty} {$product->unit} = {$baseOpeningQty} قطعة)" : ''),
                         referenceType: 'opening_balance',
                         referenceId: $product->id,
                         userId: auth()->id(),
                         receivedAt: $openingDate,
-                        retailPrice: ! is_null($product->retail_price) ? (float) $product->retail_price : null,
-                        wholesalePrice: ! is_null($product->wholesale_price) ? (float) $product->wholesale_price : null,
-                        distributorPrice: ! is_null($product->distributor_price) ? (float) $product->distributor_price : (! is_null($product->wholesale_price) ? (float) $product->wholesale_price : null),
+                        retailPrice: $baseRetailPrice,
+                        wholesalePrice: $baseWholesalePrice,
+                        distributorPrice: $baseDistributorPrice,
                         totalInitialCost: round($openingQty * $openingCost, 2),
                         sourceType: 'opening_balance',
                         sourceId: $product->id
@@ -1162,5 +1177,119 @@ class ProductController extends Controller
         $result = $printService->printProductLedger($product, $movements, $format, $printer);
 
         return response()->json($result, $result['success'] ? 200 : 422);
+    }
+
+    /**
+     * Store a product quickly via AJAX modal from purchases/POS with piece & dozen support.
+     */
+    public function quickStore(Request $request): JsonResponse
+    {
+        // Auto-assign category if not provided or empty
+        if (empty($request->category_id)) {
+            $cat = Category::active()->first() ?? Category::firstOrCreate(['name' => 'عام'], ['slug' => 'general', 'is_active' => true]);
+            $request->merge(['category_id' => $cat->id]);
+        }
+
+        // Auto-assign unit if empty
+        if (empty($request->unit)) {
+            $request->merge(['unit' => 'قطعة']);
+        }
+
+        $pkg = (float) ($request->pieces_per_package ?: 12);
+        if ($pkg <= 0) {
+            $pkg = 12.0;
+        }
+
+        // Two-way Fallbacks: If dozen prices were entered instead of piece prices
+        if ($request->filled('cost_price_dozen') && (! $request->filled('cost_price') || (float) $request->cost_price <= 0)) {
+            $request->merge(['cost_price' => round((float) $request->cost_price_dozen / $pkg, 2)]);
+        }
+        if ($request->filled('retail_price_dozen') && (! $request->filled('retail_price') || (float) $request->retail_price <= 0)) {
+            $request->merge(['retail_price' => round((float) $request->retail_price_dozen / $pkg, 2)]);
+        }
+        if ($request->filled('wholesale_price_dozen') && (! $request->filled('wholesale_price') || (float) $request->wholesale_price <= 0)) {
+            $request->merge(['wholesale_price' => round((float) $request->wholesale_price_dozen / $pkg, 2)]);
+        }
+        if ($request->filled('distributor_price_dozen') && (! $request->filled('distributor_price') || (float) $request->distributor_price <= 0)) {
+            $request->merge(['distributor_price' => round((float) $request->distributor_price_dozen / $pkg, 2)]);
+        }
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'category_id' => ['required', 'exists:categories,id'],
+            'sku' => ['nullable', 'string', 'max:80', 'unique:products,sku'],
+            'barcode' => ['nullable', 'string', 'max:100', 'unique:products,barcode'],
+            'unit' => ['required', 'string', 'max:50'],
+            'pieces_per_package' => ['nullable', 'integer', 'min:1'],
+            'cost_price' => ['required', 'numeric', 'min:0'],
+            'retail_price' => ['nullable', 'numeric', 'min:0'],
+            'wholesale_price' => ['nullable', 'numeric', 'min:0'],
+            'distributor_price' => ['nullable', 'numeric', 'min:0'],
+            'min_stock_alert' => ['nullable', 'integer', 'min:0'],
+        ], [
+            'name.required' => 'اسم المنتج مطلوب ولا يمكن تركه فارغاً.',
+            'category_id.required' => 'يرجى اختيار تصنيف المنتج.',
+            'category_id.exists' => 'التصنيف المختار غير موجود في النظام.',
+            'sku.unique' => 'كود الصنف (SKU) مستخدم بالفعل في صنف آخر.',
+            'barcode.unique' => 'الباركود المدخل مستخدم بالفعل في صنف آخر.',
+            'cost_price.required' => 'سعر شراء/تكلفة الصنف مطلوب.',
+            'cost_price.min' => 'سعر التكلفة لا يمكن أن يكون سالباً.',
+            'retail_price.min' => 'سعر التجزئة لا يمكن أن يكون سالباً.',
+            'wholesale_price.min' => 'سعر الجملة لا يمكن أن يكون سالباً.',
+            'distributor_price.min' => 'سعر الموزع لا يمكن أن يكون سالباً.',
+            'unit.required' => 'وحدة القياس مطلوبة.',
+        ]);
+
+        if (empty($validated['sku'])) {
+            $nextId = (Product::max('id') ?? 0) + 1;
+            do {
+                $candidateSku = 'KY-'.date('y').'-'.str_pad((string) $nextId, 4, '0', STR_PAD_LEFT);
+                $nextId++;
+            } while (Product::where('sku', $candidateSku)->exists());
+            $validated['sku'] = $candidateSku;
+        }
+
+        $cost = (float) $validated['cost_price'];
+        if (! isset($validated['retail_price']) || $validated['retail_price'] === '' || $validated['retail_price'] === null) {
+            $validated['retail_price'] = round($cost * 1.25, 2);
+        }
+        if (! isset($validated['wholesale_price']) || $validated['wholesale_price'] === '' || $validated['wholesale_price'] === null) {
+            $validated['wholesale_price'] = round($cost * 1.15, 2);
+        }
+        if (! isset($validated['distributor_price']) || $validated['distributor_price'] === '' || $validated['distributor_price'] === null) {
+            $validated['distributor_price'] = round($cost * 1.10, 2);
+        }
+
+        $validated['pieces_per_package'] = (int) ($validated['pieces_per_package'] ?? 12);
+        $validated['min_stock_alert'] = (int) ($validated['min_stock_alert'] ?? 5);
+        $validated['is_active'] = true;
+
+        if (empty($validated['barcode'])) {
+            $validated['barcode'] = null;
+        }
+
+        $product = Product::create($validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم إنشاء الصنف الجديد بنجاح.',
+            'product' => [
+                'id' => $product->id,
+                'name' => $product->name,
+                'sku' => $product->sku,
+                'barcode' => (string) ($product->barcode ?? ''),
+                'cost_price' => (float) $product->cost_price,
+                'retail_price' => (float) $product->retail_price,
+                'wholesale_price' => (float) $product->wholesale_price,
+                'distributor_price' => (float) $product->distributor_price,
+                'unit' => $product->unit ?? 'قطعة',
+                'unit_factor' => 1.0,
+                'package_factor' => (float) ($product->package_factor ?? 12.0),
+                'pieces_per_package' => (int) ($product->pieces_per_package ?: 12),
+                'stocks' => [],
+                'total_stock' => 0.0,
+                'formatted_stock' => '0 '.($product->unit ?? 'قطعة'),
+            ],
+        ]);
     }
 }

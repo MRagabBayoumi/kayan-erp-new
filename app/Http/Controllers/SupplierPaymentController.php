@@ -6,9 +6,11 @@ use App\Models\CashierShift;
 use App\Models\CompanySetting;
 use App\Models\PurchaseInvoice;
 use App\Models\Supplier;
+use App\Models\SupplierInstallment;
 use App\Models\SupplierPayment;
 use App\Models\Treasury;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -45,6 +47,7 @@ class SupplierPaymentController extends Controller
             'payments_count' => (clone $query)->count(),
             'suppliers_count' => Supplier::count(),
             'total_payables' => (float) Supplier::where('current_balance', '>', 0)->sum('current_balance'),
+            'overdue_installments_count' => SupplierInstallment::overdue()->count(),
         ];
 
         return view('suppliers.payments.index', [
@@ -52,6 +55,7 @@ class SupplierPaymentController extends Controller
             'payments' => $payments,
             'metrics' => $metrics,
             'suppliers' => Supplier::orderBy('name')->get(),
+            'treasuries' => Treasury::where('is_active', true)->orderBy('name')->get(),
         ]);
     }
 
@@ -141,7 +145,7 @@ class SupplierPaymentController extends Controller
         return back()->with('success', 'تم تسجيل سند صرف المورد وتحديث الحساب بنجاح');
     }
 
-    public function storeForSupplier(Request $request, Supplier $supplier): RedirectResponse
+    public function storeForSupplier(Request $request, Supplier $supplier): RedirectResponse|JsonResponse
     {
         $validated = $request->validate([
             'amount' => ['required', 'numeric', 'min:0.01'],
@@ -149,18 +153,32 @@ class SupplierPaymentController extends Controller
             'payment_method' => ['required', 'in:cash,bank_transfer,cheque,card'],
             'treasury_id' => ['nullable', 'exists:treasuries,id'],
             'purchase_invoice_id' => ['nullable', 'exists:purchase_invoices,id'],
+            'supplier_installment_id' => ['nullable', 'exists:supplier_installments,id'],
             'reference_number' => ['nullable', 'string', 'max:100'],
             'notes' => ['nullable', 'string', 'max:500'],
         ]);
 
         $amount = (float) $validated['amount'];
 
-        DB::transaction(function () use ($supplier, $validated, $amount) {
+        $createdPayment = DB::transaction(function () use ($supplier, $validated, $amount) {
             $sup = Supplier::where('id', $supplier->id)->lockForUpdate()->firstOrFail();
 
+            $installment = null;
+            if (! empty($validated['supplier_installment_id'])) {
+                $installment = SupplierInstallment::where('id', $validated['supplier_installment_id'])
+                    ->where('supplier_id', $sup->id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                if ($amount > (float) $installment->remaining_amount) {
+                    throw new \InvalidArgumentException('المبلغ المدفوع يتجاوز متبقي القسط المحدد ('.number_format((float) $installment->remaining_amount, 2).' ج.م)');
+                }
+            }
+
             $invoice = null;
-            if (! empty($validated['purchase_invoice_id'])) {
-                $invoice = PurchaseInvoice::where('id', $validated['purchase_invoice_id'])
+            $invoiceId = $validated['purchase_invoice_id'] ?? $installment?->purchase_invoice_id;
+            if (! empty($invoiceId)) {
+                $invoice = PurchaseInvoice::where('id', $invoiceId)
                     ->where('supplier_id', $sup->id)
                     ->lockForUpdate()
                     ->firstOrFail();
@@ -188,6 +206,7 @@ class SupplierPaymentController extends Controller
                 'payment_number' => $paymentNumber,
                 'supplier_id' => $sup->id,
                 'purchase_invoice_id' => $invoice?->id,
+                'supplier_installment_id' => $installment?->id,
                 'treasury_id' => $treasury?->id,
                 'cashier_shift_id' => $activeShift?->id,
                 'payment_date' => $validated['payment_date'],
@@ -200,9 +219,11 @@ class SupplierPaymentController extends Controller
 
             // Deduct from Treasury
             if ($treasury) {
-                $desc = $invoice
-                    ? "سند صرف دفعة للمورد ({$sup->name}) على فاتورة رقم {$invoice->invoice_number}"
-                    : "سند صرف دفعة عامة لحساب المورد ({$sup->name})";
+                $desc = $installment
+                    ? "سند صرف قسط ({$installment->installment_title}) للمورد ({$sup->name})"
+                    : ($invoice
+                        ? "سند صرف دفعة للمورد ({$sup->name}) على فاتورة رقم {$invoice->invoice_number}"
+                        : "سند صرف دفعة عامة لحساب المورد ({$sup->name})");
                 $treasury->recordWithdrawal(
                     $amount,
                     'supplier_payment',
@@ -215,6 +236,10 @@ class SupplierPaymentController extends Controller
 
             if ($activeShift) {
                 $activeShift->recordSupplierPayment($payment);
+            }
+
+            if ($installment) {
+                $installment->recordPayment($amount);
             }
 
             if ($invoice) {
@@ -231,14 +256,72 @@ class SupplierPaymentController extends Controller
             // Update supplier balance
             $sup->current_balance = round((float) $sup->current_balance - $amount, 2);
             $sup->save();
+
+            return $payment;
         });
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'تم تسجيل سند صرف المورد بنجاح',
+                'payment_id' => $createdPayment->id,
+                'receipt_url' => route('supplier-payments.receipt', $createdPayment),
+            ]);
+        }
 
         return back()->with('success', 'تم تسجيل سند صرف المورد بنجاح');
     }
 
+    public function payablesData(Supplier $supplier): JsonResponse
+    {
+        $unpaidInvoices = PurchaseInvoice::where('supplier_id', $supplier->id)
+            ->where('status', PurchaseInvoice::STATUS_POSTED)
+            ->where('remaining_amount', '>', 0)
+            ->orderBy('invoice_date')
+            ->get(['id', 'invoice_number', 'invoice_date', 'total_amount', 'paid_amount', 'remaining_amount', 'currency']);
+
+        $pendingInstallments = SupplierInstallment::where('supplier_id', $supplier->id)
+            ->pending()
+            ->orderBy('due_date')
+            ->get()
+            ->map(function ($inst) {
+                return [
+                    'id' => $inst->id,
+                    'installment_title' => $inst->installment_title,
+                    'due_date' => $inst->due_date->format('Y-m-d'),
+                    'amount' => (float) $inst->amount,
+                    'paid_amount' => (float) $inst->paid_amount,
+                    'remaining_amount' => (float) $inst->remaining_amount,
+                    'status_label' => $inst->status_label,
+                    'status_badge_class' => $inst->status_badge_class,
+                    'is_overdue' => $inst->is_overdue,
+                    'is_due_today' => $inst->is_due_today,
+                    'purchase_invoice_id' => $inst->purchase_invoice_id,
+                ];
+            });
+
+        $treasuries = Treasury::where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name', 'type', 'current_balance']);
+
+        return response()->json([
+            'success' => true,
+            'supplier' => [
+                'id' => $supplier->id,
+                'name' => $supplier->name,
+                'current_balance' => (float) $supplier->current_balance,
+                'currency' => $supplier->currency,
+                'supplier_type' => $supplier->supplier_type,
+            ],
+            'invoices' => $unpaidInvoices,
+            'installments' => $pendingInstallments,
+            'treasuries' => $treasuries,
+        ]);
+    }
+
     public function receipt(SupplierPayment $payment, Request $request): View
     {
-        $payment->load(['supplier', 'purchaseInvoice', 'treasury', 'creator']);
+        $payment->load(['supplier', 'purchaseInvoice', 'installment', 'treasury', 'creator']);
         $company = CompanySetting::first();
         $format = $request->query('format', 'a5');
         $title = 'سند صرف نقدية / بنكي - '.$payment->payment_number;
@@ -256,6 +339,14 @@ class SupplierPaymentController extends Controller
         DB::transaction(function () use ($payment) {
             $pay = SupplierPayment::where('id', $payment->id)->lockForUpdate()->firstOrFail();
             $amount = (float) $pay->amount;
+
+            // Rollback installment if linked
+            if ($pay->supplier_installment_id && $pay->installment) {
+                $inst = $pay->installment;
+                $inst->paid_amount = max(0.00, round((float) $inst->paid_amount - $amount, 2));
+                $inst->status = ($inst->paid_amount <= 0.0001 ? SupplierInstallment::STATUS_PENDING : SupplierInstallment::STATUS_PARTIAL);
+                $inst->save();
+            }
 
             // Rollback invoice if linked
             if ($pay->purchase_invoice_id && $pay->purchaseInvoice) {

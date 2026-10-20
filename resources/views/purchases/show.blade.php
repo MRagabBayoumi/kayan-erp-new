@@ -242,7 +242,7 @@
                                     <span class="text-[var(--text-muted)]">{{ $item->unit->name ?? ($item->product->unit ?? 'قطعة') }}</span>
                                     @if((float)($item->conversion_factor ?? 1.0) != 1.0)
                                         <div class="text-[10px] text-[var(--primary)] font-numeric font-semibold">
-                                            = {{ (float)($item->base_quantity ?: ($item->quantity * $item->conversion_factor)) }} {{ $item->product->unit ?? 'قطعة' }}
+                                            = {{ (float)($item->base_quantity ?: ($item->quantity * $item->conversion_factor)) }} قطعة
                                         </div>
                                     @endif
                                 </td>

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Category;
 use App\Models\CompanySetting;
 use App\Models\PrintTemplate;
 use App\Models\Product;
@@ -85,8 +86,13 @@ class PurchaseInvoiceController extends Controller
         $suppliers = Supplier::active()->orderBy('name')->get();
         $warehouses = Warehouse::active()->orderBy('name')->get();
         $defaultWarehouse = Warehouse::where('is_default', true)->first() ?? $warehouses->first();
-        $products = Product::active()->orderBy('name')->get();
+        $products = Product::active()->with('stockBalances')->orderBy('name')->get();
         $units = class_exists(Unit::class) ? Unit::active()->orderBy('is_default', 'desc')->orderBy('name')->get() : collect();
+        $categories = Category::active()->orderBy('name')->get();
+        if ($categories->isEmpty()) {
+            $categories = collect([Category::firstOrCreate(['name' => 'عام'], ['slug' => 'general', 'is_active' => true])]);
+        }
+        $suggestedSku = 'KY-'.date('y').'-'.str_pad((string) ((Product::max('id') ?? 0) + 1), 4, '0', STR_PAD_LEFT);
         $suggestedNumber = PurchaseInvoice::generateInvoiceNumber();
 
         $productsJson = $products->map(fn ($p) => [
@@ -97,6 +103,11 @@ class PurchaseInvoiceController extends Controller
             'cost_price' => (float) $p->cost_price,
             'unit' => $p->unit ?? 'قطعة',
             'unit_factor' => (float) ($p->unit_factor ?? 1.0),
+            'package_factor' => (float) ($p->package_factor ?? 12.0),
+            'pieces_per_package' => (int) ($p->pieces_per_package ?: (int) round($p->package_factor ?? 12.0)),
+            'stocks' => $p->stockBalances->pluck('quantity', 'warehouse_id')->map(fn ($q) => (float) $q)->toArray(),
+            'total_stock' => (float) $p->total_stock,
+            'formatted_stock' => $p->formatStockBreakdown(),
         ])->values();
 
         $unitsJson = $units->map(fn ($u) => [
@@ -115,6 +126,8 @@ class PurchaseInvoiceController extends Controller
             'defaultWarehouse' => $defaultWarehouse,
             'products' => $products,
             'units' => $units,
+            'categories' => $categories,
+            'suggestedSku' => $suggestedSku,
             'productsJson' => $productsJson,
             'unitsJson' => $unitsJson,
             'suggestedNumber' => $suggestedNumber,
@@ -175,6 +188,8 @@ class PurchaseInvoiceController extends Controller
                 $subtotal += $lineSubtotal;
 
                 // Determine unit & conversion factor
+                $prodId = (int) $itemInput['product_id'];
+                $product = Product::find($prodId);
                 $unitId = ! empty($itemInput['unit_id']) ? (int) $itemInput['unit_id'] : null;
                 $factor = 1.0000;
 
@@ -191,6 +206,8 @@ class PurchaseInvoiceController extends Controller
                         $unitId = $unit->id;
                         $factor = (float) $unit->conversion_factor > 0 ? (float) $unit->conversion_factor : 1.0000;
                     }
+                } elseif ($product && (float) $product->unit_factor > 1) {
+                    $factor = (float) $product->unit_factor;
                 }
 
                 $baseQty = round($qty * $factor, 4);
@@ -318,8 +335,13 @@ class PurchaseInvoiceController extends Controller
         $purchase->load(['items.product', 'items.unit']);
         $suppliers = Supplier::active()->orderBy('name')->get();
         $warehouses = Warehouse::active()->orderBy('name')->get();
-        $products = Product::active()->orderBy('name')->get();
+        $products = Product::active()->with('stockBalances')->orderBy('name')->get();
         $units = class_exists(Unit::class) ? Unit::active()->orderBy('is_default', 'desc')->orderBy('name')->get() : collect();
+        $categories = Category::active()->orderBy('name')->get();
+        if ($categories->isEmpty()) {
+            $categories = collect([Category::firstOrCreate(['name' => 'عام'], ['slug' => 'general', 'is_active' => true])]);
+        }
+        $suggestedSku = 'KY-'.date('y').'-'.str_pad((string) ((Product::max('id') ?? 0) + 1), 4, '0', STR_PAD_LEFT);
 
         $productsJson = $products->map(fn ($p) => [
             'id' => $p->id,
@@ -329,6 +351,11 @@ class PurchaseInvoiceController extends Controller
             'cost_price' => (float) $p->cost_price,
             'unit' => $p->unit ?? 'قطعة',
             'unit_factor' => (float) ($p->unit_factor ?? 1.0),
+            'package_factor' => (float) ($p->package_factor ?? 12.0),
+            'pieces_per_package' => (int) ($p->pieces_per_package ?: (int) round($p->package_factor ?? 12.0)),
+            'stocks' => $p->stockBalances->pluck('quantity', 'warehouse_id')->map(fn ($q) => (float) $q)->toArray(),
+            'total_stock' => (float) $p->total_stock,
+            'formatted_stock' => $p->formatStockBreakdown(),
         ])->values();
 
         $unitsJson = $units->map(fn ($u) => [
@@ -347,6 +374,8 @@ class PurchaseInvoiceController extends Controller
             'warehouses' => $warehouses,
             'products' => $products,
             'units' => $units,
+            'categories' => $categories,
+            'suggestedSku' => $suggestedSku,
             'productsJson' => $productsJson,
             'unitsJson' => $unitsJson,
         ]);
@@ -405,6 +434,8 @@ class PurchaseInvoiceController extends Controller
                 $lineSubtotal = round($qty * $cost, 2);
                 $subtotal += $lineSubtotal;
 
+                $prodId = (int) $itemInput['product_id'];
+                $product = Product::find($prodId);
                 $unitId = ! empty($itemInput['unit_id']) ? (int) $itemInput['unit_id'] : null;
                 $factor = 1.0000;
 
@@ -421,6 +452,8 @@ class PurchaseInvoiceController extends Controller
                         $unitId = $unit->id;
                         $factor = (float) $unit->conversion_factor > 0 ? (float) $unit->conversion_factor : 1.0000;
                     }
+                } elseif ($product && (float) $product->unit_factor > 1) {
+                    $factor = (float) $product->unit_factor;
                 }
 
                 $baseQty = round($qty * $factor, 4);

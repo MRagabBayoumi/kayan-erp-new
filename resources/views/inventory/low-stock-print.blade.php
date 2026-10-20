@@ -65,7 +65,7 @@
             $def = max(0, $mAlert - $cStock);
             if ($def == 0 && $cStock <= 0) $def = 1;
             $totalShortageQty += $def;
-            $totalEstimatedCost += ($def * (float)$p->cost_price);
+            $totalEstimatedCost += ($def * (float)$p->base_cost_price);
         }
     @endphp
 
@@ -157,7 +157,7 @@
                             $minAlert = (int) $product->min_stock_alert;
                             $deficit = max(0, $minAlert - $currentStock);
                             if ($deficit == 0 && $currentStock <= 0) $deficit = 1;
-                            $itemEstCost = $deficit * (float) $product->cost_price;
+                            $itemEstCost = $deficit * (float) $product->base_cost_price;
                         @endphp
                         <tr>
                             <td class="col-seq font-numeric">{{ $idx + 1 }}</td>
@@ -166,9 +166,9 @@
                                 <strong>{{ $product->name }}</strong>
                             </td>
                             <td>{{ $product->category?->name ?? 'عام' }}</td>
-                            <td class="col-unit">{{ $product->unit }}</td>
+                            <td class="col-unit">{{ $product->unit }}@if(($product->unit_factor ?? 1) > 1) ({{ (int)$product->unit_factor }} قطعة)@endif</td>
                             <td class="font-numeric text-center font-bold {{ $currentStock <= 0 ? 'text-red-700' : 'text-amber-700' }}">
-                                {{ number_format($currentStock) }}
+                                {{ $product->formatStockBreakdown($currentStock) }}
                             </td>
                             <td class="font-numeric text-center">{{ $minAlert }}</td>
                             <td class="font-numeric text-center font-extrabold text-red-700">

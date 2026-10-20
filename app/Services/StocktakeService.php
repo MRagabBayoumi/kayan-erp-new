@@ -189,7 +189,7 @@ class StocktakeService
 
             $bookBalance = (float) ($product->stockBalances->first()?->quantity ?? 0.0);
             $diff = round($countedQty - $bookBalance, 4);
-            $costPrice = (float) $product->cost_price;
+            $costPrice = (float) ($product->base_cost_price ?? $product->cost_price);
             $costImpact = round($diff * $costPrice, 2);
 
             $entry = [
@@ -310,7 +310,7 @@ class StocktakeService
 
         foreach ($products as $p) {
             $bookBalance = (float) ($p->stockBalances->first()?->quantity ?? 0.0);
-            $costPrice = (float) $p->cost_price;
+            $costPrice = (float) ($p->base_cost_price ?? $p->cost_price);
             $rowValuation = round($bookBalance * $costPrice, 2);
 
             $totalQuantity += $bookBalance;

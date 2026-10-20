@@ -128,7 +128,10 @@
                             <span class="font-numeric text-sm font-extrabold {{ $m->type === 'in' ? 'text-movement-in' : ($m->type === 'out' ? 'text-movement-out' : 'text-[var(--text-main)]') }}">
                                 {{ $m->type === 'in' ? '+' : ($m->type === 'out' ? '-' : '') }}{{ number_format($m->quantity) }}
                             </span>
-                            <span class="text-[11px] text-[var(--text-muted)]">{{ $m->product?->unit }}</span>
+                            <span class="text-[11px] text-[var(--text-muted)]">قطعة</span>
+                            @if($m->product && ($m->product->unit_factor ?? 1) > 1 && $m->product->unit && $m->product->unit !== 'قطعة')
+                                <div class="text-[10px] text-[var(--text-muted)] font-numeric">({{ $m->product->formatStockBreakdown((float)$m->quantity) }})</div>
+                            @endif
                         </td>
                         <td class="text-left font-numeric text-xs">
                             {{ number_format($m->unit_cost, 2) }} ج.م

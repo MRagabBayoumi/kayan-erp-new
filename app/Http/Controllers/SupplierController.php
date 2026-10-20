@@ -58,11 +58,28 @@ class SupplierController extends Controller
             'suppliers' => $suppliers,
             'metrics' => $metrics,
             'countries' => $countries,
+            'treasuries' => Treasury::where('is_active', true)->orderBy('name')->get(),
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request): RedirectResponse|JsonResponse
     {
+        if ($request->input('supplier_type') === 'local_supplier') {
+            if (! $request->filled('currency')) {
+                $request->merge(['currency' => 'EGP']);
+            }
+            if (! $request->filled('country')) {
+                $request->merge(['country' => 'مصر']);
+            }
+        } elseif ($request->input('supplier_type') === 'china_factory') {
+            if (! $request->filled('currency')) {
+                $request->merge(['currency' => 'CNY']);
+            }
+            if (! $request->filled('country')) {
+                $request->merge(['country' => 'China']);
+            }
+        }
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'supplier_type' => ['required', 'in:china_factory,local_supplier,shipping_agent'],
@@ -86,14 +103,14 @@ class SupplierController extends Controller
 
         $openingBal = (float) ($validated['opening_balance'] ?? $validated['current_balance'] ?? 0.00);
 
-        Supplier::create([
+        $supplier = Supplier::create([
             'name' => trim($validated['name']),
             'supplier_type' => $validated['supplier_type'],
             'contact_person' => filled($validated['contact_person'] ?? null) ? trim($validated['contact_person']) : null,
             'phone' => filled($validated['phone'] ?? null) ? trim($validated['phone']) : null,
-            'wechat_id' => filled($validated['wechat_id'] ?? null) ? trim($validated['wechat_id']) : null,
+            'wechat_id' => $validated['supplier_type'] === 'china_factory' && filled($validated['wechat_id'] ?? null) ? trim($validated['wechat_id']) : null,
             'email' => filled($validated['email'] ?? null) ? trim($validated['email']) : null,
-            'country' => filled($validated['country'] ?? null) ? trim($validated['country']) : 'China',
+            'country' => filled($validated['country'] ?? null) ? trim($validated['country']) : ($validated['supplier_type'] === 'china_factory' ? 'China' : 'مصر'),
             'city' => filled($validated['city'] ?? null) ? trim($validated['city']) : null,
             'address' => filled($validated['address'] ?? null) ? trim($validated['address']) : null,
             'currency' => $validated['currency'],
@@ -102,6 +119,22 @@ class SupplierController extends Controller
             'notes' => filled($validated['notes'] ?? null) ? trim($validated['notes']) : null,
             'is_active' => $request->has('is_active') ? $request->boolean('is_active') : true,
         ]);
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'تم تسجيل المورد بنجاح.',
+                'supplier' => [
+                    'id' => $supplier->id,
+                    'name' => $supplier->name,
+                    'phone' => $supplier->phone,
+                    'country' => $supplier->country,
+                    'currency' => $supplier->currency,
+                    'supplier_type' => $supplier->supplier_type,
+                    'current_balance' => (float) $supplier->current_balance,
+                ],
+            ]);
+        }
 
         return redirect()->route('suppliers.index')->with('success', 'تم تسجيل المورد بنجاح.');
     }
@@ -129,6 +162,8 @@ class SupplierController extends Controller
 
         $treasuries = Treasury::where('is_active', true)->orderBy('name')->get();
 
+        $installments = $supplier->installments()->with(['purchaseInvoice', 'creator'])->get();
+
         return view('suppliers.show', [
             'title' => $supplier->name,
             'supplier' => $supplier,
@@ -136,6 +171,7 @@ class SupplierController extends Controller
             'statement' => $statement,
             'unpaidInvoices' => $unpaidInvoices,
             'treasuries' => $treasuries,
+            'installments' => $installments,
         ]);
     }
 
@@ -232,6 +268,12 @@ class SupplierController extends Controller
 
     public function update(Request $request, Supplier $supplier): RedirectResponse
     {
+        if ($request->input('supplier_type') === 'local_supplier' && ! $request->filled('currency')) {
+            $request->merge(['currency' => 'EGP']);
+        } elseif ($request->input('supplier_type') === 'china_factory' && ! $request->filled('currency')) {
+            $request->merge(['currency' => 'CNY']);
+        }
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'supplier_type' => ['required', 'in:china_factory,local_supplier,shipping_agent'],
@@ -284,7 +326,7 @@ class SupplierController extends Controller
             'supplier_type' => $validated['supplier_type'],
             'contact_person' => filled($validated['contact_person'] ?? null) ? trim($validated['contact_person']) : null,
             'phone' => filled($validated['phone'] ?? null) ? trim($validated['phone']) : null,
-            'wechat_id' => filled($validated['wechat_id'] ?? null) ? trim($validated['wechat_id']) : null,
+            'wechat_id' => $validated['supplier_type'] === 'china_factory' && filled($validated['wechat_id'] ?? null) ? trim($validated['wechat_id']) : null,
             'email' => filled($validated['email'] ?? null) ? trim($validated['email']) : null,
             'country' => filled($validated['country'] ?? null) ? trim($validated['country']) : $supplier->country,
             'city' => filled($validated['city'] ?? null) ? trim($validated['city']) : null,

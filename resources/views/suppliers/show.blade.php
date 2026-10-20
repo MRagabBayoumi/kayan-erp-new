@@ -322,6 +322,105 @@
                 @endif
             </div>
         </div>
+
+        <!-- Supplier Scheduled Installments Section -->
+        <div class="erp-card mb-6">
+            <div class="erp-card-header flex items-center justify-between">
+                <div class="erp-card-title flex items-center gap-2">
+                    <x-icon name="calendar" size="18" />
+                    <span>جدول الأقساط والدفعات المستحقة للمورد</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button type="button" onclick="document.getElementById('addSupplierInstallmentModal').style.display='flex'" class="erp-btn erp-btn-sm erp-btn-primary">
+                        <x-icon name="plus" size="14" />
+                        <span>جدولة قسط جديد</span>
+                    </button>
+                    <a href="{{ route('supplier-installments.index', ['supplier_id' => $supplier->id]) }}" class="erp-btn erp-btn-sm erp-btn-secondary">
+                        <x-icon name="external-link" size="14" />
+                        <span>كافة الأقساط</span>
+                    </a>
+                </div>
+            </div>
+
+            @if($installments->isEmpty())
+                <div class="text-center py-8 text-[var(--text-muted)] text-sm">
+                    لا توجد أقساط مجدولة مسجلة لهذا المورد حالياً. يمكنك جدولة أقساط أو خطة سداد لتنظيم الدفعات ومواعيد الاستحقاق.
+                </div>
+            @else
+                <div class="erp-table-responsive">
+                    <table class="erp-table">
+                        <thead>
+                            <tr>
+                                <th>بيان القسط</th>
+                                <th>الفاتورة المرتبطة</th>
+                                <th>تاريخ الاستحقاق</th>
+                                <th>قيمة القسط</th>
+                                <th>المسدد</th>
+                                <th>المتبقي</th>
+                                <th>الحالة</th>
+                                <th style="text-align: center;">إجراء</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($installments as $inst)
+                                <tr class="erp-table-row {{ $inst->is_overdue ? 'bg-rose-50/20' : '' }}">
+                                    <td>
+                                        <span class="font-semibold text-xs text-[var(--text-main)]">{{ $inst->installment_title }}</span>
+                                        @if($inst->notes)
+                                            <span class="block text-[11px] text-[var(--text-muted)]">{{ $inst->notes }}</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if($inst->purchaseInvoice)
+                                            <a href="{{ route('purchases.show', $inst->purchase_invoice_id) }}" class="font-mono text-xs text-[var(--primary)] font-bold hover:underline">
+                                                {{ $inst->purchaseInvoice->invoice_number }}
+                                            </a>
+                                        @else
+                                            <span class="text-[var(--text-muted)] text-xs">حساب عام</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        <span class="font-numeric text-xs font-semibold {{ $inst->is_overdue ? 'text-rose-600' : ($inst->is_due_today ? 'text-amber-600' : 'text-[var(--text-secondary)]') }}">
+                                            {{ $inst->due_date ? $inst->due_date->format('Y-m-d') : '—' }}
+                                        </span>
+                                        @if($inst->is_overdue)
+                                            <span class="text-[10px] text-rose-600 block font-bold">متأخر</span>
+                                        @elseif($inst->is_due_today)
+                                            <span class="text-[10px] text-amber-600 block font-bold">اليوم</span>
+                                        @endif
+                                    </td>
+                                    <td class="font-numeric font-bold text-xs">
+                                        {{ number_format((float)$inst->amount, 2) }} ج.م
+                                    </td>
+                                    <td class="font-numeric text-xs text-emerald-600">
+                                        {{ number_format((float)$inst->paid_amount, 2) }} ج.م
+                                    </td>
+                                    <td class="font-numeric font-bold text-xs {{ $inst->remaining_amount > 0 ? 'text-rose-600' : 'text-emerald-600' }}">
+                                        {{ number_format((float)$inst->remaining_amount, 2) }} ج.م
+                                    </td>
+                                    <td>
+                                        <span class="erp-badge {{ $inst->status_badge_class }} text-xs">
+                                            {{ $inst->status_label }}
+                                        </span>
+                                    </td>
+                                    <td style="text-align: center;">
+                                        @if($inst->remaining_amount > 0)
+                                            <button type="button" 
+                                                    class="erp-btn erp-btn-success text-xs py-1 px-2.5"
+                                                    onclick="openPaymentForInstallment({{ $inst->id }}, '{{ addslashes($inst->installment_title) }}', {{ (float)$inst->remaining_amount }}, '{{ $inst->purchase_invoice_id ?? '' }}')">
+                                                <span>صرف دفعة</span>
+                                            </button>
+                                        @else
+                                            <span class="text-xs text-emerald-600 font-bold">✓ مسدد</span>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+        </div>
     </div>
 
     <!-- Modal: Record Supplier Payment -->
@@ -347,16 +446,29 @@
                         </div>
                     </div>
 
-                    <div class="erp-form-group">
-                        <label class="erp-form-label">تخصيص الدفعة على فاتورة محددة (اختياري)</label>
-                        <select name="purchase_invoice_id" id="supplierInvoiceSelect" onchange="handleSupplierInvoiceChange(this)" class="erp-input w-full">
-                            <option value="" data-remaining="">-- دفعة عامة على الحساب (تخفيض المديونية) --</option>
-                            @foreach($unpaidInvoices ?? [] as $unpaid)
-                                <option value="{{ $unpaid->id }}" data-remaining="{{ (float)$unpaid->remaining_amount }}">
-                                    فاتورة رقم {{ $unpaid->invoice_number }} (تاريخ: {{ $unpaid->invoice_date->format('Y-m-d') }} - متبقي: {{ number_format((float)$unpaid->remaining_amount, 2) }} ج.م)
-                                </option>
-                            @endforeach
-                        </select>
+                    <div class="erp-form-grid mb-3">
+                        <div class="erp-form-group">
+                            <label class="erp-form-label">سداد على قسط محدد (اختياري)</label>
+                            <select name="supplier_installment_id" id="supplierInstallmentSelect" onchange="handleSupplierInstallmentChange(this)" class="erp-input w-full">
+                                <option value="" data-remaining="">-- بدون قسط (سداد عام) --</option>
+                                @foreach($installments->where('status', '!=', 'paid') as $inst)
+                                    <option value="{{ $inst->id }}" data-remaining="{{ (float)$inst->remaining_amount }}" data-invoice-id="{{ $inst->purchase_invoice_id ?? '' }}">
+                                        {{ $inst->installment_title }} (متبقي: {{ number_format((float)$inst->remaining_amount, 2) }} ج.م)
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="erp-form-group">
+                            <label class="erp-form-label">تخصيص الدفعة على فاتورة محددة (اختياري)</label>
+                            <select name="purchase_invoice_id" id="supplierInvoiceSelect" onchange="handleSupplierInvoiceChange(this)" class="erp-input w-full">
+                                <option value="" data-remaining="">-- دفعة عامة على الحساب (تخفيض المديونية) --</option>
+                                @foreach($unpaidInvoices ?? [] as $unpaid)
+                                    <option value="{{ $unpaid->id }}" data-remaining="{{ (float)$unpaid->remaining_amount }}">
+                                        فاتورة رقم {{ $unpaid->invoice_number }} (تاريخ: {{ $unpaid->invoice_date->format('Y-m-d') }} - متبقي: {{ number_format((float)$unpaid->remaining_amount, 2) }} ج.م)
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
                     </div>
 
                     <div class="erp-form-group">
@@ -415,7 +527,84 @@
         </div>
     </div>
 
+    <!-- Modal: Add Installment for this Supplier -->
+    <div id="addSupplierInstallmentModal" class="erp-modal-overlay">
+        <div class="erp-modal-container max-w-lg">
+            <div class="erp-modal-header">
+                <h3 class="erp-modal-title">
+                    <x-icon name="calendar-plus" size="18" />
+                    <span>جدولة قسط مستحق للمورد: {{ $supplier->name }}</span>
+                </h3>
+                <button type="button" class="erp-modal-close" onclick="document.getElementById('addSupplierInstallmentModal').style.display='none'">&times;</button>
+            </div>
+
+            <form action="{{ route('supplier-installments.store') }}" method="POST">
+                @csrf
+                <input type="hidden" name="supplier_id" value="{{ $supplier->id }}">
+                <input type="hidden" name="plan_type" value="single">
+
+                <div class="erp-modal-body p-5">
+                    <div class="mb-3.5">
+                        <label class="erp-label block mb-1.5 text-xs font-semibold">الفاتورة المرتبطة (اختياري)</label>
+                        <select name="purchase_invoice_id" class="erp-input w-full">
+                            <option value="">-- حساب عام للمورد --</option>
+                            @foreach($unpaidInvoices ?? [] as $unpaid)
+                                <option value="{{ $unpaid->id }}">
+                                    فاتورة رقم {{ $unpaid->invoice_number }} (متبقي: {{ number_format((float)$unpaid->remaining_amount, 2) }} ج.م)
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5 mb-3.5">
+                        <div>
+                            <label class="erp-label block mb-1.5 text-xs font-semibold">عنوان القسط *</label>
+                            <input type="text" name="installment_title" class="erp-input w-full" placeholder="مثال: قسط توريد بضاعة..." required>
+                        </div>
+                        <div>
+                            <label class="erp-label block mb-1.5 text-xs font-semibold">مبلغ القسط *</label>
+                            <input type="number" step="0.01" min="0.01" name="amount" class="erp-input font-numeric font-bold w-full" required placeholder="0.00">
+                        </div>
+                    </div>
+
+                    <div class="mb-3.5">
+                        <label class="erp-label block mb-1.5 text-xs font-semibold">تاريخ الاستحقاق *</label>
+                        <input type="date" name="due_date" value="{{ date('Y-m-d', strtotime('+7 days')) }}" class="erp-input font-numeric w-full" required>
+                    </div>
+
+                    <div class="mb-3.5">
+                        <label class="erp-label block mb-1.5 text-xs font-semibold">ملاحظات إضافية</label>
+                        <textarea name="notes" class="erp-input w-full" rows="2" placeholder="ملاحظات وشروط الدفعة..."></textarea>
+                    </div>
+                </div>
+
+                <div class="erp-modal-footer p-4 flex justify-end gap-2.5 bg-[var(--bg-surface-alt)] border-t border-[var(--border-light)]">
+                    <button type="button" onclick="document.getElementById('addSupplierInstallmentModal').style.display='none'" class="erp-btn erp-btn-secondary">إلغاء</button>
+                    <button type="submit" class="erp-btn erp-btn-primary">حفظ القسط المجدول</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
+        function handleSupplierInstallmentChange(select) {
+            const opt = select.selectedOptions[0];
+            const amountInput = document.getElementById('supplierPaymentAmount');
+            const invSelect = document.getElementById('supplierInvoiceSelect');
+
+            if (opt && opt.dataset.remaining) {
+                if (amountInput) {
+                    amountInput.value = opt.dataset.remaining;
+                    amountInput.max = opt.dataset.remaining;
+                }
+                if (opt.dataset.invoiceId && invSelect) {
+                    invSelect.value = opt.dataset.invoiceId;
+                }
+            } else {
+                if (amountInput) amountInput.removeAttribute('max');
+            }
+        }
+
         function handleSupplierInvoiceChange(select) {
             const selectedOpt = select.options[select.selectedIndex];
             const remaining = selectedOpt.getAttribute('data-remaining');
@@ -438,6 +627,25 @@
             const remaining = selectedOpt.getAttribute('data-remaining');
             if (remaining) {
                 document.getElementById('supplierPaymentAmount').value = remaining;
+            }
+        }
+
+        function openPaymentForInstallment(instId, instTitle, remaining, invId) {
+            const modal = document.getElementById('recordSupplierPaymentModal');
+            const instSelect = document.getElementById('supplierInstallmentSelect');
+            const invSelect = document.getElementById('supplierInvoiceSelect');
+            const amountInput = document.getElementById('supplierPaymentAmount');
+
+            if (instSelect) instSelect.value = instId;
+            if (invSelect && invId) invSelect.value = invId;
+            if (amountInput) {
+                amountInput.value = remaining;
+                amountInput.max = remaining;
+            }
+
+            if (modal) {
+                modal.style.display = 'flex';
+                modal.classList.add('open');
             }
         }
     </script>

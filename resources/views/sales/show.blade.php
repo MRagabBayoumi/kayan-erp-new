@@ -273,7 +273,7 @@
                                         {{ (float)$item->quantity }}
                                     </td>
                                     <td class="text-center font-numeric text-xs text-[var(--text-muted)]">
-                                        {{ (float)$item->base_quantity }} {{ $item->product->unit ?? 'قطعة' }}
+                                        {{ (float)$item->base_quantity }} قطعة
                                     </td>
                                     <td class="text-center font-numeric">
                                         {{ number_format((float)$item->unit_price, 2) }} ج.م

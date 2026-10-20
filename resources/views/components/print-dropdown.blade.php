@@ -52,7 +52,7 @@
         @endif
 
         @if($directThermal)
-            <button type="button" data-action="python-direct-print" data-url="{{ $directThermal }}" class="erp-dropdown-item font-bold text-emerald-800 dark:text-emerald-300">
+            <button type="button" data-action="python-direct-print" data-url="{{ $directThermal }}" data-fallback-url="{{ $urlThermal }}" class="erp-dropdown-item font-bold text-emerald-800 dark:text-emerald-300">
                 <x-icon name="zap" size="15" class="text-emerald-600" />
                 <div class="flex flex-col">
                     <span>طباعة فورية صامتة ⚡</span>

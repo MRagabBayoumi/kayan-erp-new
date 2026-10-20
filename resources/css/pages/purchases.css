@@ -212,41 +212,73 @@
     pointer-events: none;
 }
 
-/* Quick Search Suggestions */
+/* Quick Search Suggestions — Matching Cashier (POS) Style */
+.purchases-quick-entry,
+.purchases-quick-entry-body,
+.purchases-quick-row-2,
+.erp-form-group.relative {
+    overflow: visible !important;
+}
+
 .purchases-autocomplete-dropdown {
     position: absolute;
     top: calc(100% + 4px);
     right: 0;
     left: 0;
-    min-width: 480px;
-    max-height: 320px;
+    min-width: 500px;
+    max-height: 350px;
     overflow-y: auto;
     background: var(--bg-surface);
     border: 1.5px solid var(--border-color);
     border-radius: var(--border-radius-md, 8px);
-    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.25);
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.28);
     z-index: 9999 !important;
 }
 
-.purchases-suggestion-item {
-    padding: 8px 12px;
+.purchases-suggestion-item,
+.pos-suggestion-item {
+    padding: 10px 14px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    font-size: 12px;
-    border-bottom: 1px solid var(--border-light);
+    gap: 12px;
+    border-bottom: 1px solid var(--border-color);
     color: var(--text-main);
-    transition: background-color 0.1s ease;
+    background: var(--bg-surface);
+    transition: background-color 0.12s ease, border-right 0.12s ease;
 }
 
-.purchases-suggestion-item:last-child {
+.purchases-suggestion-item:last-child,
+.pos-suggestion-item:last-child {
     border-bottom: none;
 }
 
 .purchases-suggestion-item:hover,
-.purchases-suggestion-item.active {
-    background-color: var(--bg-hover);
+.purchases-suggestion-item.active,
+.purchases-suggestion-item.bg-selected,
+.pos-suggestion-item:hover,
+.pos-suggestion-item.active,
+.pos-suggestion-item.bg-selected {
+    background-color: var(--primary-soft) !important;
+    border-right: 4px solid var(--primary);
+}
+
+.purchases-suggestion-item .item-title,
+.pos-suggestion-item .item-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.purchases-suggestion-item .item-meta,
+.pos-suggestion-item .item-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 3px;
 }
 
 /* Commit Button */

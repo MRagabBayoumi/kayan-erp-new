@@ -237,6 +237,16 @@ class Product extends Model
     }
 
     /**
+     * Effective cost price per base piece.
+     */
+    public function getBaseCostPriceAttribute(): float
+    {
+        $factor = (float) ($this->unit_factor > 0 ? $this->unit_factor : 1.0);
+
+        return (float) ($this->cost_price ?? 0) / $factor;
+    }
+
+    /**
      * Check if product is low on stock based on min_stock_alert threshold.
      */
     public function getIsLowStockAttribute(): bool

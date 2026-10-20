@@ -31,7 +31,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('sales_return_id')->constrained('sales_returns')->cascadeOnDelete();
             $table->foreignId('sales_invoice_item_id')->constrained('sales_invoice_items')->restrictOnDelete();
-            $table->foreignId('inventory_batch_id')->constrained('inventory_batches')->restrictOnDelete();
+            $table->foreignId('inventory_batch_id')->nullable()->constrained('inventory_batches')->nullOnDelete();
             $table->foreignId('product_id')->constrained('products')->restrictOnDelete();
             $table->foreignId('unit_id')->nullable()->constrained('units')->nullOnDelete();
             $table->decimal('conversion_factor', 10, 4)->default(1.0000);

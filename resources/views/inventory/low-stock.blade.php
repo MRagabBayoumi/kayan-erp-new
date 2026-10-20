@@ -100,14 +100,14 @@
                             <a href="{{ route('products.show', $product) }}" class="font-semibold text-[var(--text-main)] hover:text-[var(--primary)] block truncate" title="عرض تفاصيل الصنف">
                                 {{ $product->name }}
                             </a>
-                            <span class="text-[11px] text-[var(--text-muted)]">الوحدة: {{ $product->unit }}</span>
+                            <span class="text-[11px] text-[var(--text-muted)]">الوحدة: {{ $product->unit }}@if(($product->unit_factor ?? 1) > 1) ({{ (int)$product->unit_factor }} قطعة)@endif</span>
                         </td>
                         <td>
                             <span class="erp-badge erp-badge-neutral">{{ $product->category?->name ?? 'بدون تصنيف' }}</span>
                         </td>
                         <td class="text-center">
                             <span class="font-numeric text-sm font-extrabold {{ $isOut ? 'text-[var(--danger,#ef4444)]' : 'text-[var(--warning,#f59e0b)]' }}">
-                                {{ number_format($currentStock) }}
+                                {{ $product->formatStockBreakdown($currentStock) }}
                             </span>
                         </td>
                         <td class="text-center font-numeric text-sm text-[var(--text-secondary)]">
@@ -126,7 +126,10 @@
                             @endif
                         </td>
                         <td class="text-left font-numeric">
-                            {{ number_format($product->cost_price, 2) }} ج.م
+                            <div>{{ number_format($product->cost_price, 2) }} ج.م</div>
+                            @if(($product->unit_factor ?? 1) > 1)
+                                <small class="text-[10px] text-[var(--text-muted)] block">({{ number_format($product->base_cost_price, 2) }} ج.م/قطعة)</small>
+                            @endif
                         </td>
                         <td class="text-center">
                             <div class="flex items-center justify-center gap-1">

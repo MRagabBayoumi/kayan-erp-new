@@ -65,14 +65,20 @@
                             <label for="supplierId" class="erp-form-label">
                                 المورد <span class="text-[var(--danger)]">*</span>
                             </label>
-                            <select name="supplier_id" id="supplierId" class="erp-input @error('supplier_id') erp-input-error @enderror" required>
-                                <option value="">-- اختر المورد المطلوب --</option>
-                                @foreach($suppliers as $supplier)
-                                    <option value="{{ $supplier->id }}" {{ (string)old('supplier_id', $invoice->supplier_id) === (string)$supplier->id ? 'selected' : '' }}>
-                                        {{ $supplier->name }} (رصيد: {{ number_format((float)$supplier->current_balance, 2) }} ج.م)
-                                    </option>
-                                @endforeach
-                            </select>
+                            <div class="flex items-center gap-1.5">
+                                <select name="supplier_id" id="supplierId" class="erp-input w-full @error('supplier_id') erp-input-error @enderror" required>
+                                    <option value="__add_new__" class="font-bold text-[var(--primary)]">+ إضافة مورد جديد...</option>
+                                    <option value="">-- اختر المورد المطلوب --</option>
+                                    @foreach($suppliers as $supplier)
+                                        <option value="{{ $supplier->id }}" data-type="{{ $supplier->supplier_type }}" data-currency="{{ $supplier->currency }}" {{ (string)old('supplier_id', $invoice->supplier_id) === (string)$supplier->id ? 'selected' : '' }}>
+                                            {{ $supplier->name }} (رصيد: {{ number_format((float)$supplier->current_balance, 2) }} ج.م)
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <button type="button" id="quickAddSupplierBtn" class="erp-btn erp-btn-secondary px-2.5 flex-shrink-0" title="إضافة مورد جديد">
+                                    <x-icon name="plus" size="14" />
+                                </button>
+                            </div>
                         </div>
 
                         <!-- Warehouse -->
@@ -186,9 +192,25 @@
                                     <x-icon name="barcode" size="14" class="text-[var(--primary)]" />
                                     <span id="quickSearchInputLabel">مربع البحث / قراءة الباركود</span>
                                 </span>
-                                <span id="selectedProductBadge" class="hidden text-[10px] text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded font-bold">
-                                    صنف محدد
-                                </span>
+                                <div class="flex items-center gap-1.5">
+                                    <!-- Live Available Stock Badge -->
+                                    <span id="quickStockBadge" class="hidden pos-stock-badge in-stock font-bold">
+                                        رصيد الصنف بالمخزن: 0 قطعة
+                                    </span>
+                                    <span id="selectedProductBadge" class="hidden text-[10px] text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded font-bold">
+                                        صنف محدد
+                                    </span>
+                                    <!-- Quick Add Product Button -->
+                                    <button 
+                                        type="button" 
+                                        id="openQuickProductModalBtn" 
+                                        class="erp-btn erp-btn-xs erp-btn-secondary text-[11px] font-bold text-[var(--primary)] hover:bg-[var(--primary-soft)] border-dashed border-[var(--primary)] cursor-pointer flex items-center gap-1 px-2 py-0.5"
+                                        title="إضافة صنف جديد سريع وإدراجه بالفاتورة (اختصار: F3)"
+                                    >
+                                        <x-icon name="plus" size="12" />
+                                        <span>صنف جديد (F3)</span>
+                                    </button>
+                                </div>
                             </label>
                             <div class="relative w-full">
                                 <input 
@@ -203,9 +225,25 @@
                             <input type="hidden" id="quickProductId">
                         </div>
 
+                        <!-- مربع وحدة القياس مع سويتش القطعة والدستة -->
                         <div class="erp-form-group mb-0">
-                            <label for="quickUnitSelect" class="erp-form-label text-xs font-semibold">وحدة القياس</label>
-                            <select id="quickUnitSelect" class="erp-input text-xs">
+                            <div class="flex items-center justify-between mb-1">
+                                <label for="quickUnitSelect" class="erp-form-label text-xs font-semibold mb-0">
+                                    وحدة القياس
+                                </label>
+                                <!-- Fast Unit Switcher Pills (Piece / Dozen) -->
+                                <div class="pos-unit-switcher" id="posQuickUnitSwitcher">
+                                    <button type="button" id="quickUnitPieceBtn" class="pos-unit-pill active" data-unit="piece" title="شراء بالقطعة الفردية (اختصار: P أو ق)">
+                                        <x-icon name="disc" size="11" />
+                                        <span>قطعة (×1)</span>
+                                    </button>
+                                    <button type="button" id="quickUnitDozenBtn" class="pos-unit-pill" data-unit="dozen" title="شراء بالدستة أو العبوة كاملة (اختصار: * أو D أو د)">
+                                        <x-icon name="layers" size="11" />
+                                        <span id="quickUnitDozenLabel">دستة (* 12)</span>
+                                    </button>
+                                </div>
+                            </div>
+                            <select id="quickUnitSelect" class="erp-input text-xs font-semibold">
                                 @forelse($units as $u)
                                     <option value="{{ $u->id }}" data-name="{{ $u->name }}" data-factor="{{ $u->conversion_factor }}" {{ $u->is_default ? 'selected' : '' }}>
                                         {{ $u->name }} ({{ $u->code }})
@@ -302,7 +340,9 @@
                                             <span class="inline-block bg-[var(--surface-muted)] px-2 py-1 rounded font-semibold text-[var(--text-main)] purchase-unit-badge">
                                                 {{ $row['unit_name'] ?? 'قطعة' }}
                                             </span>
+                                            <input type="hidden" name="items[{{ $idx }}][unit_id]" value="{{ $row['unit_id'] ?? '' }}" class="purchase-unit-id-input">
                                             <input type="hidden" name="items[{{ $idx }}][unit_name]" value="{{ $row['unit_name'] ?? 'قطعة' }}" class="purchase-unit-input">
+                                            <input type="hidden" name="items[{{ $idx }}][conversion_factor]" value="{{ $row['conversion_factor'] ?? '1.0' }}" class="purchase-factor-input">
                                         </td>
                                         <td>
                                             <input type="number" step="0.01" min="0.01" name="items[{{ $idx }}][quantity]" value="{{ $row['quantity'] ?? '1' }}" class="erp-input font-numeric text-center purchase-qty-input w-full text-xs" required>
@@ -491,7 +531,9 @@
                 <span class="inline-block bg-[var(--surface-muted)] px-2 py-1 rounded font-semibold text-[var(--text-main)] purchase-unit-badge">
                     __UNIT__
                 </span>
+                <input type="hidden" name="items[__INDEX__][unit_id]" value="__UNIT_ID__" class="purchase-unit-id-input">
                 <input type="hidden" name="items[__INDEX__][unit_name]" value="__UNIT__" class="purchase-unit-input">
+                <input type="hidden" name="items[__INDEX__][conversion_factor]" value="__FACTOR__" class="purchase-factor-input">
             </td>
             <td>
                 <input type="number" step="0.01" min="0.01" name="items[__INDEX__][quantity]" value="__QTY__" class="erp-input font-numeric text-center purchase-qty-input w-full text-xs" required>
@@ -512,4 +554,10 @@
             </td>
         </tr>
     </template>
+
+    <!-- Quick Add Product Modal Dialog -->
+    <x-quick-product-modal :categories="$categories" :units="$units" :suggested-sku="$suggestedSku ?? null" />
+
+    <!-- Quick Add Supplier Modal Dialog -->
+    <x-quick-supplier-modal />
 @endsection

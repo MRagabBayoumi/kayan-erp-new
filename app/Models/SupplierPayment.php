@@ -22,6 +22,7 @@ class SupplierPayment extends Model
         'payment_number',
         'supplier_id',
         'purchase_invoice_id',
+        'supplier_installment_id',
         'treasury_id',
         'cashier_shift_id',
         'payment_date',
@@ -48,6 +49,11 @@ class SupplierPayment extends Model
     public function purchaseInvoice(): BelongsTo
     {
         return $this->belongsTo(PurchaseInvoice::class);
+    }
+
+    public function installment(): BelongsTo
+    {
+        return $this->belongsTo(SupplierInstallment::class, 'supplier_installment_id');
     }
 
     public function treasury(): BelongsTo

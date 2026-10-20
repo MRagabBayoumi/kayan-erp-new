@@ -203,17 +203,20 @@
                                 <a href="{{ route('products.show', $product) }}" class="font-semibold text-[var(--text-main)] hover:text-[var(--primary)] block" title="عرض تفاصيل الصنف">
                                     {{ $product->name }}
                                 </a>
-                                <span class="text-[11px] text-[var(--text-muted)]">الوحدة: {{ $product->unit }}</span>
+                                <span class="text-[11px] text-[var(--text-muted)]">الوحدة: {{ $product->unit }}@if(($product->unit_factor ?? 1) > 1) ({{ (int)$product->unit_factor }} قطعة)@endif</span>
                             </td>
                             <td>
                                 <span class="erp-badge erp-badge-neutral">{{ $product->category?->name ?? 'بدون تصنيف' }}</span>
                             </td>
                             <td class="text-left font-numeric">
-                                {{ number_format($product->cost_price, 2) }} ج.م
+                                <div>{{ number_format($product->cost_price, 2) }} ج.م</div>
+                                @if(($product->unit_factor ?? 1) > 1)
+                                    <small class="text-[10px] text-[var(--text-muted)] block">({{ number_format($product->base_cost_price, 2) }} ج.م/قطعة)</small>
+                                @endif
                             </td>
-                            <td class="text-center">
-                                <span class="font-numeric text-sm font-extrabold {{ $isOutOfStock ? 'text-[var(--danger,#ef4444)]' : ($isLowStock ? 'text-[var(--warning,#f59e0b)]' : 'text-[var(--text-main)]') }}">
-                                    {{ number_format($totalStock) }}
+                            <td class="text-center font-numeric">
+                                <span class="text-sm font-extrabold {{ $isOutOfStock ? 'text-[var(--danger,#ef4444)]' : ($isLowStock ? 'text-[var(--warning,#f59e0b)]' : 'text-[var(--text-main)]') }}">
+                                    {{ $product->formatStockBreakdown($totalStock) }}
                                 </span>
                             </td>
                             <td>
@@ -222,7 +225,7 @@
                                         @if($sb->quantity > 0)
                                             <div class="text-[11px] flex justify-between gap-2">
                                                 <span class="text-[var(--text-secondary)]">{{ $sb->warehouse->name }}:</span>
-                                                <strong class="font-numeric text-[var(--text-main)]">{{ number_format($sb->quantity) }}</strong>
+                                                <strong class="font-numeric text-[var(--text-main)]">{{ $product->formatStockBreakdown((float)$sb->quantity) }}</strong>
                                             </div>
                                         @endif
                                     @empty
@@ -240,7 +243,7 @@
                                 @endif
                             </td>
                             <td class="text-left font-numeric font-bold text-[var(--text-main)]">
-                                {{ number_format($totalStock * (float) $product->cost_price, 2) }} ج.م
+                                {{ number_format($totalStock * (float) $product->base_cost_price, 2) }} ج.م
                             </td>
                             <td class="text-center">
                                 <div class="flex items-center justify-center gap-1">
@@ -256,7 +259,7 @@
                                         data-product-id="{{ $product->id }}"
                                         data-product-name="{{ $product->name }}"
                                         data-product-sku="{{ $product->sku }}"
-                                        data-product-cost="{{ (float) $product->cost_price }}"
+                                        data-product-cost="{{ (float) $product->base_cost_price }}"
                                         class="erp-btn erp-btn-sm erp-btn-secondary"
                                         title="إجراء حركة أو تسوية">
                                         <x-icon name="arrow-left-right" size="13" />
@@ -330,7 +333,7 @@
                             <select id="modal_product_id" name="product_id" class="erp-input w-full" required>
                                 <option value="">-- اختر الصنف --</option>
                                 @foreach($products as $prod)
-                                    <option value="{{ $prod->id }}" data-cost="{{ $prod->cost_price }}">
+                                    <option value="{{ $prod->id }}" data-cost="{{ $prod->base_cost_price }}">
                                         [{{ $prod->sku }}] {{ $prod->name }}
                                     </option>
                                 @endforeach

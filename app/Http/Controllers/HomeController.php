@@ -65,8 +65,9 @@ class HomeController extends Controller
             ->sum(DB::raw('remaining_quantity * cost_price')), 0.0, false);
 
         if ($stockCostValue <= 0 && $stockQuantity > 0) {
-            $stockCostValue = (float) rescue(fn () => StockBalance::join('products', 'stock_balances.product_id', '=', 'products.id')
-                ->sum(DB::raw('stock_balances.quantity * (products.cost_price / CASE WHEN products.pieces_per_package > 1 THEN products.pieces_per_package ELSE 1 END)')), 0.0, false);
+            $stockCostValue = (float) rescue(fn () => Product::with('stockBalances')->get()->sum(function (Product $p) {
+                return $p->total_stock * $p->base_cost_price;
+            }), 0.0, false);
         }
 
         // Retail valuation based on base unit selling price
@@ -82,7 +83,7 @@ class HomeController extends Controller
                     }
                     $product = $batch->product;
                     if ($product) {
-                        $factor = ($product->pieces_per_package && $product->pieces_per_package > 1) ? (float) $product->pieces_per_package : 1.0;
+                        $factor = (float) ($product->unit_factor > 0 ? $product->unit_factor : 1.0);
 
                         return $qty * ((float) $product->retail_price / $factor);
                     }

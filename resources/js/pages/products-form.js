@@ -167,5 +167,82 @@ export function initProductForm() {
             }
         });
     }
+
+    // 6. Live Opening Balance Breakdown (Pieces & Cost)
+    const openingQtyInput = form.querySelector('#openingQuantity');
+    const openingCostInput = form.querySelector('#openingCost');
+    const openingUnitLabel = form.querySelector('#openingUnitLabel');
+    const openingCostUnitLabel = form.querySelector('#openingCostUnitLabel');
+    const openingQtyBreakdown = form.querySelector('#openingQtyBreakdown');
+    const openingCostBreakdown = form.querySelector('#openingCostBreakdown');
+
+    function updateOpeningBalancePreview() {
+        if (!openingQtyInput) return;
+
+        const unitName = (unitSelect ? unitSelect.value : 'قطعة').trim();
+        const selectedOpt = unitSelect ? unitSelect.options[unitSelect.selectedIndex] : null;
+        const optFactor = selectedOpt ? parseFloat(selectedOpt.getAttribute('data-factor')) : 1;
+        const piecesPerPack = piecesInput ? parseFloat(piecesInput.value) : 1;
+
+        let factor = 1;
+        if (piecesPerPack > 1) {
+            factor = piecesPerPack;
+        } else if (optFactor > 1) {
+            factor = optFactor;
+        } else if (unitName.includes('دست')) {
+            factor = 12;
+        }
+
+        const qty = parseFloat(openingQtyInput.value) || 0;
+        const costPrice = parseFloat(costInput ? costInput.value : 0) || 0;
+        const cost = (openingCostInput && openingCostInput.value !== '')
+            ? (parseFloat(openingCostInput.value) || 0)
+            : costPrice;
+
+        if (openingUnitLabel) {
+            openingUnitLabel.textContent = `(${unitName})`;
+        }
+        if (openingCostUnitLabel) {
+            openingCostUnitLabel.textContent = `(لكل ${unitName})`;
+        }
+
+        if (openingQtyBreakdown) {
+            if (qty > 0 && factor > 1) {
+                const totalPieces = Math.round(qty * factor);
+                openingQtyBreakdown.textContent = `= ${totalPieces.toLocaleString('ar-EG')} قطعة (${qty} ${unitName} × ${factor} قطعة)`;
+                openingQtyBreakdown.classList.remove('hidden');
+            } else if (qty > 0) {
+                openingQtyBreakdown.textContent = `= ${qty} قطعة`;
+                openingQtyBreakdown.classList.remove('hidden');
+            } else {
+                openingQtyBreakdown.classList.add('hidden');
+            }
+        }
+
+        if (openingCostBreakdown) {
+            if (qty > 0 && cost > 0) {
+                const totalCost = (qty * cost).toFixed(2);
+                if (factor > 1) {
+                    const pieceCost = (cost / factor).toFixed(2);
+                    openingCostBreakdown.textContent = `= ${pieceCost} ج.م للقطعة | إجمالي القيمة: ${parseFloat(totalCost).toLocaleString('ar-EG', { minimumFractionDigits: 2 })} ج.م`;
+                } else {
+                    openingCostBreakdown.textContent = `إجمالي القيمة: ${parseFloat(totalCost).toLocaleString('ar-EG', { minimumFractionDigits: 2 })} ج.م`;
+                }
+                openingCostBreakdown.classList.remove('hidden');
+            } else {
+                openingCostBreakdown.classList.add('hidden');
+            }
+        }
+    }
+
+    openingQtyInput?.addEventListener('input', updateOpeningBalancePreview);
+    openingCostInput?.addEventListener('input', updateOpeningBalancePreview);
+    costInput?.addEventListener('input', updateOpeningBalancePreview);
+    unitSelect?.addEventListener('change', () => {
+        setTimeout(updateOpeningBalancePreview, 20);
+    });
+    piecesInput?.addEventListener('input', updateOpeningBalancePreview);
+
+    updateOpeningBalancePreview();
 }
 

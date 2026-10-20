@@ -65,9 +65,8 @@
                     <!-- Current Available Stock -->
                     <div class="erp-ledger-metric-card highlight">
                         <span class="erp-ledger-metric-label">الرصيد المتوفر</span>
-                        <div class="erp-ledger-metric-val font-numeric">
-                            {{ number_format($product->total_stock, 2) }}
-                            <span class="erp-ledger-metric-unit">{{ $product->unit }}</span>
+                        <div class="erp-ledger-metric-val font-numeric text-sm sm:text-base">
+                            {{ $product->formatStockBreakdown() }}
                         </div>
                     </div>
 
@@ -119,7 +118,7 @@
                     @foreach($product->stockBalances as $sb)
                         <span class="erp-ledger-wh-pill font-numeric">
                             <span>{{ $sb->warehouse->name ?? 'مستودع' }}:</span>
-                            <strong>{{ number_format((float)$sb->quantity, 2) }} {{ $product->unit }}</strong>
+                            <strong>{{ $product->formatStockBreakdown((float)$sb->quantity) }}</strong>
                         </span>
                     @endforeach
                 </div>
@@ -269,13 +268,23 @@
                                     @else
                                         <span>{{ number_format((float)$m->quantity, 2) }}</span>
                                     @endif
-                                    <small class="text-[10px] text-[var(--text-muted)]">{{ $product->unit }}</small>
+                                    <small class="text-[10px] text-[var(--text-muted)]">قطعة</small>
+                                    @if(($product->unit_factor ?? 1) > 1 && $product->unit && $product->unit !== 'قطعة')
+                                        <div class="text-[10px] text-[var(--text-muted)] font-normal">({{ $product->formatStockBreakdown((float)$m->quantity) }})</div>
+                                    @endif
                                 </td>
                                 <td class="font-numeric text-center text-xs">
                                     {{ number_format((float)$m->unit_cost, 2) }} ج.م
                                 </td>
                                 <td class="font-numeric text-center font-bold text-xs text-[var(--primary)] bg-[var(--surface-muted)]">
-                                    {{ $m->running_balance !== null ? number_format((float)$m->running_balance, 2) : '—' }}
+                                    @if($m->running_balance !== null)
+                                        <div>{{ number_format((float)$m->running_balance, 2) }}</div>
+                                        @if(($product->unit_factor ?? 1) > 1 && $product->unit && $product->unit !== 'قطعة')
+                                            <div class="text-[10px] text-[var(--text-muted)] font-normal">({{ $product->formatStockBreakdown((float)$m->running_balance) }})</div>
+                                        @endif
+                                    @else
+                                        —
+                                    @endif
                                 </td>
                                 <td class="text-xs text-[var(--text-muted)]">
                                     <div>{{ $m->notes ?? '—' }}</div>

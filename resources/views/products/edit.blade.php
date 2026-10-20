@@ -330,7 +330,7 @@
                             <!-- Opening Quantity -->
                             <div class="erp-form-group">
                                 <label for="openingQuantity" class="erp-form-label">
-                                    الكمية الافتتاحية
+                                    الكمية الافتتاحية <span id="openingUnitLabel" class="text-[var(--primary)] text-xs font-semibold"></span>
                                 </label>
                                 <input 
                                     type="number" 
@@ -341,13 +341,14 @@
                                     value="{{ old('opening_quantity', $product->opening_quantity ?? '0.00') }}" 
                                     class="erp-input font-numeric @error('opening_quantity') erp-input-error @enderror"
                                 >
+                                <div id="openingQtyBreakdown" class="text-[11px] font-semibold text-[var(--primary)] mt-1 hidden"></div>
                                 <small class="text-[10px] text-[var(--text-muted)]">اتركه 0 إذا لم يتوفر رصيد أولي</small>
                             </div>
 
                             <!-- Opening Cost -->
                             <div class="erp-form-group">
                                 <label for="openingCost" class="erp-form-label">
-                                    تكلفة الوحدة للرصيد الافتتاحي
+                                    تكلفة الوحدة للرصيد الافتتاحي <span id="openingCostUnitLabel" class="text-[var(--text-muted)] text-[11px]"></span>
                                 </label>
                                 <input 
                                     type="number" 
@@ -359,7 +360,8 @@
                                     class="erp-input font-numeric @error('opening_cost') erp-input-error @enderror" 
                                     placeholder="فارغ = نفس سعر التكلفة"
                                 >
-                                <small class="text-[10px] text-[var(--text-muted)]">تكلفة القطعة للرصيد الأولي (ج.م)</small>
+                                <div id="openingCostBreakdown" class="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 mt-1 hidden"></div>
+                                <small class="text-[10px] text-[var(--text-muted)]">تكلفة الوحدة المحددة (ج.م) للرصيد الأولي</small>
                             </div>
 
                             <!-- Opening Warehouse -->

@@ -254,6 +254,27 @@ test('supplier creation validates required fields', function () {
     $response->assertSessionHasErrors(['name', 'supplier_type', 'currency']);
 });
 
+test('supplier can be created as local supplier defaulting to EGP and Egypt with null wechat_id', function () {
+    $response = $this->post(route('suppliers.store'), [
+        'name' => 'شركة النور للمستلزمات المحلية',
+        'supplier_type' => 'local_supplier',
+        'contact_person' => 'أحمد محمود',
+        'phone' => '01012345678',
+        'city' => 'القاهرة',
+    ]);
+
+    $response->assertRedirect(route('suppliers.index'));
+    $response->assertSessionHas('success');
+
+    $this->assertDatabaseHas('suppliers', [
+        'name' => 'شركة النور للمستلزمات المحلية',
+        'supplier_type' => 'local_supplier',
+        'currency' => 'EGP',
+        'country' => 'مصر',
+        'wechat_id' => null,
+    ]);
+});
+
 test('supplier can be created with China factory info and WeChat ID', function () {
     $response = $this->post(route('suppliers.store'), [
         'name' => 'Guangzhou Handbag Co.',
@@ -440,8 +461,8 @@ test('dashboard displays real customer, supplier, and product counters', functio
     $response = $this->get(route('dashboard'));
 
     $response->assertOk();
-    $response->assertSee('دليل عملاء الجملة والتجزئة');
-    $response->assertSee('دليل الموردين ومصانع الصين');
+    $response->assertSee('دليل العملاء');
+    $response->assertSee('دليل الموردين');
 });
 
 test('customer can be created with credit opening balance and appears in statement', function () {
