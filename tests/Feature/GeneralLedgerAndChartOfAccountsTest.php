@@ -142,18 +142,29 @@ test('chart of accounts and journal entries pages load successfully', function (
     $resCoa->assertSee('دليل الحسابات الشجري');
     $resCoa->assertSee('الأصول');
 
+    // Create an entry with customer and supplier line relations to ensure eager loading works
+    $customer = Customer::create(['name' => 'عميل اختبار', 'phone' => '01011112222', 'is_active' => true]);
+    $cashAcc = Account::where('code', '110101')->firstOrFail();
+    $arAcc = Account::where('code', '110201')->firstOrFail();
+
+    $entry = (new AccountingService)->createEntry([
+        'description' => 'قيد تجريبي للأطراف',
+        'entry_date' => now()->toDateString(),
+    ], [
+        ['account_id' => $cashAcc->id, 'debit' => 250, 'credit' => 0],
+        ['account_id' => $arAcc->id, 'debit' => 0, 'credit' => 250, 'party_type' => 'customer', 'party_id' => $customer->id],
+    ]);
+
     $resJe = $this->get(route('accounting.journal-entries'));
     $resJe->assertStatus(200);
     $resJe->assertSee('دفتر قيود اليومية العامة');
+    $resJe->assertSee($entry->entry_number);
 
-    // Test JSON endpoint for first entry
-    $entry = JournalEntry::first();
-    if ($entry) {
-        $resShow = $this->get(route('accounting.journal-entries.show', $entry));
-        $resShow->assertStatus(200);
-        $resShow->assertJsonPath('success', true);
-        $resShow->assertJsonPath('entry.id', $entry->id);
-    }
+    // Test JSON endpoint for entry
+    $resShow = $this->get(route('accounting.journal-entries.show', $entry));
+    $resShow->assertStatus(200);
+    $resShow->assertJsonPath('success', true);
+    $resShow->assertJsonPath('entry.id', $entry->id);
 });
 
 test('can create a sub-account under an existing parent', function () {

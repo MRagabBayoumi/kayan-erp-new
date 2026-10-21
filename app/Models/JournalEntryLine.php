@@ -47,6 +47,22 @@ class JournalEntryLine extends Model
     }
 
     /**
+     * Customer party if party_type is customer.
+     */
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class, 'party_id');
+    }
+
+    /**
+     * Supplier party if party_type is supplier.
+     */
+    public function supplier(): BelongsTo
+    {
+        return $this->belongsTo(Supplier::class, 'party_id');
+    }
+
+    /**
      * Helper to retrieve related party (Customer, Supplier, etc.)
      */
     public function getPartyAttribute(): mixed
