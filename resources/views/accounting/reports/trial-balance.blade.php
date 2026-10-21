@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('control_panel')
-    <x-control-panel title="ميزان المراجعة (Trial Balance)" :breadcrumbs="['المالية والحسابات' => route('accounting.chart-of-accounts'), 'ميزان المراجعة' => route('accounting.reports.trial-balance')]">
+    <x-control-panel title="ميزان المراجعة (Trial Balance)" :breadcrumbs="['المالية والحسابات' => route('treasuries.index'), 'شجرة الحسابات' => route('accounting.chart-of-accounts'), 'ميزان المراجعة' => route('accounting.reports.trial-balance')]">
         <x-slot:actions>
             <a href="{{ route('accounting.reports.trial-balance.print', request()->query()) }}" target="_blank" class="erp-btn erp-btn-secondary">
                 <x-icon name="printer" size="16" />
@@ -34,64 +34,78 @@
         @include('accounting.nav-tabs')
 
         <!-- KPI Summary Cards -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <div class="erp-card p-4 border-r-4 border-r-[var(--primary)]">
-                <div class="flex items-center justify-between text-xs text-[var(--text-muted)] mb-1">
-                    <span>حركات الفترة (مدين)</span>
-                    <x-icon name="trending-up" size="16" />
+        <div class="finance-kpi-grid">
+            <div class="finance-kpi-card">
+                <div class="finance-kpi-icon primary">
+                    <x-icon name="trending-up" size="22" />
                 </div>
-                <div class="text-xl font-bold font-numeric text-[var(--text-main)]">
-                    {{ number_format($report['totals']['period_debit'], 2) }} <small class="text-xs font-normal">ج.م</small>
-                </div>
-            </div>
-
-            <div class="erp-card p-4 border-r-4 border-r-emerald-500">
-                <div class="flex items-center justify-between text-xs text-[var(--text-muted)] mb-1">
-                    <span>حركات الفترة (دائن)</span>
-                    <x-icon name="trending-down" size="16" />
-                </div>
-                <div class="text-xl font-bold font-numeric text-emerald-600 dark:text-emerald-400">
-                    {{ number_format($report['totals']['period_credit'], 2) }} <small class="text-xs font-normal">ج.م</small>
+                <div class="finance-kpi-info">
+                    <div class="finance-kpi-label">حركات الفترة (مدين)</div>
+                    <div class="finance-kpi-value font-numeric text-[var(--primary)]">
+                        {{ number_format($report['totals']['period_debit'], 2) }} <span class="text-xs font-normal text-[var(--text-muted)]">ج.م</span>
+                    </div>
+                    <div class="finance-kpi-sub">إجمالي قيود المدين للفترة</div>
                 </div>
             </div>
 
-            <div class="erp-card p-4 border-r-4 border-r-blue-500">
-                <div class="flex items-center justify-between text-xs text-[var(--text-muted)] mb-1">
-                    <span>إجمالي الأرصدة الختامية</span>
-                    <x-icon name="layers" size="16" />
+            <div class="finance-kpi-card">
+                <div class="finance-kpi-icon info">
+                    <x-icon name="trending-down" size="22" />
                 </div>
-                <div class="text-xl font-bold font-numeric text-blue-600 dark:text-blue-400">
-                    {{ number_format($report['totals']['closing_debit'], 2) }} <small class="text-xs font-normal">ج.م</small>
+                <div class="finance-kpi-info">
+                    <div class="finance-kpi-label">حركات الفترة (دائن)</div>
+                    <div class="finance-kpi-value font-numeric text-[var(--info-text)]">
+                        {{ number_format($report['totals']['period_credit'], 2) }} <span class="text-xs font-normal text-[var(--text-muted)]">ج.م</span>
+                    </div>
+                    <div class="finance-kpi-sub">إجمالي قيود الدائن للفترة</div>
                 </div>
             </div>
 
-            <div class="erp-card p-4 border-r-4 {{ $report['totals']['is_balanced'] ? 'border-r-emerald-600 bg-emerald-50/30 dark:bg-emerald-950/20' : 'border-r-rose-600 bg-rose-50/30 dark:bg-rose-950/20' }}">
-                <div class="flex items-center justify-between text-xs text-[var(--text-muted)] mb-1">
-                    <span>حالة التوازن المحاسبي</span>
-                    <x-icon name="{{ $report['totals']['is_balanced'] ? 'shield' : 'alert-octagon' }}" size="16" />
+            <div class="finance-kpi-card">
+                <div class="finance-kpi-icon success">
+                    <x-icon name="layers" size="22" />
                 </div>
-                <div class="text-lg font-bold font-numeric {{ $report['totals']['is_balanced'] ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400' }}">
-                    {{ $report['totals']['is_balanced'] ? 'متوازن تماماً (0.00)' : 'فارق: '.number_format($report['totals']['diff'], 2).' ج.م' }}
+                <div class="finance-kpi-info">
+                    <div class="finance-kpi-label">إجمالي الأرصدة الختامية</div>
+                    <div class="finance-kpi-value font-numeric text-[var(--success-text)]">
+                        {{ number_format($report['totals']['closing_debit'], 2) }} <span class="text-xs font-normal text-[var(--text-muted)]">ج.م</span>
+                    </div>
+                    <div class="finance-kpi-sub">مجموع أرصدة الإغلاق المدينة/الدائنة</div>
+                </div>
+            </div>
+
+            <div class="finance-kpi-card">
+                <div class="finance-kpi-icon {{ $report['totals']['is_balanced'] ? 'success' : 'danger' }}">
+                    <x-icon name="{{ $report['totals']['is_balanced'] ? 'shield' : 'alert-octagon' }}" size="22" />
+                </div>
+                <div class="finance-kpi-info">
+                    <div class="finance-kpi-label">حالة التوازن المحاسبي</div>
+                    <div class="finance-kpi-value font-numeric {{ $report['totals']['is_balanced'] ? 'text-[var(--success-text)]' : 'text-[var(--danger)]' }}">
+                        {{ $report['totals']['is_balanced'] ? 'متوازن تماماً (0.00)' : 'فارق: '.number_format($report['totals']['diff'], 2).' ج.م' }}
+                    </div>
+                    <div class="finance-kpi-sub">
+                        {{ $report['totals']['is_balanced'] ? 'تطابق تام بين المدين والدائن' : 'يوجد عدم اتزان يتطلب مراجعة' }}
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- Filter & Search Toolbar -->
-        <div class="erp-card p-4 mb-6">
+        <div class="finance-filter-bar mb-4">
             <form method="GET" action="{{ route('accounting.reports.trial-balance') }}" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 items-end">
                 <div>
                     <label class="block text-xs font-semibold mb-1 text-[var(--text-muted)]">من تاريخ</label>
-                    <input type="date" name="date_from" value="{{ $currentDateFrom }}" class="erp-input w-full font-numeric text-xs">
+                    <input type="date" name="date_from" value="{{ $currentDateFrom }}" class="finance-filter-input w-full font-numeric text-xs">
                 </div>
 
                 <div>
                     <label class="block text-xs font-semibold mb-1 text-[var(--text-muted)]">إلى تاريخ</label>
-                    <input type="date" name="date_to" value="{{ $currentDateTo }}" class="erp-input w-full font-numeric text-xs">
+                    <input type="date" name="date_to" value="{{ $currentDateTo }}" class="finance-filter-input w-full font-numeric text-xs">
                 </div>
 
                 <div>
                     <label class="block text-xs font-semibold mb-1 text-[var(--text-muted)]">مستوى العرض</label>
-                    <select name="level" class="erp-input w-full text-xs">
+                    <select name="level" class="finance-filter-input w-full text-xs">
                         <option value="">كافة المستويات (تفصيلي)</option>
                         <option value="1" {{ $currentLevel === 1 ? 'selected' : '' }}>المستوى الأول (الحسابات الرئيسية)</option>
                         <option value="2" {{ $currentLevel === 2 ? 'selected' : '' }}>المستوى الثاني (المجموعات)</option>
@@ -100,8 +114,8 @@
                 </div>
 
                 <div class="flex items-center pb-2">
-                    <label class="inline-flex items-center gap-2 cursor-pointer text-xs font-semibold select-none">
-                        <input type="checkbox" name="show_zero" value="1" {{ $currentShowZero ? 'checked' : '' }} class="rounded border-gray-300 text-[var(--primary)] focus:ring-[var(--primary)]">
+                    <label class="inline-flex items-center gap-2 cursor-pointer text-xs font-semibold select-none text-[var(--text-main)]">
+                        <input type="checkbox" name="show_zero" value="1" {{ $currentShowZero ? 'checked' : '' }} class="rounded border-[var(--border-color)] text-[var(--primary)] focus:ring-[var(--primary)]">
                         <span>إظهار الحسابات الصفرية</span>
                     </label>
                 </div>
@@ -120,41 +134,41 @@
 
         <!-- Trial Balance Table -->
         <div class="erp-card overflow-hidden">
-            <div class="overflow-x-auto">
-                <table class="erp-table w-full text-xs">
+            <div class="erp-table-responsive">
+                <table class="erp-table erp-table-hover text-xs">
                     <thead>
-                        <tr class="bg-[var(--bg-surface-alt)] border-b border-[var(--border-color)]">
-                            <th rowspan="2" class="p-3 text-right font-bold w-28">كود الحساب</th>
-                            <th rowspan="2" class="p-3 text-right font-bold">اسم الحساب</th>
-                            <th rowspan="2" class="p-3 text-center font-bold w-24">النوع / الطبيعة</th>
-                            <th colspan="2" class="p-2 text-center font-bold border-l border-r border-[var(--border-color)] bg-black/5 dark:bg-white/5">الرصيد الافتتاحي</th>
-                            <th colspan="2" class="p-2 text-center font-bold border-r border-[var(--border-color)] bg-blue-50/50 dark:bg-blue-950/20">حركات الفترة</th>
-                            <th colspan="2" class="p-2 text-center font-bold border-r border-[var(--border-color)] bg-emerald-50/50 dark:bg-emerald-950/20">الرصيد الختامي</th>
-                            <th rowspan="2" class="p-3 text-center font-bold w-24">كشف الأستاذ</th>
+                        <tr>
+                            <th rowspan="2" class="text-right font-bold w-28">كود الحساب</th>
+                            <th rowspan="2" class="text-right font-bold">اسم الحساب</th>
+                            <th rowspan="2" class="text-center font-bold w-24">النوع / الطبيعة</th>
+                            <th colspan="2" class="text-center font-bold border-l border-r border-[var(--border-color)] bg-[var(--bg-surface-alt)]">الرصيد الافتتاحي</th>
+                            <th colspan="2" class="text-center font-bold border-r border-[var(--border-color)] bg-[var(--info-soft)]">حركات الفترة</th>
+                            <th colspan="2" class="text-center font-bold border-r border-[var(--border-color)] bg-[var(--success-soft)]">الرصيد الختامي</th>
+                            <th rowspan="2" class="text-center font-bold w-24">كشف الأستاذ</th>
                         </tr>
-                        <tr class="bg-[var(--bg-surface-alt)] border-b border-[var(--border-color)] text-[11px] text-[var(--text-muted)]">
-                            <th class="p-2 text-center border-l border-[var(--border-color)]">مدين</th>
-                            <th class="p-2 text-center border-r border-[var(--border-color)]">دائن</th>
-                            <th class="p-2 text-center">مدين</th>
-                            <th class="p-2 text-center border-r border-[var(--border-color)]">دائن</th>
-                            <th class="p-2 text-center">مدين</th>
-                            <th class="p-2 text-center border-r border-[var(--border-color)]">دائن</th>
+                        <tr class="text-[11px] text-[var(--text-muted)] bg-[var(--bg-surface-alt)]">
+                            <th class="text-center border-l border-[var(--border-color)]">مدين</th>
+                            <th class="text-center border-r border-[var(--border-color)]">دائن</th>
+                            <th class="text-center">مدين</th>
+                            <th class="text-center border-r border-[var(--border-color)]">دائن</th>
+                            <th class="text-center">مدين</th>
+                            <th class="text-center border-r border-[var(--border-color)]">دائن</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-[var(--border-color)]">
+                    <tbody>
                         @forelse($report['accounts'] as $item)
-                            <tr class="hover:bg-[var(--bg-surface-alt)] transition-colors {{ $item['level'] === 1 ? 'font-bold bg-black/[0.02] dark:bg-white/[0.02]' : ($item['level'] === 2 ? 'font-semibold' : '') }}">
-                                <td class="p-3 font-numeric text-[var(--text-muted)]">
-                                    <span class="inline-block px-1.5 py-0.5 rounded {{ $item['level'] === 1 ? 'bg-[var(--primary)]/10 text-[var(--primary)] font-bold' : '' }}">
+                            <tr class="erp-table-row {{ $item['level'] === 1 ? 'font-bold bg-[var(--bg-surface-alt)]' : ($item['level'] === 2 ? 'font-semibold' : '') }}">
+                                <td class="font-numeric text-[var(--text-muted)]">
+                                    <span class="inline-block px-1.5 py-0.5 rounded {{ $item['level'] === 1 ? 'bg-[var(--primary-soft)] text-[var(--primary)] font-bold' : '' }}">
                                         {{ $item['code'] }}
                                     </span>
                                 </td>
-                                <td class="p-3">
+                                <td>
                                     <div style="padding-right: {{ ($item['level'] - 1) * 16 }}px;" class="flex items-center gap-1.5">
                                         @if($item['level'] > 1)
                                             <span class="text-[var(--text-muted)] text-[10px]">↳</span>
                                         @endif
-                                        <a href="{{ route('accounting.accounts.ledger', $item['id']) }}" class="hover:text-[var(--primary)] hover:underline">
+                                        <a href="{{ route('accounting.accounts.ledger', $item['id']) }}" class="text-[var(--text-main)] hover:text-[var(--primary)] font-bold">
                                             {{ $item['name'] }}
                                         </a>
                                         @if(! $item['is_leaf'])
@@ -162,31 +176,31 @@
                                         @endif
                                     </div>
                                 </td>
-                                <td class="p-3 text-center">
+                                <td class="text-center">
                                     <span class="erp-badge text-[10px] py-0.5 px-2 {{ $item['nature'] === 'debit' ? 'erp-badge-info' : 'erp-badge-success' }}">
                                         {{ $item['nature'] === 'debit' ? 'مدين' : 'دائن' }}
                                     </span>
                                 </td>
-                                <td class="p-3 text-center font-numeric border-l border-[var(--border-color)]">
+                                <td class="text-center font-numeric border-l border-[var(--border-color)]">
                                     {{ $item['opening_debit'] > 0 ? number_format($item['opening_debit'], 2) : '-' }}
                                 </td>
-                                <td class="p-3 text-center font-numeric border-r border-[var(--border-color)]">
+                                <td class="text-center font-numeric border-r border-[var(--border-color)]">
                                     {{ $item['opening_credit'] > 0 ? number_format($item['opening_credit'], 2) : '-' }}
                                 </td>
-                                <td class="p-3 text-center font-numeric text-blue-600 dark:text-blue-400">
+                                <td class="text-center font-numeric text-[var(--info-text)]">
                                     {{ $item['period_debit'] > 0 ? number_format($item['period_debit'], 2) : '-' }}
                                 </td>
-                                <td class="p-3 text-center font-numeric text-blue-600 dark:text-blue-400 border-r border-[var(--border-color)]">
+                                <td class="text-center font-numeric text-[var(--info-text)] border-r border-[var(--border-color)]">
                                     {{ $item['period_credit'] > 0 ? number_format($item['period_credit'], 2) : '-' }}
                                 </td>
-                                <td class="p-3 text-center font-numeric font-bold text-emerald-600 dark:text-emerald-400">
+                                <td class="text-center font-numeric font-bold text-[var(--success-text)]">
                                     {{ $item['closing_debit'] > 0 ? number_format($item['closing_debit'], 2) : '-' }}
                                 </td>
-                                <td class="p-3 text-center font-numeric font-bold text-emerald-600 dark:text-emerald-400 border-r border-[var(--border-color)]">
+                                <td class="text-center font-numeric font-bold text-[var(--success-text)] border-r border-[var(--border-color)]">
                                     {{ $item['closing_credit'] > 0 ? number_format($item['closing_credit'], 2) : '-' }}
                                 </td>
-                                <td class="p-3 text-center">
-                                    <a href="{{ route('accounting.accounts.ledger', $item['id']) }}" class="erp-btn erp-btn-ghost text-xs py-0.5 px-2" title="عرض كشف حركة الحساب في الأستاذ">
+                                <td class="text-center">
+                                    <a href="{{ route('accounting.accounts.ledger', $item['id']) }}" class="erp-btn erp-btn-secondary text-xs py-0.5 px-2" title="عرض كشف حركة الحساب في الأستاذ">
                                         <x-icon name="eye" size="14" />
                                         <span>كشف</span>
                                     </a>
@@ -201,7 +215,7 @@
                         @endforelse
                     </tbody>
                     <tfoot>
-                        <tr class="bg-black/5 dark:bg-white/5 font-bold border-t-2 border-[var(--border-color)] text-xs font-numeric">
+                        <tr class="bg-[var(--bg-surface-alt)] font-bold border-t-2 border-[var(--border-color)] text-xs font-numeric">
                             <td colspan="3" class="p-3 text-right">
                                 الإجمالي العام المتوازن (مستوى الحسابات الرئيسية):
                             </td>
@@ -211,19 +225,19 @@
                             <td class="p-3 text-center border-r border-[var(--border-color)]">
                                 {{ number_format($report['totals']['opening_credit'], 2) }}
                             </td>
-                            <td class="p-3 text-center text-blue-600 dark:text-blue-400">
+                            <td class="p-3 text-center text-[var(--info-text)]">
                                 {{ number_format($report['totals']['period_debit'], 2) }}
                             </td>
-                            <td class="p-3 text-center text-blue-600 dark:text-blue-400 border-r border-[var(--border-color)]">
+                            <td class="p-3 text-center text-[var(--info-text)] border-r border-[var(--border-color)]">
                                 {{ number_format($report['totals']['period_credit'], 2) }}
                             </td>
-                            <td class="p-3 text-center text-emerald-600 dark:text-emerald-400">
+                            <td class="p-3 text-center text-[var(--success-text)]">
                                 {{ number_format($report['totals']['closing_debit'], 2) }}
                             </td>
-                            <td class="p-3 text-center text-emerald-600 dark:text-emerald-400 border-r border-[var(--border-color)]">
+                            <td class="p-3 text-center text-[var(--success-text)] border-r border-[var(--border-color)]">
                                 {{ number_format($report['totals']['closing_credit'], 2) }}
                             </td>
-                            <td class="p-3 text-center text-[10px] {{ $report['totals']['is_balanced'] ? 'text-emerald-600' : 'text-rose-600' }}">
+                            <td class="p-3 text-center text-[10px] {{ $report['totals']['is_balanced'] ? 'text-[var(--success-text)]' : 'text-[var(--danger)]' }}">
                                 {{ $report['totals']['is_balanced'] ? 'متوازن 100%' : 'فارق: '.number_format($report['totals']['diff'], 2) }}
                             </td>
                         </tr>

@@ -29,7 +29,7 @@
         .sig-block { text-align: center; width: 180px; }
         .sig-line { border-top: 1px dashed #94a3b8; margin-top: 35px; }
         .no-print-bar { position: fixed; top: 0; left: 0; right: 0; background: #0f172a; color: #fff; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
-        .btn-print { background: #3b82f6; color: #fff; border: none; padding: 6px 16px; border-radius: 4px; font-weight: 700; cursor: pointer; font-family: inherit; }
+        .btn-print { background: #714B67; color: #fff; border: none; padding: 6px 16px; border-radius: 4px; font-weight: 700; cursor: pointer; font-family: inherit; }
         .btn-close { background: #475569; color: #fff; border: none; padding: 6px 14px; border-radius: 4px; font-weight: 700; cursor: pointer; font-family: inherit; margin-right: 8px; }
         @media print {
             .no-print-bar { display: none !important; }

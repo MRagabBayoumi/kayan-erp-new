@@ -37,57 +37,77 @@
         @endif
 
         <!-- Summary KPIs -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3.5 mb-5">
-            <div class="erp-card p-3.5 border-r-4 border-r-primary hover:shadow-md transition-shadow">
-                <div class="text-[11px] font-bold text-muted mb-1">إجمالي القيود المسجلة</div>
-                <div class="font-numeric text-xl font-black text-foreground">{{ number_format($metrics['total_entries']) }}</div>
-            </div>
-
-            <div class="erp-card p-3.5 border-r-4 border-r-emerald-500 hover:shadow-md transition-shadow">
-                <div class="text-[11px] font-bold text-muted mb-1">إجمالي حركة المدين (Debit)</div>
-                <div class="font-numeric text-xl font-black text-emerald-600 dark:text-emerald-400">
-                    {{ number_format($metrics['sum_debit'], 2) }}
-                    <span class="text-[11px] text-muted font-normal">ج.م</span>
+        <div class="finance-kpi-grid">
+            <div class="finance-kpi-card">
+                <div class="finance-kpi-icon primary">
+                    <x-icon name="file-text" size="22" />
+                </div>
+                <div class="finance-kpi-info">
+                    <div class="finance-kpi-label">إجمالي القيود المسجلة</div>
+                    <div class="finance-kpi-value font-numeric text-[var(--text-main)]">{{ number_format($metrics['total_entries']) }}</div>
+                    <div class="finance-kpi-sub">سجلات القيود المحاسبية</div>
                 </div>
             </div>
 
-            <div class="erp-card p-3.5 border-r-4 border-r-cyan-500 hover:shadow-md transition-shadow">
-                <div class="text-[11px] font-bold text-muted mb-1">إجمالي حركة الدائن (Credit)</div>
-                <div class="font-numeric text-xl font-black text-cyan-600 dark:text-cyan-400">
-                    {{ number_format($metrics['sum_credit'], 2) }}
-                    <span class="text-[11px] text-muted font-normal">ج.م</span>
+            <div class="finance-kpi-card">
+                <div class="finance-kpi-icon success">
+                    <x-icon name="trending-up" size="22" />
+                </div>
+                <div class="finance-kpi-info">
+                    <div class="finance-kpi-label">إجمالي حركة المدين (Debit)</div>
+                    <div class="finance-kpi-value font-numeric text-[var(--success-text)]">
+                        {{ number_format($metrics['sum_debit'], 2) }} <span class="text-xs font-normal text-[var(--text-muted)]">ج.م</span>
+                    </div>
+                    <div class="finance-kpi-sub">الحركات المدينة المقيدة</div>
                 </div>
             </div>
 
-            <div class="erp-card p-3.5 border-r-4 {{ abs($metrics['sum_debit'] - $metrics['sum_credit']) < 0.01 ? 'border-r-emerald-600' : 'border-r-rose-600' }} hover:shadow-md transition-shadow bg-surface-alt/40">
-                <div class="text-[11px] font-bold text-muted mb-1">التوازن المحاسبي العام</div>
-                <div class="flex items-center gap-2 mt-1">
-                    @if(abs($metrics['sum_debit'] - $metrics['sum_credit']) < 0.01)
-                        <span class="erp-badge erp-badge-success text-xs font-bold py-1 px-2.5">
-                            متزن 100% (توازن تام)
-                        </span>
-                    @else
-                        <span class="erp-badge erp-badge-danger text-xs font-bold py-1 px-2.5">
-                            فارق: {{ number_format(abs($metrics['sum_debit'] - $metrics['sum_credit']), 2) }} ج.م
-                        </span>
-                    @endif
+            <div class="finance-kpi-card">
+                <div class="finance-kpi-icon info">
+                    <x-icon name="trending-down" size="22" />
+                </div>
+                <div class="finance-kpi-info">
+                    <div class="finance-kpi-label">إجمالي حركة الدائن (Credit)</div>
+                    <div class="finance-kpi-value font-numeric text-[var(--info-text)]">
+                        {{ number_format($metrics['sum_credit'], 2) }} <span class="text-xs font-normal text-[var(--text-muted)]">ج.م</span>
+                    </div>
+                    <div class="finance-kpi-sub">الحركات الدائنة المقيدة</div>
+                </div>
+            </div>
+
+            <div class="finance-kpi-card">
+                <div class="finance-kpi-icon {{ abs($metrics['sum_debit'] - $metrics['sum_credit']) < 0.01 ? 'success' : 'danger' }}">
+                    <x-icon name="{{ abs($metrics['sum_debit'] - $metrics['sum_credit']) < 0.01 ? 'check-circle' : 'alert-triangle' }}" size="22" />
+                </div>
+                <div class="finance-kpi-info">
+                    <div class="finance-kpi-label">التوازن المحاسبي العام</div>
+                    <div class="finance-kpi-value font-numeric {{ abs($metrics['sum_debit'] - $metrics['sum_credit']) < 0.01 ? 'text-[var(--success-text)]' : 'text-[var(--danger)]' }}">
+                        @if(abs($metrics['sum_debit'] - $metrics['sum_credit']) < 0.01)
+                            متزن 100%
+                        @else
+                            {{ number_format(abs($metrics['sum_debit'] - $metrics['sum_credit']), 2) }} <span class="text-xs font-normal">ج.م</span>
+                        @endif
+                    </div>
+                    <div class="finance-kpi-sub">
+                        {{ abs($metrics['sum_debit'] - $metrics['sum_credit']) < 0.01 ? 'تطابق تام للمدين والدائن' : 'يوجد فارق يحتاج مراجعة' }}
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- Search & Filter Card -->
-        <div class="erp-card mb-5 p-4 shadow-sm">
+        <div class="finance-filter-bar mb-4">
             <form action="{{ route('accounting.journal-entries') }}" method="GET" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
                 <!-- Search term -->
                 <div>
-                    <label class="erp-label text-xs">بحث بالقيد أو الوصف أو الحساب</label>
-                    <input type="text" name="search" value="{{ $currentSearch }}" placeholder="رقم القيد، البيان، اسم الحساب..." class="erp-input text-xs w-full">
+                    <label class="block text-xs font-semibold mb-1 text-[var(--text-muted)]">بحث بالقيد أو الوصف أو الحساب</label>
+                    <input type="text" name="search" value="{{ $currentSearch }}" placeholder="رقم القيد، البيان، اسم الحساب..." class="finance-filter-input w-full text-xs">
                 </div>
 
                 <!-- Reference Type -->
                 <div>
-                    <label class="erp-label text-xs">نوع المستند المصدري</label>
-                    <select name="reference_type" class="erp-input text-xs w-full">
+                    <label class="block text-xs font-semibold mb-1 text-[var(--text-muted)]">نوع المستند المصدري</label>
+                    <select name="reference_type" class="finance-filter-input w-full text-xs">
                         <option value="">-- كافة المستندات --</option>
                         <option value="sales_invoice" {{ $currentRefType === 'sales_invoice' ? 'selected' : '' }}>فاتورة مبيعات</option>
                         <option value="sales_return" {{ $currentRefType === 'sales_return' ? 'selected' : '' }}>مردود مبيعات</option>
@@ -103,33 +123,33 @@
 
                 <!-- Date From -->
                 <div>
-                    <label class="erp-label text-xs">من تاريخ</label>
-                    <input type="date" name="date_from" value="{{ $currentDateFrom }}" class="erp-input text-xs w-full">
+                    <label class="block text-xs font-semibold mb-1 text-[var(--text-muted)]">من تاريخ</label>
+                    <input type="date" name="date_from" value="{{ $currentDateFrom }}" class="finance-filter-input w-full text-xs font-numeric">
                 </div>
 
                 <!-- Date To -->
                 <div>
-                    <label class="erp-label text-xs">إلى تاريخ</label>
-                    <input type="date" name="date_to" value="{{ $currentDateTo }}" class="erp-input text-xs w-full">
+                    <label class="block text-xs font-semibold mb-1 text-[var(--text-muted)]">إلى تاريخ</label>
+                    <input type="date" name="date_to" value="{{ $currentDateTo }}" class="finance-filter-input w-full text-xs font-numeric">
                 </div>
 
                 <!-- Actions -->
                 <div class="flex items-center gap-2">
-                    <button type="submit" class="erp-btn erp-btn-primary text-xs flex-1">
+                    <button type="submit" class="erp-btn erp-btn-primary text-xs flex-1 justify-center">
                         <x-icon name="search" size="14" />
                         <span>تصفية</span>
                     </button>
                     <a href="{{ route('accounting.journal-entries') }}" class="erp-btn erp-btn-secondary text-xs" title="إلغاء التصفية">
-                        <x-icon name="x" size="14" />
+                        <x-icon name="rotate-ccw" size="14" />
                     </a>
                 </div>
             </form>
         </div>
 
         <!-- Journal Entries Table -->
-        <div class="erp-card overflow-hidden shadow-sm">
-            <div class="overflow-x-auto">
-                <table class="erp-table w-full text-right text-xs">
+        <div class="erp-card overflow-hidden">
+            <div class="erp-table-responsive">
+                <table class="erp-table erp-table-hover text-xs">
                     <thead>
                         <tr>
                             <th class="w-12 text-center">#</th>
@@ -144,17 +164,17 @@
                             <th class="w-36 text-center">الإجراءات</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-border/40">
+                    <tbody>
                         @forelse($entries as $index => $entry)
-                            <tr class="hover:bg-surface-hover/60 transition-colors">
-                                <td class="text-center text-muted font-numeric">{{ $entries->firstItem() + $index }}</td>
+                            <tr class="erp-table-row">
+                                <td class="text-center text-[var(--text-muted)] font-numeric">{{ $entries->firstItem() + $index }}</td>
                                 <td>
                                     <a href="{{ route('accounting.journal-entries.show', $entry) }}" 
-                                       class="font-mono font-bold text-foreground bg-surface px-2.5 py-1 rounded border border-border hover:border-primary hover:text-primary transition-colors inline-block">
+                                       class="font-mono font-bold text-[var(--primary)] hover:underline inline-block">
                                         {{ $entry->entry_number }}
                                     </a>
                                 </td>
-                                <td class="font-numeric text-muted whitespace-nowrap">
+                                <td class="font-numeric text-[var(--text-secondary)] whitespace-nowrap">
                                     {{ $entry->entry_date ? $entry->entry_date->format('Y-m-d') : '—' }}
                                 </td>
                                 <td>
@@ -163,17 +183,17 @@
                                     </span>
                                 </td>
                                 <td>
-                                    <div class="font-medium text-foreground text-xs leading-relaxed max-w-md">
+                                    <div class="font-medium text-[var(--text-main)] text-xs leading-relaxed max-w-md">
                                         {{ $entry->description }}
                                     </div>
                                     @if($entry->creator)
-                                        <div class="text-[10px] text-muted mt-0.5">بواسطة: {{ $entry->creator->name }}</div>
+                                        <div class="text-[10px] text-[var(--text-muted)] mt-0.5">بواسطة: {{ $entry->creator->name }}</div>
                                     @endif
                                 </td>
-                                <td class="text-left font-numeric font-bold text-emerald-600 dark:text-emerald-400 text-xs">
+                                <td class="text-left font-numeric font-bold text-[var(--success-text)] text-xs">
                                     {{ number_format((float) $entry->total_debit, 2) }}
                                 </td>
-                                <td class="text-left font-numeric font-bold text-cyan-600 dark:text-cyan-400 text-xs">
+                                <td class="text-left font-numeric font-bold text-[var(--info-text)] text-xs">
                                     {{ number_format((float) $entry->total_credit, 2) }}
                                 </td>
                                 <td class="text-center">
@@ -182,7 +202,7 @@
                                     </span>
                                 </td>
                                 <td class="text-center font-numeric">
-                                    <span class="px-2 py-0.5 rounded-full bg-surface border border-border text-[11px] font-bold text-muted">
+                                    <span class="px-2 py-0.5 rounded-full bg-[var(--bg-surface-alt)] border border-[var(--border-color)] text-[11px] font-bold text-[var(--text-muted)]">
                                         {{ $entry->lines->count() }}
                                     </span>
                                 </td>
@@ -199,7 +219,7 @@
                                         <!-- Print Voucher Directly -->
                                         <a href="{{ route('accounting.journal-entries.print', $entry) }}" 
                                            target="_blank"
-                                           class="erp-btn erp-btn-secondary text-xs px-2 py-1 text-primary hover:bg-primary/10" 
+                                           class="erp-btn erp-btn-secondary text-xs px-2 py-1 text-[var(--primary)] hover:bg-[var(--primary-soft)]" 
                                            title="طباعة سند القيد">
                                             <x-icon name="printer" size="14" />
                                         </a>
@@ -208,7 +228,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="10" class="text-center py-12 text-muted">
+                                <td colspan="10" class="text-center py-12 text-[var(--text-muted)]">
                                     <x-icon name="file-text" size="40" class="mx-auto mb-2 opacity-30" />
                                     <p class="text-sm font-semibold">لا توجد قيود يومية مسجلة مطابقة لمعايير البحث الحالية.</p>
                                 </td>
@@ -219,7 +239,7 @@
             </div>
 
             @if($entries->hasPages())
-                <div class="p-4 border-t border-border">
+                <div class="p-4 border-t border-[var(--border-color)]">
                     {{ $entries->links() }}
                 </div>
             @endif

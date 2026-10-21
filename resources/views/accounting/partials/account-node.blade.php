@@ -18,14 +18,14 @@
     };
 
     $levelClasses = match ($account->level) {
-        1 => 'level-1 py-3 bg-surface/70',
-        2 => 'level-2 py-2.5 bg-surface/30 font-semibold',
+        1 => 'level-1 py-3 bg-[var(--bg-surface-alt)] font-bold',
+        2 => 'level-2 py-2.5 font-semibold',
         3 => 'level-3 py-2',
         default => 'level-4 py-2 font-normal',
     };
 @endphp
 
-<div class="coa-node-row {{ $levelClasses }} {{ $account->level === 1 ? $typeBorderClass : '' }} account-row-wrapper" 
+<div class="coa-node-row {{ $levelClasses }} {{ $account->level === 1 ? $typeBorderClass : '' }} account-row-wrapper border-b border-[var(--border-light)]" 
      id="account-node-{{ $account->id }}"
      data-account-id="{{ $account->id }}" 
      data-account-code="{{ $account->code }}" 
@@ -46,8 +46,8 @@
                     <x-icon name="chevron-down" size="13" class="transform transition-transform duration-150" />
                 </button>
             @else
-                <span class="w-6 h-6 flex items-center justify-center text-muted/30 flex-shrink-0">
-                    <span class="w-1.5 h-1.5 rounded-full bg-border"></span>
+                <span class="w-6 h-6 flex items-center justify-center text-[var(--text-light)] flex-shrink-0">
+                    <span class="w-1.5 h-1.5 rounded-full bg-[var(--border-color)]"></span>
                 </span>
             @endif
 
@@ -62,7 +62,7 @@
 
             <!-- Node Icon -->
             @if($account->level === 1)
-                <span class="text-primary hidden sm:inline-flex flex-shrink-0">
+                <span class="text-[var(--primary)] hidden sm:inline-flex flex-shrink-0">
                     <x-icon name="folder-open" size="17" />
                 </span>
             @elseif($hasChildren)
@@ -77,24 +77,24 @@
 
             <!-- Account Name Arabic + English -->
             <div class="flex items-center gap-2 truncate min-w-0">
-                <span class="text-foreground truncate {{ $account->level === 1 ? 'text-base font-bold text-foreground' : ($account->level === 2 ? 'text-sm font-semibold' : 'text-xs text-foreground/90') }}">
+                <span class="text-[var(--text-main)] truncate {{ $account->level === 1 ? 'text-sm font-bold' : ($account->level === 2 ? 'text-xs font-semibold' : 'text-xs') }}">
                     {{ $account->name }}
                 </span>
                 
                 @if($account->name_en)
-                    <span class="text-[11px] text-muted font-sans hidden md:inline truncate">
+                    <span class="text-[11px] text-[var(--text-muted)] font-sans hidden md:inline truncate">
                         {{ $account->name_en }}
                     </span>
                 @endif
 
                 @if($hasChildren)
-                    <span class="text-[10px] px-1.5 py-0.2 rounded-full bg-surface border border-border text-muted font-numeric">
+                    <span class="text-[10px] px-1.5 py-0.2 rounded-full bg-[var(--bg-surface-alt)] border border-[var(--border-color)] text-[var(--text-muted)] font-numeric">
                         {{ $account->children->count() }}
                     </span>
                 @endif
 
                 @if($account->is_system)
-                    <span class="text-[9px] px-1.5 py-0.2 rounded bg-muted/15 text-muted/80 font-medium hidden lg:inline">
+                    <span class="text-[9px] px-1.5 py-0.2 rounded bg-[var(--bg-hover)] text-[var(--text-muted)] font-medium hidden lg:inline">
                         نظامي
                     </span>
                 @endif
@@ -104,7 +104,7 @@
         <!-- Right Column: Nature, Type, Balance, Actions -->
         <div class="flex items-center gap-3 md:gap-5 flex-shrink-0">
             <!-- Account Nature (Dr/Cr) -->
-            <span class="text-[11px] font-mono px-2 py-0.5 rounded border border-border/60 bg-surface/50 text-muted hidden xl:inline-block">
+            <span class="text-[11px] font-mono px-2 py-0.5 rounded border border-[var(--border-color)] bg-[var(--bg-surface-alt)] text-[var(--text-muted)] hidden xl:inline-block">
                 {{ $account->nature === 'debit' ? 'مدين (Dr)' : 'دائن (Cr)' }}
             </span>
 
@@ -116,18 +116,18 @@
             <!-- Balance Value -->
             <div class="text-left font-numeric font-bold text-xs sm:text-sm min-w-[110px] md:min-w-[130px] flex items-center justify-end gap-1">
                 @if($isZero)
-                    <span class="text-muted/60 font-normal">0.00</span>
-                    <span class="text-[10px] text-muted/50 font-normal">ج.م</span>
+                    <span class="text-[var(--text-light)] font-normal">0.00</span>
+                    <span class="text-[10px] text-[var(--text-light)] font-normal">ج.م</span>
                 @elseif($isPositive)
-                    <span class="text-emerald-600 dark:text-emerald-400 font-black">
+                    <span class="text-[var(--success-text)] font-black">
                         {{ number_format($balance, 2) }}
                     </span>
-                    <span class="text-[10px] text-muted font-normal">ج.م</span>
+                    <span class="text-[10px] text-[var(--text-muted)] font-normal">ج.م</span>
                 @else
-                    <span class="text-rose-600 dark:text-rose-400 font-black">
+                    <span class="text-[var(--danger)] font-black">
                         ({{ number_format(abs($balance), 2) }})
                     </span>
-                    <span class="text-[10px] text-rose-500 font-bold">عجز</span>
+                    <span class="text-[10px] text-[var(--danger)] font-bold">عجز</span>
                 @endif
             </div>
 
@@ -135,14 +135,14 @@
             <div class="flex items-center gap-1">
                 <!-- View Account General Ledger -->
                 <a href="{{ route('accounting.accounts.ledger', $account->id) }}" 
-                   class="p-1 rounded text-muted hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors" 
+                   class="p-1.5 rounded text-[var(--text-muted)] hover:text-[var(--success)] hover:bg-[var(--success-soft)] transition-colors" 
                    title="كشف حساب الأستاذ العام [{{ $account->name }}]">
                     <x-icon name="eye" size="14" />
                 </a>
 
                 <!-- View Account Entries in Journal -->
                 <a href="{{ route('accounting.journal-entries', ['search' => $account->code]) }}" 
-                   class="p-1 rounded text-muted hover:text-primary hover:bg-surface-active transition-colors" 
+                   class="p-1.5 rounded text-[var(--text-muted)] hover:text-[var(--primary)] hover:bg-[var(--primary-soft)] transition-colors" 
                    title="عرض دفتر قيود وسجل حركات الحساب [{{ $account->code }}]">
                     <x-icon name="file-text" size="14" />
                 </a>
@@ -150,13 +150,13 @@
                 <!-- Add Sub-Account Button -->
                 @if($account->level < 4)
                     <button type="button" 
-                            class="p-1 rounded text-primary hover:bg-primary/10 transition-colors" 
+                            class="p-1.5 rounded text-[var(--primary)] hover:bg-[var(--primary-soft)] transition-colors" 
                             title="إضافة حساب فرعي متفرع من [{{ $account->name }}]"
                             onclick="openAddSubAccountModal('{{ $account->id }}', '{{ $account->code }} - {{ $account->name }}')">
                         <x-icon name="plus" size="14" />
                     </button>
                 @else
-                    <span class="w-[22px]"></span>
+                    <span class="w-[26px]"></span>
                 @endif
             </div>
         </div>

@@ -54,111 +54,123 @@
         @endif
 
         <!-- Financial Position & Overview KPI Cards -->
-        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-5">
+        <div class="finance-kpi-grid">
             <!-- 1. Assets -->
-            <div class="erp-card p-3 border-r-4 border-r-sky-500 hover:shadow-md transition-shadow">
-                <div class="text-[11px] font-bold text-muted mb-1 flex items-center justify-between">
-                    <span>1. الأصول (Assets)</span>
-                    <span class="w-2 h-2 rounded-full bg-sky-500"></span>
+            <div class="finance-kpi-card">
+                <div class="finance-kpi-icon info">
+                    <x-icon name="layers" size="22" />
                 </div>
-                <div class="font-numeric text-base lg:text-lg font-black text-sky-700 dark:text-sky-300">
-                    {{ number_format($metrics['total_assets'], 2) }}
-                    <span class="text-[10px] text-muted font-normal">ج.م</span>
+                <div class="finance-kpi-info">
+                    <div class="finance-kpi-label">1. الأصول (Assets)</div>
+                    <div class="finance-kpi-value font-numeric text-[var(--info-text)]">
+                        {{ number_format($metrics['total_assets'], 2) }} <span class="text-xs font-normal text-[var(--text-muted)]">ج.م</span>
+                    </div>
+                    <div class="finance-kpi-sub">إجمالي ممتلكات وأصول الشركة</div>
                 </div>
             </div>
 
             <!-- 2. Liabilities -->
-            <div class="erp-card p-3 border-r-4 border-r-amber-500 hover:shadow-md transition-shadow">
-                <div class="text-[11px] font-bold text-muted mb-1 flex items-center justify-between">
-                    <span>2. الخصوم (Liabilities)</span>
-                    <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+            <div class="finance-kpi-card">
+                <div class="finance-kpi-icon warning">
+                    <x-icon name="credit-card" size="22" />
                 </div>
-                <div class="font-numeric text-base lg:text-lg font-black text-amber-700 dark:text-amber-300">
-                    {{ number_format($metrics['total_liabilities'], 2) }}
-                    <span class="text-[10px] text-muted font-normal">ج.م</span>
+                <div class="finance-kpi-info">
+                    <div class="finance-kpi-label">2. الخصوم والالتزامات</div>
+                    <div class="finance-kpi-value font-numeric text-[var(--warning-text)]">
+                        {{ number_format($metrics['total_liabilities'], 2) }} <span class="text-xs font-normal text-[var(--text-muted)]">ج.م</span>
+                    </div>
+                    <div class="finance-kpi-sub">الموردين والمستحقات والالتزامات</div>
                 </div>
             </div>
 
             <!-- 3. Equity -->
-            <div class="erp-card p-3 border-r-4 border-r-indigo-500 hover:shadow-md transition-shadow">
-                <div class="text-[11px] font-bold text-muted mb-1 flex items-center justify-between">
-                    <span>3. حقوق الملكية (Equity)</span>
-                    <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+            <div class="finance-kpi-card">
+                <div class="finance-kpi-icon primary">
+                    <x-icon name="shield" size="22" />
                 </div>
-                <div class="font-numeric text-base lg:text-lg font-black text-indigo-700 dark:text-indigo-300">
-                    {{ number_format($metrics['total_equity'], 2) }}
-                    <span class="text-[10px] text-muted font-normal">ج.م</span>
+                <div class="finance-kpi-info">
+                    <div class="finance-kpi-label">3. حقوق الملكية (Equity)</div>
+                    <div class="finance-kpi-value font-numeric text-[var(--primary)]">
+                        {{ number_format($metrics['total_equity'], 2) }} <span class="text-xs font-normal text-[var(--text-muted)]">ج.م</span>
+                    </div>
+                    <div class="finance-kpi-sub">رأس المال والأرباح المرحلة</div>
                 </div>
             </div>
 
             <!-- 4. Revenues -->
-            <div class="erp-card p-3 border-r-4 border-r-emerald-500 hover:shadow-md transition-shadow">
-                <div class="text-[11px] font-bold text-muted mb-1 flex items-center justify-between">
-                    <span>4. الإيرادات (Revenue)</span>
-                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+            <div class="finance-kpi-card">
+                <div class="finance-kpi-icon success">
+                    <x-icon name="trending-up" size="22" />
                 </div>
-                <div class="font-numeric text-base lg:text-lg font-black text-emerald-700 dark:text-emerald-300">
-                    {{ number_format($metrics['total_revenues'], 2) }}
-                    <span class="text-[10px] text-muted font-normal">ج.م</span>
+                <div class="finance-kpi-info">
+                    <div class="finance-kpi-label">4. الإيرادات والمبيعات</div>
+                    <div class="finance-kpi-value font-numeric text-[var(--success-text)]">
+                        {{ number_format($metrics['total_revenues'], 2) }} <span class="text-xs font-normal text-[var(--text-muted)]">ج.م</span>
+                    </div>
+                    <div class="finance-kpi-sub">إجمالي مبيعات وإيرادات النشاط</div>
                 </div>
             </div>
 
             <!-- 5. Expenses -->
-            <div class="erp-card p-3 border-r-4 border-r-rose-500 hover:shadow-md transition-shadow">
-                <div class="text-[11px] font-bold text-muted mb-1 flex items-center justify-between">
-                    <span>5. المصروفات (Expenses)</span>
-                    <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+            <div class="finance-kpi-card">
+                <div class="finance-kpi-icon danger">
+                    <x-icon name="trending-down" size="22" />
                 </div>
-                <div class="font-numeric text-base lg:text-lg font-black text-rose-700 dark:text-rose-300">
-                    {{ number_format($metrics['total_expenses'], 2) }}
-                    <span class="text-[10px] text-muted font-normal">ج.م</span>
+                <div class="finance-kpi-info">
+                    <div class="finance-kpi-label">5. المصروفات والتكلفة</div>
+                    <div class="finance-kpi-value font-numeric text-[var(--danger)]">
+                        {{ number_format($metrics['total_expenses'], 2) }} <span class="text-xs font-normal text-[var(--text-muted)]">ج.م</span>
+                    </div>
+                    <div class="finance-kpi-sub">تكلفة بضاعة + مصاريف تشغيل</div>
                 </div>
             </div>
 
             <!-- 6. Net Profit / Income -->
-            <div class="erp-card p-3 border-r-4 {{ $metrics['net_income'] >= 0 ? 'border-r-teal-500' : 'border-r-red-600' }} hover:shadow-md transition-shadow bg-surface-alt/40">
-                <div class="text-[11px] font-bold text-muted mb-1 flex items-center justify-between">
-                    <span>صافي النشاط التشغيلي</span>
-                    <x-icon name="trending-up" size="12" class="{{ $metrics['net_income'] >= 0 ? 'text-teal-500' : 'text-red-500' }}" />
+            <div class="finance-kpi-card">
+                <div class="finance-kpi-icon {{ $metrics['net_income'] >= 0 ? 'success' : 'danger' }}">
+                    <x-icon name="{{ $metrics['net_income'] >= 0 ? 'award' : 'alert-octagon' }}" size="22" />
                 </div>
-                <div class="font-numeric text-base lg:text-lg font-black {{ $metrics['net_income'] >= 0 ? 'text-teal-700 dark:text-teal-300' : 'text-red-700 dark:text-red-300' }}">
-                    {{ number_format($metrics['net_income'], 2) }}
-                    <span class="text-[10px] text-muted font-normal">ج.م</span>
+                <div class="finance-kpi-info">
+                    <div class="finance-kpi-label">صافي ربح النشاط التشغيلي</div>
+                    <div class="finance-kpi-value font-numeric {{ $metrics['net_income'] >= 0 ? 'text-[var(--success-text)]' : 'text-[var(--danger)]' }}">
+                        {{ number_format($metrics['net_income'], 2) }} <span class="text-xs font-normal text-[var(--text-muted)]">ج.م</span>
+                    </div>
+                    <div class="finance-kpi-sub">{{ $metrics['net_income'] >= 0 ? 'فائض أرباح نشاط' : 'عجز خسائر نشاط' }}</div>
                 </div>
             </div>
         </div>
 
         <!-- Filter, Search & Level Controls Card -->
-        <div class="erp-card mb-4 p-3.5 shadow-sm">
+        <div class="finance-filter-bar mb-4">
             <div class="flex flex-col lg:flex-row items-center justify-between gap-3">
                 <!-- Type Filter Pills -->
                 <div class="flex flex-wrap items-center gap-1.5 w-full lg:w-auto">
                     <a href="{{ route('accounting.chart-of-accounts') }}" 
-                       class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all {{ empty($currentType) ? 'bg-primary text-white shadow-sm' : 'bg-surface hover:bg-surface-hover text-muted border border-border' }}">
+                       class="erp-btn {{ empty($currentType) ? 'erp-btn-primary' : 'erp-btn-secondary' }} text-xs py-1.5 px-3">
                         <span>كافة الحسابات</span>
                     </a>
                     <a href="{{ route('accounting.chart-of-accounts', ['type' => 'asset']) }}" 
-                       class="px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all {{ $currentType === 'asset' ? 'bg-sky-600 text-white shadow-sm' : 'bg-surface hover:bg-surface-hover text-muted border border-border' }}">
+                       class="erp-btn {{ $currentType === 'asset' ? 'erp-btn-primary' : 'erp-btn-secondary' }} text-xs py-1.5 px-2.5">
                         <span class="w-2 h-2 rounded-full inline-block bg-sky-500 mr-1"></span>
                         <span>الأصول</span>
                     </a>
                     <a href="{{ route('accounting.chart-of-accounts', ['type' => 'liability']) }}" 
-                       class="px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all {{ $currentType === 'liability' ? 'bg-amber-600 text-white shadow-sm' : 'bg-surface hover:bg-surface-hover text-muted border border-border' }}">
+                       class="erp-btn {{ $currentType === 'liability' ? 'erp-btn-primary' : 'erp-btn-secondary' }} text-xs py-1.5 px-2.5">
                         <span class="w-2 h-2 rounded-full inline-block bg-amber-500 mr-1"></span>
                         <span>الخصوم</span>
                     </a>
                     <a href="{{ route('accounting.chart-of-accounts', ['type' => 'equity']) }}" 
-                       class="px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all {{ $currentType === 'equity' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-surface hover:bg-surface-hover text-muted border border-border' }}">
+                       class="erp-btn {{ $currentType === 'equity' ? 'erp-btn-primary' : 'erp-btn-secondary' }} text-xs py-1.5 px-2.5">
                         <span class="w-2 h-2 rounded-full inline-block bg-indigo-500 mr-1"></span>
                         <span>حقوق الملكية</span>
                     </a>
                     <a href="{{ route('accounting.chart-of-accounts', ['type' => 'revenue']) }}" 
-                       class="px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all {{ $currentType === 'revenue' ? 'bg-emerald-600 text-white shadow-sm' : 'bg-surface hover:bg-surface-hover text-muted border border-border' }}">
+                       class="erp-btn {{ $currentType === 'revenue' ? 'erp-btn-primary' : 'erp-btn-secondary' }} text-xs py-1.5 px-2.5">
                         <span class="w-2 h-2 rounded-full inline-block bg-emerald-500 mr-1"></span>
                         <span>الإيرادات</span>
                     </a>
                     <a href="{{ route('accounting.chart-of-accounts', ['type' => 'expense']) }}" 
-                       class="px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all {{ $currentType === 'expense' ? 'bg-rose-600 text-white shadow-sm' : 'bg-surface hover:bg-surface-hover text-muted border border-border' }}">
+                       class="erp-btn {{ $currentType === 'expense' ? 'erp-btn-primary' : 'erp-btn-secondary' }} text-xs py-1.5 px-2.5">
                         <span class="w-2 h-2 rounded-full inline-block bg-rose-500 mr-1"></span>
                         <span>المصروفات</span>
                     </a>
@@ -171,31 +183,31 @@
                         <input type="text" 
                                id="accountTreeSearch" 
                                placeholder="بحث بكود أو اسم الحساب..." 
-                               class="erp-input text-xs pr-8 pl-6 w-full" 
+                               class="finance-filter-input pr-8 pl-6 w-full text-xs" 
                                onkeyup="filterAccountTree(this.value)">
-                        <div class="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted">
+                        <div class="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none">
                             <x-icon name="search" size="14" />
                         </div>
                         <button type="button" 
                                 id="clearSearchBtn"
-                                class="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted hover:text-foreground hidden"
+                                class="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-main)] hidden"
                                 onclick="clearSearch()">
                             <x-icon name="x" size="12" />
                         </button>
                     </div>
 
                     <!-- Expansion Level Controls -->
-                    <div class="inline-flex rounded-lg border border-border bg-surface p-0.5 text-xs font-medium text-muted">
-                        <button type="button" class="px-2 py-1 rounded hover:bg-surface-active hover:text-foreground transition-colors" onclick="expandToLevel(1)" title="طي لكافة الحسابات الرئيسية (المستوى 1)">
+                    <div class="inline-flex rounded-lg border border-[var(--border-color)] bg-[var(--bg-surface)] p-0.5 text-xs font-semibold text-[var(--text-muted)]">
+                        <button type="button" class="px-2.5 py-1 rounded hover:bg-[var(--bg-hover)] hover:text-[var(--text-main)] transition-colors" onclick="expandToLevel(1)" title="طي لكافة الحسابات الرئيسية (المستوى 1)">
                             <span>مستوى 1</span>
                         </button>
-                        <button type="button" class="px-2 py-1 rounded hover:bg-surface-active hover:text-foreground transition-colors" onclick="expandToLevel(2)" title="توسيع الحسابات العامة (المستوى 2)">
+                        <button type="button" class="px-2.5 py-1 rounded hover:bg-[var(--bg-hover)] hover:text-[var(--text-main)] transition-colors" onclick="expandToLevel(2)" title="توسيع الحسابات العامة (المستوى 2)">
                             <span>مستوى 2</span>
                         </button>
-                        <button type="button" class="px-2 py-1 rounded hover:bg-surface-active hover:text-foreground transition-colors" onclick="expandAllNodes()" title="توسيع كافة الفروع والحسابات">
+                        <button type="button" class="px-2.5 py-1 rounded hover:bg-[var(--bg-hover)] hover:text-[var(--text-main)] transition-colors" onclick="expandAllNodes()" title="توسيع كافة الفروع والحسابات">
                             <span>توسيع الكل</span>
                         </button>
-                        <button type="button" class="px-2 py-1 rounded hover:bg-surface-active hover:text-foreground transition-colors" onclick="collapseAllNodes()" title="طي الشجرة بالكامل">
+                        <button type="button" class="px-2.5 py-1 rounded hover:bg-[var(--bg-hover)] hover:text-[var(--text-main)] transition-colors" onclick="collapseAllNodes()" title="طي الشجرة بالكامل">
                             <span>طي الكل</span>
                         </button>
                     </div>
@@ -238,7 +250,7 @@
         <div class="erp-modal-box max-w-lg">
             <div class="erp-modal-header">
                 <div class="flex items-center gap-2">
-                    <span class="p-1.5 rounded-lg bg-primary/10 text-primary">
+                    <span class="p-1.5 rounded-lg bg-[var(--primary-soft)] text-[var(--primary)]">
                         <x-icon name="plus" size="16" />
                     </span>
                     <h3 class="erp-modal-title">إضافة حساب فرعي جديد إلى الدليل الشجري</h3>
@@ -262,9 +274,9 @@
                                 </option>
                             @endforeach
                         </select>
-                        <div id="parentMetaHint" class="text-[11px] text-muted mt-1 hidden">
-                            <span>النوع: <strong id="hintType" class="text-foreground"></strong></span> |
-                            <span>الطبيعة: <strong id="hintNature" class="text-foreground"></strong></span>
+                        <div id="parentMetaHint" class="text-[11px] text-[var(--text-muted)] mt-1 hidden">
+                            <span>النوع: <strong id="hintType" class="text-[var(--text-main)]"></strong></span> |
+                            <span>الطبيعة: <strong id="hintNature" class="text-[var(--text-main)]"></strong></span>
                         </div>
                     </div>
 
@@ -284,7 +296,7 @@
                     <div>
                         <div class="flex items-center justify-between">
                             <label for="code" class="erp-label">كود الحساب الشجري</label>
-                            <span class="text-[11px] text-muted">يترك فارغاً للترقيم التلقائي المتسلسل</span>
+                            <span class="text-[11px] text-[var(--text-muted)]">يترك فارغاً للترقيم التلقائي المتسلسل</span>
                         </div>
                         <input type="text" name="code" id="code" class="erp-input text-sm font-mono" placeholder="اتركه فارغاً للتوليد الآلي">
                     </div>
@@ -308,7 +320,7 @@
     </div>
 
     <!-- Floating Toast for Copied Code -->
-    <div id="copyToast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-foreground text-background text-xs font-bold py-2 px-4 rounded-full shadow-lg z-50 opacity-0 pointer-events-none transition-opacity duration-200">
+    <div id="copyToast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-[var(--text-main)] text-[var(--bg-surface)] text-xs font-bold py-2 px-4 rounded-full shadow-lg z-50 opacity-0 pointer-events-none transition-opacity duration-200">
         تم نسخ كود الحساب إلى الحافظة!
     </div>
 
