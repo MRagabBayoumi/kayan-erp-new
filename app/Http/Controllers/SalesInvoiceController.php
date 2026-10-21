@@ -6,12 +6,14 @@ use App\Models\CashierShift;
 use App\Models\CompanySetting;
 use App\Models\Customer;
 use App\Models\CustomerPayment;
+use App\Models\JournalEntry;
 use App\Models\PrintTemplate;
 use App\Models\Product;
 use App\Models\SalesInvoice;
 use App\Models\SalesInvoiceItem;
 use App\Models\Unit;
 use App\Models\Warehouse;
+use App\Services\AccountingService;
 use App\Services\CommissionService;
 use App\Services\InventoryService;
 use App\Services\Printing\PythonPrintEngineService;
@@ -831,6 +833,14 @@ class SalesInvoiceController extends Controller
                         $shift->recordCashReturn((float) $sale->paid_amount, $sale->id);
                     }
                 }
+
+                // Reverse general ledger journal entry
+                app(AccountingService::class)->voidEntry(
+                    JournalEntry::REF_SALES_INVOICE,
+                    $sale->id,
+                    $reason,
+                    auth()->id()
+                );
             } else {
                 // If it was draft, just mark voided
                 $sale->update([
@@ -1010,5 +1020,8 @@ class SalesInvoiceController extends Controller
 
         // Calculate and record sales rep commission upon posting
         app(CommissionService::class)->recordInvoiceCommission($invoice);
+
+        // Record general ledger journal entry
+        app(AccountingService::class)->recordSalesInvoice($invoice->fresh());
     }
 }

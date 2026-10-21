@@ -63,11 +63,70 @@ class PythonPrintEngineService
     }
 
     /**
+     * Discover available printers installed on this machine or Windows network.
+     *
+     * @return array<int, string>
+     */
+    public function getSystemPrinters(): array
+    {
+        $printers = $this->listPrinters();
+        if (! empty($printers)) {
+            return $printers;
+        }
+
+        // Fallback: PowerShell Get-Printer on Windows
+        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+            try {
+                $ps = new Process([
+                    'powershell',
+                    '-NoProfile',
+                    '-Command',
+                    'Get-Printer | Select-Object -ExpandProperty Name',
+                ]);
+                $ps->setTimeout(8);
+                $ps->run();
+
+                if ($ps->isSuccessful()) {
+                    $lines = array_map('trim', explode("\n", $ps->getOutput()));
+                    $discovered = array_values(array_unique(array_filter($lines)));
+                    if (! empty($discovered)) {
+                        return $discovered;
+                    }
+                }
+            } catch (Throwable $e) {
+                Log::warning('PythonPrintEngine: PowerShell Get-Printer fallback failed', ['error' => $e->getMessage()]);
+            }
+        }
+
+        // Built-in reasonable defaults
+        return [
+            'XP-80C',
+            'Xprinter XP-233B',
+            'TOSHIBA Generic Printer XL',
+            'Microsoft Print to PDF',
+        ];
+    }
+
+    /**
      * Get the configured receipt printer name or UNC network share path.
      */
     public function getReceiptPrinter(): string
     {
-        return (string) (config('printing.thermal_printer_path') ?: config('printing.default_receipt_printer', 'XP-80C'));
+        $configPath = config('printing.thermal_printer_path');
+        if (! empty($configPath) && $configPath !== 'XP-80C') {
+            return (string) $configPath;
+        }
+
+        try {
+            $companySetting = CompanySetting::getSettings();
+            if (! empty($companySetting->thermal_printer_name)) {
+                return $companySetting->thermal_printer_name;
+            }
+        } catch (Throwable) {
+            // fallback
+        }
+
+        return (string) ($configPath ?: 'XP-80C');
     }
 
     /**
@@ -75,7 +134,21 @@ class PythonPrintEngineService
      */
     public function getDocumentPrinter(): string
     {
-        return (string) config('printing.default_document_printer', 'TOSHIBA Generic Printer XL');
+        $configPrinter = config('printing.default_document_printer');
+        if (! empty($configPrinter) && $configPrinter !== 'TOSHIBA Generic Printer XL') {
+            return (string) $configPrinter;
+        }
+
+        try {
+            $companySetting = CompanySetting::getSettings();
+            if (! empty($companySetting->document_printer_name)) {
+                return $companySetting->document_printer_name;
+            }
+        } catch (Throwable) {
+            // fallback
+        }
+
+        return (string) ($configPrinter ?: 'TOSHIBA Generic Printer XL');
     }
 
     /**
@@ -129,6 +202,18 @@ class PythonPrintEngineService
         }
         if ($networkPassword = config('printing.network_password')) {
             $jobPayload['network_password'] = $networkPassword;
+        }
+
+        try {
+            $companySetting = CompanySetting::getSettings();
+            if (empty($jobPayload['network_user']) && ! empty($companySetting->printer_network_user)) {
+                $jobPayload['network_user'] = $companySetting->printer_network_user;
+            }
+            if (empty($jobPayload['network_password']) && ! empty($companySetting->printer_network_password)) {
+                $jobPayload['network_password'] = $companySetting->printer_network_password;
+            }
+        } catch (Throwable) {
+            // ignore
         }
 
         if (app()->environment('testing')) {
@@ -406,6 +491,18 @@ class PythonPrintEngineService
         }
         if ($networkPassword = config('printing.network_password')) {
             $jobPayload['network_password'] = $networkPassword;
+        }
+
+        try {
+            $companySetting = CompanySetting::getSettings();
+            if (empty($jobPayload['network_user']) && ! empty($companySetting->printer_network_user)) {
+                $jobPayload['network_user'] = $companySetting->printer_network_user;
+            }
+            if (empty($jobPayload['network_password']) && ! empty($companySetting->printer_network_password)) {
+                $jobPayload['network_password'] = $companySetting->printer_network_password;
+            }
+        } catch (Throwable) {
+            // ignore
         }
 
         if (app()->environment('testing')) {
@@ -907,5 +1004,141 @@ class PythonPrintEngineService
 
             return [];
         }
+    }
+
+    /**
+     * Dispatch a test print to verify hardware connectivity and template rendering.
+     *
+     * @param  string  $type  ('thermal_80mm', 'document_a4', 'barcode')
+     * @param  string|null  $printerName  Target printer name
+     * @param  bool  $dryRun  If true, render only without sending to spooler
+     * @return array<string, mixed>
+     */
+    public function testPrinter(string $type, ?string $printerName = null, bool $dryRun = false): array
+    {
+        $companySetting = CompanySetting::getSettings();
+
+        if ($type === 'barcode') {
+            $barcodeSettings = BarcodeSetting::getSettings();
+            $targetPrinter = $printerName ?: ($barcodeSettings->printer_name ?: 'Xprinter XP-233B');
+
+            $data = [
+                'product_name' => 'تجربة طباعة باركود - كيان ERP',
+                'barcode' => '202610210001',
+                'sku' => 'TEST-LABEL',
+                'retail_price' => 75.00,
+                'wholesale_price' => 50.00,
+                'currency' => 'ج.م',
+                'show_company_name' => true,
+                'company_name' => $barcodeSettings->getEffectiveCompanyName(),
+                'show_product_name' => true,
+                'show_barcode_bars' => true,
+                'show_item_sku' => true,
+                'print_price_type' => 'retail',
+                'product_font_size' => (int) ($barcodeSettings->product_font_size ?? 14),
+                'details_font_size' => (int) ($barcodeSettings->details_font_size ?? 8),
+                'barcode_width_px' => (int) ($barcodeSettings->barcode_width_px ?? 260),
+                'barcode_height_px' => (int) ($barcodeSettings->barcode_height_px ?? 80),
+                'width_mm' => (float) ($barcodeSettings->label_width_mm ?? 38),
+                'height_mm' => (float) ($barcodeSettings->label_height_mm ?? 25),
+            ];
+
+            return $this->executeJob('barcode_label', $data, 1, $targetPrinter, $dryRun);
+        }
+
+        if ($type === 'document_a4' || $type === 'document') {
+            $targetPrinter = $printerName ?: $this->getDocumentPrinter();
+
+            $data = [
+                'format' => 'a4',
+                'company_name' => $companySetting->company_name ?: 'شركة كيان للتجارة والتوزيع',
+                'company_phone' => $companySetting->company_phone ?: '01000000000',
+                'company_address' => 'القاهرة، جمهورية مصر العربية',
+                'invoice_number' => 'TEST-A4-'.date('His'),
+                'customer_code' => 'CUST-TEST',
+                'customer_name' => 'فحص واختبار طابعة المستندات A4',
+                'customer_phone' => '01012345678',
+                'customer_address' => 'صفحة اختبارية لنظام كيان ERP',
+                'cashier_name' => Auth::user()?->name ?? 'مدير النظام',
+                'warehouse_name' => 'المستودع الرئيسي',
+                'shipping_company' => 'تسليم يدوي مباشر',
+                'shipping_amount' => 0.0,
+                'notes' => 'تم إصدار هذه الصفحة كاختبار للتأكد من ربط طابعة المستندات الرسمية والفواتير الضريبية A4.',
+                'date' => now()->format('Y-m-d H:i:s'),
+                'invoice_date' => now()->format('Y-m-d H:i:s'),
+                'subtotal' => 250.00,
+                'discount_amount' => 0.00,
+                'total_amount' => 250.00,
+                'paid_amount' => 250.00,
+                'change_amount' => 0.00,
+                'remaining_amount' => 0.00,
+                'items' => [
+                    [
+                        'sku' => 'DOC-01',
+                        'name' => 'بند اختبار المستندات الرسمية A4 رقم 1',
+                        'quantity' => 1,
+                        'unit' => 'قطعة',
+                        'warehouse' => 'الرئيسي',
+                        'price' => 150.00,
+                        'unit_price' => 150.00,
+                        'total' => 150.00,
+                    ],
+                    [
+                        'sku' => 'DOC-02',
+                        'name' => 'بند اختبار المستندات الرسمية A4 رقم 2',
+                        'quantity' => 2,
+                        'unit' => 'قطعة',
+                        'warehouse' => 'الرئيسي',
+                        'price' => 50.00,
+                        'unit_price' => 50.00,
+                        'total' => 100.00,
+                    ],
+                ],
+            ];
+
+            return $this->executeJob('sales_invoice_document', $data, 1, $targetPrinter, $dryRun);
+        }
+
+        // Default: Thermal 80mm Cashier Receipt
+        $targetPrinter = $printerName ?: $this->getReceiptPrinter();
+
+        $data = [
+            'format' => 'thermal_80mm',
+            'company_name' => $companySetting->company_name ?: 'شركة كيان للتجارة والتوزيع',
+            'company_phone' => $companySetting->company_phone ?: '',
+            'company_address' => 'فحص واختبار طابعة الكاشير',
+            'invoice_number' => 'TEST-POS-'.date('His'),
+            'customer_code' => 'POS-001',
+            'customer_name' => 'عميل اختبار طابعة الكاشير',
+            'customer_phone' => '',
+            'customer_address' => '',
+            'cashier_name' => Auth::user()?->name ?? 'كاشير المحل',
+            'warehouse_name' => 'المستودع الرئيسي',
+            'shipping_company' => 'تسليم مباشر',
+            'shipping_amount' => 0.0,
+            'notes' => 'تجربة طباعة ناجحة لطابعة إيصالات الكاشير 80 مم.',
+            'date' => now()->format('Y-m-d H:i:s'),
+            'invoice_date' => now()->format('Y-m-d H:i:s'),
+            'subtotal' => 100.00,
+            'discount_amount' => 0.00,
+            'total_amount' => 100.00,
+            'paid_amount' => 100.00,
+            'change_amount' => 0.00,
+            'remaining_amount' => 0.00,
+            'items' => [
+                [
+                    'sku' => 'TEST-POS',
+                    'name' => 'إيصال تجريبي لاختبار طابعة الكاشير',
+                    'quantity' => 1,
+                    'unit' => 'إيصال',
+                    'warehouse' => 'المحل',
+                    'price' => 100.00,
+                    'unit_price' => 100.00,
+                    'total' => 100.00,
+                ],
+            ],
+        ];
+
+        return $this->executeJob('sales_invoice_receipt', $data, 1, $targetPrinter, $dryRun);
     }
 }

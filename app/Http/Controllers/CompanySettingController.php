@@ -7,7 +7,9 @@ use App\Models\Category;
 use App\Models\CompanySetting;
 use App\Models\PrintTemplate;
 use App\Services\CategoryImportService;
+use App\Services\Printing\PythonPrintEngineService;
 use App\Services\PrintTemplateService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -74,13 +76,20 @@ class CompanySettingController extends Controller
             ];
         }
 
+        $printersData = [];
+        if ($activeTab === 'printers') {
+            $printersData = [
+                'systemPrinters' => app(PythonPrintEngineService::class)->getSystemPrinters(),
+            ];
+        }
+
         return view('settings.index', array_merge([
             'title' => 'إعدادات الشركة والنظام',
             'moduleName' => 'الإعدادات',
             'settings' => $settings,
             'barcodeSettings' => $barcodeSettings,
             'activeTab' => $activeTab,
-        ], $printTemplateData, $departmentsData, $backupsData));
+        ], $printTemplateData, $departmentsData, $backupsData, $printersData));
     }
 
     /**
@@ -178,6 +187,95 @@ class CompanySettingController extends Controller
         return redirect()->route('settings.index', ['tab' => 'barcode'])
             ->with('status', 'success')
             ->with('message', 'تم حفظ إعدادات طابعة الباركود بنجاح.');
+    }
+
+    /**
+     * Update printer device hardware assignments and network configurations.
+     */
+    public function updatePrinters(Request $request): RedirectResponse
+    {
+        $settings = CompanySetting::getSettings();
+
+        $validated = $request->validate([
+            'thermal_printer_name' => ['nullable', 'string', 'max:255'],
+            'document_printer_name' => ['nullable', 'string', 'max:255'],
+            'barcode_printer_name' => ['nullable', 'string', 'max:255'],
+            'receipt_print_mode' => ['required', 'string', 'in:browser_kiosk,server_python'],
+            'printer_network_user' => ['nullable', 'string', 'max:100'],
+            'printer_network_password' => ['nullable', 'string', 'max:255'],
+            'auto_print_on_save' => ['nullable', 'boolean'],
+        ], [
+            'receipt_print_mode.required' => 'يرجى اختيار طريقة طباعة إيصالات الكاشير.',
+            'receipt_print_mode.in' => 'طريقة طباعة الإيصالات المختارة غير صالحة.',
+        ]);
+
+        $settings->thermal_printer_name = $validated['thermal_printer_name'] ?? null;
+        $settings->document_printer_name = $validated['document_printer_name'] ?? null;
+        $settings->receipt_print_mode = $validated['receipt_print_mode'];
+        $settings->printer_network_user = $validated['printer_network_user'] ?? null;
+        if (! empty($validated['printer_network_password'])) {
+            $settings->printer_network_password = $validated['printer_network_password'];
+        } elseif ($request->has('clear_network_password')) {
+            $settings->printer_network_password = null;
+        }
+        $settings->auto_print_on_save = $request->boolean('auto_print_on_save', true);
+        $settings->save();
+
+        if (! empty($validated['barcode_printer_name'])) {
+            $barcodeSettings = BarcodeSetting::getSettings();
+            $barcodeSettings->printer_name = $validated['barcode_printer_name'];
+            $barcodeSettings->save();
+        }
+
+        return redirect()->route('settings.index', ['tab' => 'printers'])
+            ->with('status', 'success')
+            ->with('message', 'تم حفظ إعدادات وتخصيصات الطابعات بنجاح.');
+    }
+
+    /**
+     * Discover all printers installed on Windows or locally available.
+     */
+    public function discoverPrinters(PythonPrintEngineService $printService): JsonResponse
+    {
+        $printers = $printService->getSystemPrinters();
+
+        return response()->json([
+            'success' => true,
+            'count' => count($printers),
+            'printers' => $printers,
+            'message' => 'تم فحص النظام واسترجاع قائمة الطابعات المتاحة بنجاح.',
+        ]);
+    }
+
+    /**
+     * Execute a hardware test print job for a specific printer.
+     */
+    public function testPrint(Request $request, PythonPrintEngineService $printService): JsonResponse
+    {
+        $validated = $request->validate([
+            'type' => ['required', 'string', 'in:thermal_80mm,document_a4,barcode'],
+            'printer_name' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $type = $validated['type'];
+        $printerName = $validated['printer_name'] ?? null;
+
+        $result = $printService->testPrinter($type, $printerName);
+
+        if (! empty($result['success'])) {
+            return response()->json([
+                'success' => true,
+                'message' => 'تم إرسال أمر الطباعة التجريبية بنجاح إلى ('.($result['printer'] ?? $printerName ?? 'الطابعة المحددة').'). يرجى التأكد من خروج الورقة.',
+                'details' => $result,
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => $result['message'] ?? 'فشل إرسال أمر الطباعة التجريبية.',
+            'error' => $result['error'] ?? null,
+            'details' => $result,
+        ], 422);
     }
 
     /**

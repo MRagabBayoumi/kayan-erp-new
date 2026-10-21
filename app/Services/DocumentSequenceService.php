@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\DocumentSequence;
+use App\Models\JournalEntry;
 use App\Models\PurchaseInvoice;
 use Illuminate\Support\Facades\DB;
 
@@ -41,6 +42,8 @@ class DocumentSequenceService
                 $exists = false;
                 if ($documentType === 'purchase_invoice') {
                     $exists = PurchaseInvoice::where('invoice_number', $formattedNumber)->exists();
+                } elseif ($documentType === 'journal_entry') {
+                    $exists = JournalEntry::where('entry_number', $formattedNumber)->exists();
                 }
             } while ($exists);
 

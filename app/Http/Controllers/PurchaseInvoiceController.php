@@ -12,6 +12,7 @@ use App\Models\Supplier;
 use App\Models\Treasury;
 use App\Models\Unit;
 use App\Models\Warehouse;
+use App\Services\AccountingService;
 use App\Services\InventoryService;
 use App\Services\Printing\PythonPrintEngineService;
 use App\Services\PrintTemplateService;
@@ -800,5 +801,8 @@ class PurchaseInvoiceController extends Controller
                 $supplier->increment('current_balance', (float) $invoice->remaining_amount);
             }
         }
+
+        // Record general ledger journal entry
+        app(AccountingService::class)->recordPurchaseInvoice($invoice->fresh());
     }
 }

@@ -105,11 +105,12 @@
                     <span>النسخ الاحتياطي (Backups)</span>
                 </a>
 
-                <span class="erp-tab-link disabled" title="مرحلة قادمة في المخطط">
+                <!-- Tab 6: Printers & POS Hardware Management -->
+                <a href="{{ route('settings.index', ['tab' => 'printers']) }}"
+                   class="erp-tab-link {{ $activeTab === 'printers' ? 'active' : '' }}">
                     <x-icon name="printer" size="16" />
-                    <span>إعدادات الفاتورة - الطابعة الثانية</span>
-                    <span class="erp-badge erp-badge-neutral text-[10px] py-0.5 px-1.5">قريباً</span>
-                </span>
+                    <span>إدارة الطابعات وأجهزة الكاشير</span>
+                </a>
 
                 <span class="erp-tab-link disabled" title="مرحلة قادمة في المخطط">
                     <x-icon name="trending-up" size="16" />
@@ -134,6 +135,9 @@
         @elseif($activeTab === 'backups')
             <!-- TAB 5: DATABASE & SYSTEM BACKUPS -->
             @include('settings.tabs.backups')
+        @elseif($activeTab === 'printers')
+            <!-- TAB 6: PRINTERS & POS HARDWARE SETUP -->
+            @include('settings.tabs.printers')
         @elseif($activeTab === 'barcode')
             <!-- TAB 2: BARCODE PRINTER SETTINGS -->
             <div class="grid grid-cols-[minmax(400px,1fr)_340px] gap-5 items-start">

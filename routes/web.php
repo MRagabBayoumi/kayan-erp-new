@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AccountingController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BackupController;
 use App\Http\Controllers\CashierShiftController;
@@ -68,6 +69,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/settings', [CompanySettingController::class, 'index'])->name('settings.index');
         Route::put('/settings', [CompanySettingController::class, 'update'])->name('settings.update');
         Route::put('/settings/barcode', [CompanySettingController::class, 'updateBarcode'])->name('settings.barcode.update');
+        Route::put('/settings/printers', [CompanySettingController::class, 'updatePrinters'])->name('settings.printers.update');
+        Route::get('/settings/printers/discover', [CompanySettingController::class, 'discoverPrinters'])->name('settings.printers.discover');
+        Route::post('/settings/printers/test', [CompanySettingController::class, 'testPrint'])->name('settings.printers.test');
 
         // Department / Category Import
         Route::get('/settings/departments/template', [CompanySettingController::class, 'downloadDepartmentTemplate'])->name('settings.departments.template');
@@ -308,6 +312,13 @@ Route::middleware('auth')->group(function () {
         Route::get('/expenses/{expense}/voucher', [ExpenseController::class, 'voucher'])->name('expenses.voucher');
         Route::delete('/expenses/{expense}', [ExpenseController::class, 'destroy'])->name('expenses.destroy');
         Route::post('/expense-categories', [ExpenseController::class, 'storeCategory'])->name('expense-categories.store');
+
+        // General Ledger & Chart of Accounts (شجرة الحسابات وقيود اليومية العامة)
+        Route::get('/accounting/chart-of-accounts', [AccountingController::class, 'chartOfAccounts'])->name('accounting.chart-of-accounts');
+        Route::post('/accounting/accounts', [AccountingController::class, 'storeAccount'])->name('accounting.accounts.store');
+        Route::get('/accounting/journal-entries', [AccountingController::class, 'journalEntries'])->name('accounting.journal-entries');
+        Route::get('/accounting/journal-entries/{entry}', [AccountingController::class, 'journalEntryShow'])->name('accounting.journal-entries.show');
+        Route::post('/accounting/recalculate-balances', [AccountingController::class, 'recalculateBalances'])->name('accounting.recalculate-balances');
     });
 
     // Sales Representatives Management & Performance Analytics (Admin)

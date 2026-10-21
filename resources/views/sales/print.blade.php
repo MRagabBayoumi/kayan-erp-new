@@ -11,7 +11,7 @@
 
     @vite(['resources/css/print/invoice-document.css', 'resources/js/pages/invoice-print.js'])
 </head>
-<body data-format="{{ $format }}" data-auto-print="{{ request('auto', $format === 'thermal_80mm' ? 'true' : 'false') }}">
+<body data-format="{{ $format }}" data-auto-print="{{ request('auto', ($format === 'thermal_80mm' && ($company->auto_print_on_save ?? true)) ? 'true' : 'false') }}">
 
     <!-- Screen-Only Navigation & Print Actions Toolbar -->
     <header class="print-toolbar no-print">

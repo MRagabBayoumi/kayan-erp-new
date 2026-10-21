@@ -6,7 +6,9 @@ use App\Models\CashierShift;
 use App\Models\CompanySetting;
 use App\Models\Customer;
 use App\Models\CustomerPayment;
+use App\Models\JournalEntry;
 use App\Models\SalesInvoice;
+use App\Services\AccountingService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -140,6 +142,9 @@ class CustomerPaymentController extends Controller
                 $activeShift->recordCustomerPayment($payment);
             }
 
+            // Record general ledger journal entry
+            app(AccountingService::class)->recordCustomerPayment($payment);
+
             return $payment;
         });
 
@@ -224,6 +229,9 @@ class CustomerPaymentController extends Controller
                 $activeShift->recordCustomerPayment($payment);
             }
 
+            // Record general ledger journal entry
+            app(AccountingService::class)->recordCustomerPayment($payment);
+
             return $payment;
         });
 
@@ -285,6 +293,14 @@ class CustomerPaymentController extends Controller
                     $shift->recalculateAndSave();
                 }
             }
+
+            // Reverse general ledger journal entry before deletion
+            app(AccountingService::class)->voidEntry(
+                JournalEntry::REF_CUSTOMER_PAYMENT,
+                $payment->id,
+                'إلغاء وحذف سند القبض',
+                auth()->id()
+            );
 
             $payment->delete();
         });

@@ -15,6 +15,7 @@ use App\Models\Supplier;
 use App\Models\Treasury;
 use App\Models\Unit;
 use App\Models\Warehouse;
+use App\Services\AccountingService;
 use App\Services\InventoryService;
 use App\Services\Printing\PythonPrintEngineService;
 use App\Services\PrintTemplateService;
@@ -462,5 +463,8 @@ class PurchaseReturnController extends Controller
             'posted_at' => now(),
             'posted_by' => auth()->id(),
         ]);
+
+        // Record general ledger journal entry
+        app(AccountingService::class)->recordPurchaseReturn($purchaseReturn->fresh());
     }
 }

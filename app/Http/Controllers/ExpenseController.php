@@ -6,7 +6,9 @@ use App\Models\CashierShift;
 use App\Models\CompanySetting;
 use App\Models\Expense;
 use App\Models\ExpenseCategory;
+use App\Models\JournalEntry;
 use App\Models\Treasury;
+use App\Services\AccountingService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -159,6 +161,9 @@ class ExpenseController extends Controller
             if ($activeShift) {
                 $activeShift->recordExpense($expense);
             }
+
+            // Record general ledger journal entry
+            app(AccountingService::class)->recordExpense($expense);
         });
 
         return back()->with('success', 'تم تسجيل سند صرف المصروف بنجاح وتحديث حركة الخزينة');
@@ -196,6 +201,14 @@ class ExpenseController extends Controller
                     now()->toDateString()
                 );
             }
+
+            // Reverse general ledger journal entry before deletion
+            app(AccountingService::class)->voidEntry(
+                JournalEntry::REF_EXPENSE,
+                $exp->id,
+                'إلغاء وحذف سند المصروف',
+                auth()->id()
+            );
 
             $exp->delete();
         });

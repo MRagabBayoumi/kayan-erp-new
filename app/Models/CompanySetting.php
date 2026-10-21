@@ -25,6 +25,21 @@ class CompanySetting extends Model
         'logo_path',
         'program_status',
         'custom_backup_path',
+        'thermal_printer_name',
+        'document_printer_name',
+        'receipt_print_mode',
+        'printer_network_user',
+        'printer_network_password',
+        'auto_print_on_save',
+    ];
+
+    /**
+     * The attributes that should be cast.
+     *
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'auto_print_on_save' => 'boolean',
     ];
 
     /**
@@ -51,11 +66,25 @@ class CompanySetting extends Model
             'company_phone' => null,
             'logo_path' => null,
             'program_status' => 'active',
+            'thermal_printer_name' => 'XP-80C',
+            'document_printer_name' => 'TOSHIBA Generic Printer XL',
+            'receipt_print_mode' => 'browser_kiosk',
+            'printer_network_user' => null,
+            'printer_network_password' => null,
+            'auto_print_on_save' => true,
         ]);
 
         app()->instance('company_setting.singleton', $settings);
 
         return $settings;
+    }
+
+    /**
+     * Check if receipt printing should be handled directly by browser kiosk mode.
+     */
+    public function isBrowserKioskReceipt(): bool
+    {
+        return ($this->receipt_print_mode ?? 'browser_kiosk') === 'browser_kiosk';
     }
 
     /**

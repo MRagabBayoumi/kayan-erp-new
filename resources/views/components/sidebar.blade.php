@@ -237,6 +237,18 @@
                     <span class="erp-nav-label">المصروفات الجارية</span>
                 </div>
             </a>
+            <a href="{{ route('accounting.chart-of-accounts') }}" class="erp-nav-item {{ request()->is('accounting/chart-of-accounts*') ? 'active' : '' }}" title="دليل الحسابات الشجري العام">
+                <div class="erp-nav-content">
+                    <span class="erp-nav-icon"><x-icon name="list" size="18" /></span>
+                    <span class="erp-nav-label">شجرة الحسابات</span>
+                </div>
+            </a>
+            <a href="{{ route('accounting.journal-entries') }}" class="erp-nav-item {{ request()->is('accounting/journal-entries*') ? 'active' : '' }}" title="دفتر قيود اليومية العامة">
+                <div class="erp-nav-content">
+                    <span class="erp-nav-icon"><x-icon name="file-text" size="18" /></span>
+                    <span class="erp-nav-label">قيود اليومية العامة</span>
+                </div>
+            </a>
             <a href="#" class="erp-nav-item opacity-60 cursor-not-allowed" title="قريباً: التقارير المالية والأرباح">
                 <div class="erp-nav-content">
                     <span class="erp-nav-icon"><x-icon name="trending-up" size="18" /></span>

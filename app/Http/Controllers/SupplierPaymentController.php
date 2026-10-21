@@ -4,11 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\CashierShift;
 use App\Models\CompanySetting;
+use App\Models\JournalEntry;
 use App\Models\PurchaseInvoice;
 use App\Models\Supplier;
 use App\Models\SupplierInstallment;
 use App\Models\SupplierPayment;
 use App\Models\Treasury;
+use App\Services\AccountingService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -140,6 +142,9 @@ class SupplierPaymentController extends Controller
             // Update supplier balance (reduces payable)
             $supplier->current_balance = round((float) $supplier->current_balance - $amount, 2);
             $supplier->save();
+
+            // Record general ledger journal entry
+            app(AccountingService::class)->recordSupplierPayment($payment);
         });
 
         return back()->with('success', 'تم تسجيل سند صرف المورد وتحديث الحساب بنجاح');
@@ -256,6 +261,9 @@ class SupplierPaymentController extends Controller
             // Update supplier balance
             $sup->current_balance = round((float) $sup->current_balance - $amount, 2);
             $sup->save();
+
+            // Record general ledger journal entry
+            app(AccountingService::class)->recordSupplierPayment($payment);
 
             return $payment;
         });
@@ -374,6 +382,14 @@ class SupplierPaymentController extends Controller
                     now()->toDateString()
                 );
             }
+
+            // Reverse general ledger journal entry before deletion
+            app(AccountingService::class)->voidEntry(
+                JournalEntry::REF_SUPPLIER_PAYMENT,
+                $pay->id,
+                'إلغاء وحذف سند صرف المورد',
+                auth()->id()
+            );
 
             $pay->delete();
         });

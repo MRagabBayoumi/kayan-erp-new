@@ -188,4 +188,137 @@ export function initSettingsPage() {
 
         updateLiveSticker();
     }
+
+    // 4. Printers & Hardware Management Tab
+    const printersContainer = page.querySelector('#printersSettingsContainer');
+    if (printersContainer) {
+        // A. Receipt Print Mode Radio Cards
+        const modeInputs = printersContainer.querySelectorAll('input[name="receipt_print_mode"]');
+        const cardBrowser = printersContainer.querySelector('#cardModeBrowser');
+        const cardServer = printersContainer.querySelector('#cardModeServer');
+
+        function updateModeCards(val) {
+            if (val === 'server_python') {
+                cardBrowser?.classList.remove('selected');
+                cardServer?.classList.add('selected');
+            } else {
+                cardBrowser?.classList.add('selected');
+                cardServer?.classList.remove('selected');
+            }
+        }
+
+        modeInputs.forEach(input => {
+            input.addEventListener('change', () => {
+                updateModeCards(input.value);
+            });
+        });
+
+        // B. Hardware Auto-Discovery
+        const btnDiscover = printersContainer.querySelector('#btnDiscoverPrinters');
+        const discoverIcon = printersContainer.querySelector('#discoverIcon');
+        const discoverBtnText = printersContainer.querySelector('#discoverBtnText');
+        const statusAlert = printersContainer.querySelector('#discoveryStatusAlert');
+        const alertBox = printersContainer.querySelector('#discoveryAlertBox');
+        const alertMsg = printersContainer.querySelector('#discoveryAlertMsg');
+        const alertTime = printersContainer.querySelector('#discoveryTimestamp');
+        const datalist = document.getElementById('systemPrintersList');
+
+        if (btnDiscover) {
+            btnDiscover.addEventListener('click', async () => {
+                const url = printersContainer.dataset.discoverUrl;
+                if (!url) return;
+
+                btnDiscover.disabled = true;
+                if (discoverBtnText) discoverBtnText.textContent = 'جاري فحص الطابعات...';
+                if (discoverIcon) discoverIcon.classList.add('animate-spin');
+
+                try {
+                    const response = await fetch(url, {
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                    });
+                    const data = await response.json();
+
+                    if (data.success && Array.isArray(data.printers)) {
+                        if (datalist) {
+                            datalist.innerHTML = '';
+                            data.printers.forEach(pName => {
+                                const opt = document.createElement('option');
+                                opt.value = pName;
+                                opt.textContent = pName;
+                                datalist.appendChild(opt);
+                            });
+                        }
+
+                        if (statusAlert && alertMsg && alertBox) {
+                            alertBox.className = 'p-3 rounded-lg text-xs font-semibold flex items-center justify-between gap-2 bg-emerald-50 text-emerald-800 border border-emerald-200';
+                            alertMsg.textContent = `تم العثور على ${data.count} طابعة متصلة بنظام ويندوز بنجاح.`;
+                            if (alertTime) alertTime.textContent = new Date().toLocaleTimeString('ar-EG');
+                            statusAlert.classList.remove('hidden');
+                        }
+                    } else {
+                        throw new Error(data.message || 'لم يتم العثور على طابعات');
+                    }
+                } catch (err) {
+                    if (statusAlert && alertMsg && alertBox) {
+                        alertBox.className = 'p-3 rounded-lg text-xs font-semibold flex items-center justify-between gap-2 bg-rose-50 text-rose-800 border border-rose-200';
+                        alertMsg.textContent = `تعذر فحص الطابعات: ${err.message || 'خطأ في الاتصال'}`;
+                        if (alertTime) alertTime.textContent = new Date().toLocaleTimeString('ar-EG');
+                        statusAlert.classList.remove('hidden');
+                    }
+                } finally {
+                    btnDiscover.disabled = false;
+                    if (discoverBtnText) discoverBtnText.textContent = 'فحص وتحديث الطابعات المتاحة';
+                    if (discoverIcon) discoverIcon.classList.remove('animate-spin');
+                }
+            });
+        }
+
+        // C. Instant Test Print
+        const testButtons = printersContainer.querySelectorAll('[data-action="test-print"]');
+        testButtons.forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const testUrl = printersContainer.dataset.testUrl;
+                const type = btn.dataset.type;
+                const targetSelector = btn.dataset.targetInput;
+                const inputEl = targetSelector ? printersContainer.querySelector(targetSelector) : null;
+                const printerName = inputEl ? inputEl.value.trim() : '';
+
+                const originalHtml = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = `<span>جاري الإرسال...</span>`;
+
+                try {
+                    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                    const res = await fetch(testUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': token || '',
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                        body: JSON.stringify({
+                            type: type,
+                            printer_name: printerName,
+                        }),
+                    });
+
+                    const data = await res.json();
+                    if (data.success) {
+                        alert(`✅ ${data.message}`);
+                    } else {
+                        alert(`❌ فشل أمر الطباعة التجريبية: ${data.message || 'خطأ غير محدد'}`);
+                    }
+                } catch (err) {
+                    alert(`❌ حدث خطأ أثناء إرسال أمر الطباعة: ${err.message || 'خطأ في الاتصال بالسيرفر'}`);
+                } finally {
+                    btn.disabled = false;
+                    btn.innerHTML = originalHtml;
+                }
+            });
+        });
+    }
 }

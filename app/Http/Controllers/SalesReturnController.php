@@ -15,6 +15,7 @@ use App\Models\SalesReturnItem;
 use App\Models\StockBalance;
 use App\Models\StockMovement;
 use App\Models\Warehouse;
+use App\Services\AccountingService;
 use App\Services\InventoryService;
 use App\Services\Printing\PythonPrintEngineService;
 use App\Services\PrintTemplateService;
@@ -489,5 +490,8 @@ class SalesReturnController extends Controller
             'posted_at' => now(),
             'total_cogs_returned' => $totalCogsReturned,
         ]);
+
+        // Record general ledger journal entry
+        app(AccountingService::class)->recordSalesReturn($salesReturn->fresh());
     }
 }
