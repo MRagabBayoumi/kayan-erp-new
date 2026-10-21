@@ -4,6 +4,10 @@
  */
 
 export function initPrintLabelPage() {
+    if (document.body.dataset.printLabelInitialized === 'true') return;
+    if (!document.querySelector('.roll-stage')) return;
+    document.body.dataset.printLabelInitialized = 'true';
+
     const isAutoPrint = document.body.dataset.autoPrint === 'true';
     const widthMm = document.body.dataset.widthMm;
     const heightMm = document.body.dataset.heightMm;
@@ -34,7 +38,8 @@ export function initPrintLabelPage() {
     }
 
     async function triggerDirectPrint(btn) {
-        if (!btn || btn.disabled) return;
+        if (!btn || btn.disabled || btn.dataset.printing === 'true') return;
+        btn.dataset.printing = 'true';
         const url = btn.dataset.url;
         const isBatch = btn.dataset.isBatch === '1';
         const quantity = parseInt(btn.dataset.quantity || '1', 10);
@@ -76,6 +81,7 @@ export function initPrintLabelPage() {
             showToast('حدث خطأ في الاتصال بالخادم أثناء إرسال أمر الطباعة.');
         } finally {
             btn.disabled = false;
+            btn.dataset.printing = 'false';
             btn.innerHTML = originalHtml;
         }
     }

@@ -105,6 +105,10 @@ class ExpenseController extends Controller
 
         $amount = (float) $validated['amount'];
 
+        if (empty($validated['pay_from_shift']) && ! auth()->user()?->isAdmin() && ! auth()->user()?->can('manage-expenses')) {
+            abort(403, 'غير مصرح لك بالصرف من الخزينة الرئيسية مباشرة دون صلاحيات مالية.');
+        }
+
         DB::transaction(function () use ($validated, $amount) {
             $category = ExpenseCategory::findOrFail($validated['expense_category_id']);
 

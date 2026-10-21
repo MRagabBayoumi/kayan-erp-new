@@ -3,31 +3,31 @@
 @section('control_panel')
     <x-control-panel :title="$customer->name" :breadcrumbs="['العملاء والموردون' => route('customers.index'), 'دليل العملاء' => route('customers.index'), $customer->name => route('customers.show', $customer)]">
         <x-slot:actions>
-            <a href="{{ route('customers.index') }}" class="erp-btn erp-btn-secondary">
+            <a href="{{ route('customers.index') }}" class="erp-btn erp-btn-secondary border border-slate-300 text-slate-700 hover:bg-slate-50">
                 <x-icon name="arrow-right" size="16" />
                 <span>العودة للعملاء</span>
             </a>
-            <a href="{{ route('customers.statement', $customer) }}" class="erp-btn erp-btn-primary">
+            <a href="{{ route('customers.statement', $customer) }}" class="erp-btn erp-btn-primary font-bold shadow-sm">
                 <x-icon name="file-text" size="16" />
                 <span>كشف الحساب المالي</span>
             </a>
-            <button type="button" class="erp-btn erp-btn-success" data-action="open-customer-payment-modal" title="تسجيل دفعة نقدية أو سند قبض للعميل">
+            <button type="button" class="erp-btn erp-btn-success font-bold shadow-sm text-white" data-action="open-customer-payment-modal" title="تسجيل دفعة نقدية أو سند قبض للعميل">
                 <x-icon name="dollar-sign" size="16" />
                 <span>تسجيل دفعة / سند قبض</span>
             </button>
-            <a href="{{ route('customers.purchased-items', $customer) }}" class="erp-btn erp-btn-secondary">
-                <x-icon name="shopping-bag" size="16" />
+            <a href="{{ route('customers.purchased-items', $customer) }}" class="erp-btn erp-btn-secondary border border-indigo-200 text-indigo-700 bg-indigo-50/50 hover:bg-indigo-100/60 hover:border-indigo-300">
+                <x-icon name="shopping-bag" size="16" class="text-indigo-600" />
                 <span>مسحوبات الأصناف</span>
             </a>
-            <a href="{{ $whatsAppUrl }}" target="_blank" rel="noopener noreferrer" class="erp-btn erp-btn-success" title="مشاركة كشف الحساب عبر واتساب">
+            <a href="{{ $whatsAppUrl }}" target="_blank" rel="noopener noreferrer" class="erp-btn erp-btn-whatsapp font-bold text-white shadow-sm" title="مشاركة كشف الحساب عبر واتساب">
                 <x-icon name="message-circle" size="16" />
                 <span>واتساب</span>
             </a>
 
             <!-- Compact Print Dropdown -->
             <div class="erp-dropdown">
-                <button type="button" class="erp-btn erp-btn-secondary" data-dropdown-toggle="customerShowPrintMenu">
-                    <x-icon name="printer" size="16" />
+                <button type="button" class="erp-btn erp-btn-secondary border border-slate-300 text-slate-700 hover:bg-slate-50" data-dropdown-toggle="customerShowPrintMenu">
+                    <x-icon name="printer" size="16" class="text-slate-600" />
                     <span>طباعة</span>
                     <x-icon name="chevron-down" size="14" />
                 </button>
@@ -52,8 +52,8 @@
                 </div>
             </div>
 
-            <a href="tel:{{ $customer->phone }}" class="erp-btn erp-btn-secondary" title="اتصال">
-                <x-icon name="phone" size="16" />
+            <a href="tel:{{ $customer->phone }}" class="erp-btn erp-btn-secondary border border-sky-200 text-sky-700 bg-sky-50/50 hover:bg-sky-100/60 hover:border-sky-300" title="اتصال هاتفياً">
+                <x-icon name="phone" size="16" class="text-sky-600" />
                 <span>اتصال</span>
             </a>
         </x-slot:actions>
@@ -457,51 +457,4 @@
             </form>
         </div>
     </div>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const modal = document.getElementById('recordCustomerPaymentModal');
-            if (!modal) return;
-
-            const openBtns = document.querySelectorAll('[data-action="open-customer-payment-modal"]');
-            const closeBtns = modal.querySelectorAll('[data-action="close-customer-payment-modal"]');
-            const invoiceSelect = document.getElementById('custPaymentInvoiceSelect');
-            const amountInput = document.getElementById('custPaymentAmount');
-
-            openBtns.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    modal.classList.remove('hidden');
-                    modal.classList.add('open');
-                    if (amountInput) setTimeout(() => amountInput.focus(), 100);
-                });
-            });
-
-            closeBtns.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    modal.classList.add('hidden');
-                    modal.classList.remove('open');
-                });
-            });
-
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) {
-                    modal.classList.add('hidden');
-                    modal.classList.remove('open');
-                }
-            });
-
-            if (invoiceSelect && amountInput) {
-                invoiceSelect.addEventListener('change', () => {
-                    const selectedOpt = invoiceSelect.options[invoiceSelect.selectedIndex];
-                    const maxVal = selectedOpt ? selectedOpt.getAttribute('data-max') : null;
-                    if (maxVal && parseFloat(maxVal) > 0) {
-                        amountInput.max = maxVal;
-                        amountInput.value = parseFloat(maxVal).toFixed(2);
-                    } else {
-                        amountInput.removeAttribute('max');
-                    }
-                });
-            }
-        });
-    </script>
 @endsection

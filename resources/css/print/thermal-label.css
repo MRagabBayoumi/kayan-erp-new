@@ -375,6 +375,21 @@ body {
         border-radius: 0 !important;
         background: transparent !important;
         display: block !important;
+        page-break-after: always !important;
+        break-after: page !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        height: var(--label-height) !important;
+        max-height: var(--label-height) !important;
+        width: var(--label-width) !important;
+        overflow: hidden !important;
+        line-height: 0 !important;
+        font-size: 0 !important;
+    }
+
+    .label-card-preview:last-child {
+        page-break-after: auto !important;
+        break-after: auto !important;
     }
 
     .label-card-preview .card-index {
@@ -382,8 +397,6 @@ body {
     }
 
     .thermal-label {
-        page-break-after: always !important;
-        break-after: page !important;
         page-break-inside: avoid !important;
         break-inside: avoid !important;
         box-sizing: border-box !important;
@@ -394,12 +407,8 @@ body {
         align-items: center !important;
         justify-content: center !important;
         background: #ffffff !important;
-    }
-
-    .label-card-preview:last-child .thermal-label,
-    .thermal-label:last-child {
-        page-break-after: auto !important;
-        break-after: auto !important;
+        width: var(--label-width) !important;
+        height: var(--label-height) !important;
     }
 
     .thermal-label svg {

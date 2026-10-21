@@ -1,6 +1,8 @@
 <?php
 
 use App\Models\CashierShift;
+use App\Models\Expense;
+use App\Models\ExpenseCategory;
 use App\Models\Role;
 use App\Models\User;
 use App\Models\Warehouse;
@@ -245,4 +247,77 @@ test('shift report can be printed in a4, a5 and thermal formats', function () {
         $response->assertOk();
         $response->assertSee('وردية');
     }
+});
+
+test('cashier shifts index page renders daily expense button and responsive filters', function () {
+    $warehouse = Warehouse::create(['name' => 'المستودع الرئيسي', 'code' => 'WH-MAIN', 'is_default' => true]);
+    $manager = User::factory()->create(['role' => User::ROLE_ADMIN]);
+
+    $response = $this->actingAs($manager)->get(route('shifts.index'));
+
+    $response->assertOk();
+    $response->assertSee('مصاريف يوم (من الوردية)');
+    $response->assertSee('تسجيل مصروف يومي من درج الكاشير');
+    $response->assertSee('name="date"', false);
+    $response->assertSee('name="status"', false);
+});
+
+test('cashier can record daily expense paid directly out of active shift cash drawer', function () {
+    $warehouse = Warehouse::create(['name' => 'المستودع الرئيسي', 'code' => 'WH-MAIN', 'is_default' => true]);
+    $cashierRole = Role::where('slug', 'cashier')->first();
+
+    $cashier = User::factory()->create([
+        'role' => User::ROLE_CASHIER,
+        'role_id' => $cashierRole->id,
+        'warehouse_id' => $warehouse->id,
+    ]);
+
+    $shift = CashierShift::create([
+        'shift_number' => CashierShift::generateShiftNumber(),
+        'user_id' => $cashier->id,
+        'warehouse_id' => $warehouse->id,
+        'opened_at' => now(),
+        'opening_balance' => 300.00,
+        'status' => 'open',
+    ]);
+
+    $category = ExpenseCategory::create([
+        'name' => 'مصاريف بوفية وضيافة',
+        'code' => 'EXP-CAT-01',
+        'is_active' => true,
+    ]);
+
+    $response = $this->actingAs($cashier)->post(route('expenses.store'), [
+        'expense_category_id' => $category->id,
+        'amount' => 45.00,
+        'expense_date' => now()->format('Y-m-d'),
+        'payment_method' => 'cash',
+        'pay_from_shift' => '1',
+        'cashier_shift_id' => $shift->id,
+        'paid_to' => 'بوفية الشاي',
+        'notes' => 'شراء سكر وشاي للوردية',
+    ]);
+
+    $response->assertSessionHas('success');
+
+    $shift->refresh();
+    expect((float) $shift->cash_expenses)->toBe(45.00);
+    expect((float) $shift->expected_closing_balance)->toBe(255.00);
+
+    $expense = Expense::latest('id')->first();
+    expect($expense)->not->toBeNull();
+    expect((float) $expense->amount)->toBe(45.00);
+    expect($expense->cashier_shift_id)->toBe($shift->id);
+    expect($expense->paid_to)->toBe('بوفية الشاي');
+});
+
+test('shifts index blade template strictly enforces zero inline js and zero inline css separation', function () {
+    $content = file_get_contents(resource_path('views/shifts/index.blade.php'));
+    $eventHandlers = ['click', 'change', 'submit', 'input', 'keydown', 'keyup', 'keypress', 'load', 'error', 'mouseover', 'mouseout'];
+    $eventPattern = '/\bon(?:'.implode('|', $eventHandlers).')\s*=/i';
+
+    expect(preg_match('/<script\b[^>]*>(.*?)<\/script>/is', $content))->toBe(0);
+    expect(preg_match($eventPattern, $content))->toBe(0);
+    expect(preg_match('/<style\b[^>]*>(.*?)<\/style>/is', $content))->toBe(0);
+    expect(preg_match('/<[^>]*\bstyle\s*=\s*["\'][^"\']*["\'][^>]*>/is', $content))->toBe(0);
 });

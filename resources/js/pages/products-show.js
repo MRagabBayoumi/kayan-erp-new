@@ -7,7 +7,8 @@ import { showPrintToast } from './products-index.js';
 
 export function initProductShow() {
     const page = document.querySelector('[data-page="products-show"]');
-    if (!page) return;
+    if (!page || page.dataset.initialized === 'true') return;
+    page.dataset.initialized = 'true';
 
     const productId = page.dataset.productId;
     const modalQtyInput = document.getElementById('labelQuantity');
@@ -33,6 +34,8 @@ export function initProductShow() {
     document.querySelectorAll('[data-action="direct-print-show"]').forEach(btn => {
         btn.addEventListener('click', async (e) => {
             e.preventDefault();
+            if (btn.disabled || btn.dataset.printing === 'true') return;
+            btn.dataset.printing = 'true';
             const qty = getShowQty();
             showPrintToast(`جاري إرسال ${qty} ملصق مباشرة إلى طابعة الباركود...`);
 
@@ -61,6 +64,7 @@ export function initProductShow() {
                 showPrintToast('حدث خطأ في الاتصال بالخادم أثناء إرسال أمر الطباعة.');
             } finally {
                 btn.disabled = originalDisabled;
+                btn.dataset.printing = 'false';
             }
         });
     });
@@ -171,6 +175,8 @@ export function initProductShow() {
     document.querySelectorAll('[data-action="open-print-preview"], [data-action="submit-print-preview"]').forEach(btn => {
         btn.addEventListener('click', async (e) => {
             e.preventDefault();
+            if (btn.disabled || btn.dataset.printing === 'true') return;
+            btn.dataset.printing = 'true';
             const autoPrint = btn.dataset.autoPrint === 'true' || btn.dataset.autoprint === 'true';
             const qty = parseInt(modalQtyInput ? modalQtyInput.value : 1, 10) || 1;
 
@@ -199,11 +205,14 @@ export function initProductShow() {
                     }
                 } catch (err) {
                     showPrintToast('حدث خطأ في الاتصال بالخادم أثناء إرسال أمر الطباعة.');
+                } finally {
+                    btn.dataset.printing = 'false';
                 }
             } else {
                 // Pure screen preview in new tab
                 window.open(`/products/${productId}/print-label?quantity=${qty}`, '_blank');
                 closePrintModal();
+                btn.dataset.printing = 'false';
             }
         });
     });

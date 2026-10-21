@@ -1,9 +1,15 @@
 /**
- * Kayan ERP — Customers Page Client Logic
- * Add/Edit customer modal management, form pre-population, duplicate submit protection, and keyboard dismiss
+ * Kayan ERP — Customers Client Logic
+ * Add/Edit customer modal management, customer profile actions, payment voucher modal,
+ * duplicate submit protection, and keyboard dismiss.
  */
 
 export function initCustomersPage() {
+    initCustomersIndex();
+    initCustomerShow();
+}
+
+function initCustomersIndex() {
     const page = document.querySelector('[data-page="customers"]');
     if (!page) return;
 
@@ -152,4 +158,100 @@ export function initCustomersPage() {
 
     bindFormSubmitProtection('#addCustomerModal form');
     bindFormSubmitProtection('#editCustomerForm');
+}
+
+function initCustomerShow() {
+    const page = document.querySelector('[data-page="customer-show"]');
+    if (!page) return;
+
+    const paymentModal = document.getElementById('recordCustomerPaymentModal');
+    if (!paymentModal) return;
+
+    const amountInput = document.getElementById('custPaymentAmount');
+    const invoiceSelect = document.getElementById('custPaymentInvoiceSelect');
+    const form = document.getElementById('recordCustomerPaymentForm');
+
+    function openPaymentModal() {
+        paymentModal.classList.remove('hidden');
+        paymentModal.classList.add('open');
+        paymentModal.style.display = 'flex';
+        if (amountInput) {
+            amountInput.focus();
+        }
+    }
+
+    function closePaymentModal() {
+        paymentModal.classList.remove('open');
+        paymentModal.classList.add('hidden');
+        paymentModal.style.display = 'none';
+    }
+
+    // Open button (control panel or elsewhere on page)
+    document.querySelectorAll('[data-action="open-customer-payment-modal"]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            openPaymentModal();
+        });
+    });
+
+    // Close buttons (modal close icon, cancel button)
+    document.querySelectorAll('[data-action="close-customer-payment-modal"]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            closePaymentModal();
+        });
+    });
+
+    // Close on backdrop click
+    paymentModal.addEventListener('click', (e) => {
+        if (e.target === paymentModal) {
+            closePaymentModal();
+        }
+    });
+
+    // Close on Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !paymentModal.classList.contains('hidden') && paymentModal.style.display !== 'none') {
+            closePaymentModal();
+        }
+    });
+
+    // Auto-fill max amount when specific invoice is selected
+    if (invoiceSelect && amountInput) {
+        invoiceSelect.addEventListener('change', function () {
+            const selected = this.options[this.selectedIndex];
+            const max = selected?.dataset?.max;
+            if (max && parseFloat(max) > 0) {
+                amountInput.value = parseFloat(max).toFixed(2);
+            }
+        });
+    }
+
+    // Protection against duplicate form submissions
+    if (form) {
+        form.addEventListener('submit', function (e) {
+            if (!form.checkValidity()) {
+                return;
+            }
+            const submitBtn = form.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                if (submitBtn.disabled) {
+                    e.preventDefault();
+                    return false;
+                }
+                submitBtn.disabled = true;
+                submitBtn.dataset.originalText = submitBtn.innerHTML;
+                submitBtn.innerHTML = '<span>جاري تسجيل السند...</span>';
+
+                setTimeout(() => {
+                    if (submitBtn && submitBtn.disabled) {
+                        submitBtn.disabled = false;
+                        if (submitBtn.dataset.originalText) {
+                            submitBtn.innerHTML = submitBtn.dataset.originalText;
+                        }
+                    }
+                }, 6000);
+            }
+        });
+    }
 }

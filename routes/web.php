@@ -222,6 +222,10 @@ Route::middleware('auth')->group(function () {
         Route::post('/shifts/{shift}/direct-print', [CashierShiftController::class, 'directPrint'])->name('shifts.direct-print');
         Route::post('/shifts/{shift}/movement', [CashierShiftController::class, 'movement'])->name('shifts.movement');
         Route::post('/shifts/{shift}/close', [CashierShiftController::class, 'close'])->name('shifts.close');
+
+        // Cashier Shift Expenses & Vouchers
+        Route::post('/expenses', [ExpenseController::class, 'store'])->name('expenses.store');
+        Route::get('/expenses/{expense}/voucher', [ExpenseController::class, 'voucher'])->name('expenses.voucher');
     });
 
     // Warehouse & Inventory Management (Admin & Warehouse)
@@ -306,10 +310,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/supplier-payments/{payment}/receipt', [SupplierPaymentController::class, 'receipt'])->name('supplier-payments.receipt');
         Route::delete('/supplier-payments/{payment}', [SupplierPaymentController::class, 'destroy'])->name('supplier-payments.destroy');
 
-        // Expenses & Categories
+        // Expenses & Categories (Admin & Treasury Management)
         Route::get('/expenses', [ExpenseController::class, 'index'])->name('expenses.index');
-        Route::post('/expenses', [ExpenseController::class, 'store'])->name('expenses.store');
-        Route::get('/expenses/{expense}/voucher', [ExpenseController::class, 'voucher'])->name('expenses.voucher');
         Route::delete('/expenses/{expense}', [ExpenseController::class, 'destroy'])->name('expenses.destroy');
         Route::post('/expense-categories', [ExpenseController::class, 'storeCategory'])->name('expense-categories.store');
 
