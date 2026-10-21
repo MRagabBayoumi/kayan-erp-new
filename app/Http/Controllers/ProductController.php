@@ -710,23 +710,39 @@ class ProductController extends Controller
      */
     public function lookupBarcode(Request $request): JsonResponse
     {
-        $barcode = trim((string) $request->query('barcode'));
+        $term = trim((string) $request->query('barcode', $request->query('q', '')));
+        // Normalize Arabic-Indic digits to Latin
+        $arabicIndic = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩', '۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+        $standardDigits = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+        $term = str_replace($arabicIndic, $standardDigits, $term);
 
-        if (blank($barcode)) {
+        if (blank($term)) {
             return response()->json([
                 'found' => false,
                 'message' => 'يرجى تمرير كود الباركود المطلوب.',
             ], 422);
         }
 
-        $product = Product::with('category')
-            ->where('barcode', $barcode)
+        $product = Product::with(['category', 'stockBalances'])
+            ->where(function ($query) use ($term) {
+                $cleanAlpha = preg_replace('/[^a-zA-Z0-9\x{0600}-\x{06FF}]/u', '', $term);
+
+                $query->where('barcode', $term)
+                    ->orWhere('sku', $term)
+                    ->orWhere('sku', strtoupper($term))
+                    ->orWhere('sku', strtolower($term))
+                    ->orWhere('name', $term);
+
+                if (! empty($cleanAlpha) && mb_strlen($cleanAlpha) >= 2) {
+                    $query->orWhereRaw("REPLACE(REPLACE(REPLACE(sku, '-', ''), ' ', ''), '_', '') = ?", [$cleanAlpha]);
+                }
+            })
             ->first();
 
         if (! $product) {
             return response()->json([
                 'found' => false,
-                'message' => 'المنتج غير موجود بهذا الباركود.',
+                'message' => 'المنتج غير موجود بهذا الباركود أو الكود.',
             ], 404);
         }
 
@@ -737,11 +753,18 @@ class ProductController extends Controller
                 'sku' => $product->sku,
                 'name' => $product->name,
                 'category_name' => $product->category?->name,
-                'barcode' => $product->barcode,
+                'barcode' => (string) ($product->barcode ?? ''),
                 'cost_price' => (float) $product->cost_price,
                 'wholesale_price' => (float) $product->wholesale_price,
                 'retail_price' => (float) $product->retail_price,
-                'unit' => $product->unit,
+                'distributor_price' => (float) ($product->distributor_price ?? $product->wholesale_price),
+                'unit' => $product->unit ?? 'قطعة',
+                'unit_factor' => (float) ($product->unit_factor ?? 1.0),
+                'package_factor' => (float) ($product->package_factor ?? 12.0),
+                'pieces_per_package' => (int) ($product->pieces_per_package ?: (int) round($product->package_factor ?? 12)),
+                'stocks' => $product->stockBalances->pluck('quantity', 'warehouse_id')->map(fn ($q) => (float) $q)->toArray(),
+                'total_stock' => (float) $product->total_stock,
+                'formatted_stock' => $product->formatStockBreakdown(),
                 'min_stock_alert' => $product->min_stock_alert,
                 'image_url' => $product->image_url,
                 'is_active' => $product->is_active,

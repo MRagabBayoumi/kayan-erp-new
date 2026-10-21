@@ -315,11 +315,20 @@ function initSalesPOS(posPage = null) {
 
     // Fast-Scan Mode Toggle
     if (fastScanToggle && fastScanBadge) {
+        const savedFastScan = localStorage.getItem('pos_fast_scan');
+        const isFastScanEnabled = savedFastScan !== null ? (savedFastScan === 'true') : true;
+        fastScanToggle.checked = isFastScanEnabled;
+        fastScanBadge.classList.toggle('active', isFastScanEnabled);
+        const scanLabel = fastScanBadge.querySelector('span');
+        if (scanLabel) {
+            scanLabel.textContent = isFastScanEnabled ? 'المسح المباشر السريع (مفعل)' : 'المسح المباشر السريع (معطل)';
+        }
+
         fastScanToggle.addEventListener('change', () => {
             fastScanBadge.classList.toggle('active', fastScanToggle.checked);
-            const label = fastScanBadge.querySelector('span');
-            if (label) {
-                label.textContent = fastScanToggle.checked ? 'المسح المباشر السريع (مفعل)' : 'المسح المباشر السريع (معطل)';
+            localStorage.setItem('pos_fast_scan', fastScanToggle.checked ? 'true' : 'false');
+            if (scanLabel) {
+                scanLabel.textContent = fastScanToggle.checked ? 'المسح المباشر السريع (مفعل)' : 'المسح المباشر السريع (معطل)';
             }
             if (quickProductInput) quickProductInput.focus();
         });
@@ -379,9 +388,25 @@ function initSalesPOS(posPage = null) {
     if (discountValueInput) discountValueInput.addEventListener('input', recalculateTotals);
     if (shippingInput) shippingInput.addEventListener('input', recalculateTotals);
 
+    function cleanSearchTerm(term) {
+        if (!term) return '';
+        let str = term.toString().trim();
+        // 1. Convert Arabic-Indic digits (٠-٩) and Persian digits to standard Western digits (0-9)
+        const arabicIndic = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩', '۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+        const standardDigits = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+        for (let i = 0; i < arabicIndic.length; i++) {
+            str = str.replaceAll(arabicIndic[i], standardDigits[i]);
+        }
+        // 2. Remove scanner prefix (AIM symbols like ]C1, ]e0, ]E0, etc.)
+        str = str.replace(/^\][A-Za-z0-9]{2}/, '');
+        // 3. Remove non-printable control characters, CR, LF, TAB
+        str = str.replace(/[\r\n\t\x00-\x1F\x7F-\x9F]/g, '');
+        return str.trim();
+    }
+
     function normalizeArabic(text) {
         if (!text) return '';
-        return text.toString().trim().toLowerCase()
+        return cleanSearchTerm(text).toLowerCase()
             .replace(/[أإآ]/g, 'ا')
             .replace(/ة/g, 'ه')
             .replace(/ى/g, 'ي')
@@ -390,17 +415,42 @@ function initSalesPOS(posPage = null) {
 
     // Product Lookup logic
     function findProductByTerm(term, mode = 'barcode') {
-        const clean = (term || '').trim().toLowerCase();
+        const clean = cleanSearchTerm(term).toLowerCase();
         if (!clean) return null;
+
+        // 0. If quickProductId has already selected an item, verify and return it
+        if (quickProductId && quickProductId.value) {
+            const currentId = parseInt(quickProductId.value, 10);
+            if (!isNaN(currentId) && currentId > 0) {
+                const found = productsData.find(p => p.id === currentId);
+                if (found) return found;
+            }
+        }
+
+        // 0b. If term contains formatted pattern "Name (SKU)", extract SKU inside parenthesis
+        const bracketMatch = clean.match(/\(([^)]+)\)$/);
+        if (bracketMatch && bracketMatch[1]) {
+            const extractedSku = bracketMatch[1].trim().toLowerCase();
+            const foundByBracket = productsData.find(p => (p.sku || '').trim().toLowerCase() === extractedSku);
+            if (foundByBracket) return foundByBracket;
+        }
+
         const norm = normalizeArabic(clean);
+        const cleanAlpha = clean.replace(/[^a-z0-9\u0600-\u06FF]/g, '');
 
         // 1. Exact barcode match
-        const exactBarcode = productsData.find(p => (p.barcode || '').trim().toLowerCase() === clean);
+        const exactBarcode = productsData.find(p => cleanSearchTerm(p.barcode || '').toLowerCase() === clean);
         if (exactBarcode) return exactBarcode;
 
         // 2. Exact SKU match
         const exactSku = productsData.find(p => (p.sku || '').trim().toLowerCase() === clean);
         if (exactSku) return exactSku;
+
+        // 2b. Alphanumeric SKU match (ignoring dashes, spaces, e.g. "hb89" or "hb 89" matches "HB-89")
+        if (cleanAlpha.length >= 2) {
+            const alphaSkuMatch = productsData.find(p => (p.sku || '').replace(/[^a-z0-9\u0600-\u06FF]/gi, '').toLowerCase() === cleanAlpha);
+            if (alphaSkuMatch) return alphaSkuMatch;
+        }
 
         // 3. Exact Name match (normalized)
         const exactName = productsData.find(p => normalizeArabic(p.name) === norm);
@@ -410,9 +460,9 @@ function initSalesPOS(posPage = null) {
         const nameMatch = productsData.find(p => normalizeArabic(p.name).includes(norm));
         if (nameMatch) return nameMatch;
 
-        // 5. Universal fallback
+        // 5. Universal fallback: contains barcode, sku, or name
         return productsData.find(p => 
-            (p.barcode || '').toLowerCase().includes(clean) ||
+            cleanSearchTerm(p.barcode || '').toLowerCase().includes(clean) ||
             (p.sku || '').toLowerCase().includes(clean) ||
             normalizeArabic(p.name).includes(norm)
         ) || null;
@@ -420,7 +470,7 @@ function initSalesPOS(posPage = null) {
 
     function renderSuggestions(query) {
         if (!quickSearchResults) return;
-        const q = (query || '').trim();
+        const q = cleanSearchTerm(query);
         if (!q || q.length < 1) {
             quickSearchResults.classList.add('hidden');
             quickSearchResults.innerHTML = '';
@@ -430,21 +480,27 @@ function initSalesPOS(posPage = null) {
 
         const cleanQ = q.toLowerCase();
         const normQ = normalizeArabic(q);
+        const cleanAlphaQ = cleanQ.replace(/[^a-z0-9\u0600-\u06FF]/g, '');
         const mode = searchModeSelect ? searchModeSelect.value : 'barcode';
 
         const matches = productsData.filter(p => {
-            const pBarcode = (p.barcode || '').toLowerCase();
+            const pBarcode = cleanSearchTerm(p.barcode || '').toLowerCase();
             const pSku = (p.sku || '').toLowerCase();
+            const pSkuAlpha = pSku.replace(/[^a-z0-9\u0600-\u06FF]/g, '');
             const pNameNorm = normalizeArabic(p.name);
 
+            const matchesBarcode = pBarcode.includes(cleanQ);
+            const matchesSku = pSku.includes(cleanQ) || (cleanAlphaQ.length >= 2 && pSkuAlpha.includes(cleanAlphaQ));
+            const matchesName = pNameNorm.includes(normQ);
+
             if (mode === 'sku') {
-                return pSku.includes(cleanQ) || pNameNorm.includes(normQ);
+                return matchesSku || matchesName || matchesBarcode;
             }
             if (mode === 'name') {
-                return pNameNorm.includes(normQ) || pSku.includes(cleanQ) || pBarcode.includes(cleanQ);
+                return matchesName || matchesSku || matchesBarcode;
             }
             // Universal match: works for barcode, SKU, and name seamlessly
-            return pBarcode.includes(cleanQ) || pSku.includes(cleanQ) || pNameNorm.includes(normQ);
+            return matchesBarcode || matchesSku || matchesName;
         }).slice(0, 10);
 
         if (matches.length === 0) {
@@ -570,7 +626,7 @@ function initSalesPOS(posPage = null) {
             renderSuggestions(term);
         });
 
-        quickProductInput.addEventListener('keydown', (e) => {
+        quickProductInput.addEventListener('keydown', async (e) => {
             const mode = searchModeSelect ? searchModeSelect.value : 'barcode';
 
             if (e.key === 'ArrowDown') {
@@ -604,30 +660,91 @@ function initSalesPOS(posPage = null) {
             if (e.key === 'Enter') {
                 e.preventDefault(); // Stop main form submission!
 
-                const shouldAutoCommit = !!(fastScanToggle && fastScanToggle.checked);
-
-                // 1. If an item in dropdown is actively selected with arrow keys
-                const items = quickSearchResults.querySelectorAll('.suggestion-item');
-                if (items.length > 0 && activeSuggestionIndex >= 0 && items[activeSuggestionIndex]) {
-                    const pId = parseInt(items[activeSuggestionIndex].dataset.id, 10);
+                // 1. If quickProductId is ALREADY populated with a selected product:
+                // hitting Enter commits it immediately to the invoice!
+                if (quickProductId && quickProductId.value) {
+                    const pId = parseInt(quickProductId.value, 10);
                     const found = productsData.find(item => item.id === pId);
                     if (found) {
-                        selectProduct(found, shouldAutoCommit);
+                        commitQuickAdd();
                         return;
                     }
                 }
 
-                // 2. Barcode scan match
-                const term = quickProductInput.value.trim();
-                const matched = findProductByTerm(term, mode);
-                if (matched) {
-                    selectProduct(matched, shouldAutoCommit);
-                } else if (items.length > 0) {
+                // 2. If an item in dropdown is actively selected with arrow keys:
+                const items = quickSearchResults ? quickSearchResults.querySelectorAll('.suggestion-item') : [];
+                if (items.length > 0 && activeSuggestionIndex >= 0 && items[activeSuggestionIndex]) {
+                    const pId = parseInt(items[activeSuggestionIndex].dataset.id, 10);
+                    const found = productsData.find(item => item.id === pId);
+                    if (found) {
+                        selectProduct(found, false);
+                        commitQuickAdd();
+                        return;
+                    }
+                }
+
+                // 3. Search by entered term / scanned barcode
+                const rawTerm = quickProductInput.value;
+                const cleanTerm = cleanSearchTerm(rawTerm);
+                if (!cleanTerm) {
+                    return;
+                }
+
+                let matched = findProductByTerm(cleanTerm, mode);
+
+                // Fallback to top suggestion if not exact matched but dropdown has results
+                if (!matched && items.length > 0) {
                     const firstId = parseInt(items[0].dataset.id, 10);
-                    const found = productsData.find(item => item.id === firstId);
-                    if (found) selectProduct(found, shouldAutoCommit);
+                    matched = productsData.find(item => item.id === firstId);
+                }
+
+                // Fallback to Server AJAX lookup if not found in client-side memory
+                if (!matched) {
+                    try {
+                        const res = await fetch(`/products/lookup-barcode?barcode=${encodeURIComponent(cleanTerm)}`, {
+                            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                        });
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data && data.found && data.product) {
+                                const newProd = {
+                                    id: data.product.id,
+                                    name: data.product.name,
+                                    sku: data.product.sku,
+                                    barcode: (data.product.barcode || ''),
+                                    retail_price: parseFloat(data.product.retail_price || 0),
+                                    wholesale_price: parseFloat(data.product.wholesale_price || 0),
+                                    distributor_price: parseFloat(data.product.distributor_price || data.product.wholesale_price || 0),
+                                    cost_price: parseFloat(data.product.cost_price || 0),
+                                    unit: data.product.unit || 'قطعة',
+                                    unit_factor: parseFloat(data.product.unit_factor || 1.0),
+                                    package_factor: parseFloat(data.product.package_factor || 12.0),
+                                    pieces_per_package: parseInt(data.product.pieces_per_package || 12, 10),
+                                    stocks: data.product.stocks || {},
+                                    total_stock: parseFloat(data.product.total_stock || 0),
+                                    formatted_stock: data.product.formatted_stock || 'متوفر'
+                                };
+                                productsData.push(newProd);
+                                matched = newProd;
+                            }
+                        }
+                    } catch (err) {
+                        console.warn('Fallback server lookup error:', err);
+                    }
+                }
+
+                if (matched) {
+                    const isFastScan = !(fastScanToggle && !fastScanToggle.checked);
+                    if (isFastScan) {
+                        // High-speed POS scan: Immediately select and commit to invoice table!
+                        selectProduct(matched, false);
+                        commitQuickAdd();
+                    } else {
+                        // Manual step mode: select and focus quantity
+                        selectProduct(matched, false);
+                    }
                 } else {
-                    alert('لم يتم العثور على صنف مطابق لهذا الباركود أو الكود.');
+                    alert(`لم يتم العثور على صنف مطابق لهذا الباركود أو الكود: "${cleanTerm}"`);
                     quickProductInput.select();
                 }
             }
@@ -659,9 +776,6 @@ function initSalesPOS(posPage = null) {
                     quickQtyInput.select();
                 }
             } else if (e.key === 'Enter') {
-                if (Date.now() - lastProductSelectTime < 250) {
-                    return; // Ignore scanner trailing Enter
-                }
                 e.preventDefault();
                 commitQuickAdd();
             }
@@ -699,9 +813,6 @@ function initSalesPOS(posPage = null) {
                     quickUnitSelect.focus();
                 }
             } else if (e.key === 'Enter') {
-                if (Date.now() - lastProductSelectTime < 250) {
-                    return; // Ignore scanner trailing Enter
-                }
                 e.preventDefault();
                 commitQuickAdd();
             }
