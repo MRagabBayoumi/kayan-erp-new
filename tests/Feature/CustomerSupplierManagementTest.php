@@ -4,6 +4,7 @@ use App\Models\Customer;
 use App\Models\SalesInvoice;
 use App\Models\ShippingOffice;
 use App\Models\Supplier;
+use App\Models\User;
 use App\Models\Warehouse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -539,4 +540,68 @@ test('sales invoice print shows paid, invoice remaining, previous balance, and n
     $response->assertSee('5,734.00');
     $response->assertSee('إجمالي الحساب المتبقي:');
     $response->assertSee('334.00');
+});
+
+test('general customer payment auto allocates to open invoices and synchronizes current balance', function () {
+    $user = User::first() ?? User::factory()->create();
+    $this->actingAs($user);
+
+    $customer = Customer::create([
+        'name' => 'عميل اختبار تسوية الدفعة',
+        'phone' => '01011112233',
+        'customer_type' => 'wholesale',
+        'pricing_tier' => 'wholesale',
+        'opening_balance' => 0.00,
+        'current_balance' => 0.00,
+        'is_active' => true,
+    ]);
+
+    $warehouse = Warehouse::first() ?? Warehouse::create([
+        'name' => 'المخزن الرئيسي',
+        'code' => 'MAIN-WH',
+        'is_active' => true,
+    ]);
+
+    $invoice = SalesInvoice::create([
+        'invoice_number' => 'INV-ALLOC-TEST-1',
+        'customer_id' => $customer->id,
+        'warehouse_id' => $warehouse->id,
+        'invoice_date' => now()->toDateString(),
+        'price_tier' => 'wholesale',
+        'payment_type' => 'credit',
+        'status' => 'posted',
+        'subtotal' => 2000.00,
+        'total_amount' => 2000.00,
+        'paid_amount' => 0.00,
+        'remaining_amount' => 2000.00,
+        'created_by' => $user->id,
+        'posted_at' => now(),
+    ]);
+
+    // Record a general payment of 2500 EGP (exceeding the invoice by 500)
+    $response = $this->post(route('customers.payments.store', $customer), [
+        'payment_date' => now()->toDateString(),
+        'amount' => 2500.00,
+        'payment_method' => 'cash',
+        'notes' => 'سداد عام للحساب',
+    ]);
+
+    $response->assertSessionHas('success');
+
+    $invoice->refresh();
+    expect((float) $invoice->paid_amount)->toEqual(2000.00)
+        ->and((float) $invoice->remaining_amount)->toEqual(0.00);
+
+    $customer->refresh();
+    // 0 + 2000 - 2500 = -500 (credit in favor of customer)
+    expect((float) $customer->current_balance)->toEqual(-500.00);
+
+    // Visiting customer show page should render the new payments table and accurate values
+    $showResponse = $this->get(route('customers.show', $customer));
+    $showResponse->assertOk();
+    $showResponse->assertSee('سجل سندات القبض والدفعات المالية للعميل');
+    $showResponse->assertSee('2,500.00');
+    $showResponse->assertSee('مسددة بالكامل');
+    $showResponse->assertSee('500.00');
+    $showResponse->assertSee('رصيد دائن لصالح العميل');
 });

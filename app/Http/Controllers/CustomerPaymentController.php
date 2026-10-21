@@ -134,8 +134,8 @@ class CustomerPaymentController extends Controller
                 'remaining_amount' => $newRemaining,
             ]);
 
-            // Update customer current balance (reduces debt)
-            $customer->decrement('current_balance', $amount);
+            // Sync customer current balance accurately
+            $customer->recalculateCurrentBalance();
 
             // Record into active cashier shift if cash
             if ($activeShift && $payment->payment_method === CustomerPayment::METHOD_CASH) {
@@ -220,10 +220,33 @@ class CustomerPaymentController extends Controller
                     'paid_amount' => $newPaid,
                     'remaining_amount' => $newRemaining,
                 ]);
+            } else {
+                // Auto-allocate general payment to unpaid posted invoices (FIFO order)
+                $unpaidInvoices = SalesInvoice::where('customer_id', $lockedCustomer->id)
+                    ->where('status', SalesInvoice::STATUS_POSTED)
+                    ->where('remaining_amount', '>', 0.001)
+                    ->orderBy('invoice_date')
+                    ->orderBy('id')
+                    ->lockForUpdate()
+                    ->get();
+
+                $remainingToAllocate = $amount;
+                foreach ($unpaidInvoices as $uInv) {
+                    if ($remainingToAllocate <= 0.001) {
+                        break;
+                    }
+                    $uRem = (float) $uInv->remaining_amount;
+                    $portion = min($remainingToAllocate, $uRem);
+                    $uInv->update([
+                        'paid_amount' => round((float) $uInv->paid_amount + $portion, 2),
+                        'remaining_amount' => max(0.00, round($uRem - $portion, 2)),
+                    ]);
+                    $remainingToAllocate -= $portion;
+                }
             }
 
-            // Decrement customer debt
-            $lockedCustomer->decrement('current_balance', $amount);
+            // Synchronize customer current balance accurately with full transaction history
+            $lockedCustomer->recalculateCurrentBalance();
 
             if ($activeShift && $payment->payment_method === CustomerPayment::METHOD_CASH) {
                 $activeShift->recordCustomerPayment($payment);
@@ -275,15 +298,15 @@ class CustomerPaymentController extends Controller
         DB::transaction(function () use ($payment, $invoice, $amount) {
             $customer = Customer::lockForUpdate()->findOrFail($payment->customer_id);
 
-            // Rollback customer balance (restores the debt)
-            $customer->increment('current_balance', $amount);
-
             // Rollback invoice remaining & paid
             if ($invoice) {
                 $lockedInvoice = SalesInvoice::lockForUpdate()->findOrFail($invoice->id);
                 $lockedInvoice->decrement('paid_amount', min((float) $lockedInvoice->paid_amount, $amount));
                 $lockedInvoice->increment('remaining_amount', $amount);
             }
+
+            // Sync customer balance accurately
+            $customer->recalculateCurrentBalance();
 
             // If cash and shift still open, reverse shift cash
             if ($payment->cashier_shift_id && $payment->payment_method === CustomerPayment::METHOD_CASH) {

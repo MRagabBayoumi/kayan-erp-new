@@ -148,9 +148,17 @@ class CustomerController extends Controller
             ]);
         }
 
-        $customer->loadMissing(['salesInvoices' => function ($q) {
-            $q->with('warehouse')->latest('invoice_date')->latest('id');
-        }]);
+        $customer->loadMissing([
+            'salesInvoices' => function ($q) {
+                $q->with('warehouse')->latest('invoice_date')->latest('id');
+            },
+            'payments' => function ($q) {
+                $q->with(['salesInvoice', 'creator'])->latest('payment_date')->latest('id');
+            },
+        ]);
+
+        // Keep customer current_balance synchronized with statement balance
+        $customer->recalculateCurrentBalance();
 
         $unpaidInvoices = SalesInvoice::where('customer_id', $customer->id)
             ->where('status', SalesInvoice::STATUS_POSTED)
@@ -165,6 +173,7 @@ class CustomerController extends Controller
             'title' => $customer->name,
             'customer' => $customer,
             'salesInvoices' => $customer->salesInvoices,
+            'payments' => $customer->payments,
             'unpaidInvoices' => $unpaidInvoices,
             'statement' => $statement,
             'whatsAppUrl' => $whatsAppUrl,
@@ -310,30 +319,9 @@ class CustomerController extends Controller
             'pricing_tier.required' => 'فئة التسعير مطلوبة.',
         ]);
 
-        $hasTransactions = $customer->salesInvoices()->exists() || $customer->salesReturns()->exists();
         $openingBalance = $customer->opening_balance !== null ? (float) $customer->opening_balance : 0.00;
-        $currentBalance = (float) $customer->current_balance;
-
         if (array_key_exists('opening_balance', $validated) && $validated['opening_balance'] !== null) {
-            $newOpening = (float) $validated['opening_balance'];
-            if (! $hasTransactions) {
-                $openingBalance = $newOpening;
-                $currentBalance = array_key_exists('current_balance', $validated) && $validated['current_balance'] !== null
-                    ? (float) $validated['current_balance']
-                    : $newOpening;
-            } else {
-                $diff = $newOpening - $openingBalance;
-                $openingBalance = $newOpening;
-                $currentBalance = round($currentBalance + $diff, 2);
-            }
-        } elseif (array_key_exists('current_balance', $validated) && $validated['current_balance'] !== null) {
-            $newCurrent = (float) $validated['current_balance'];
-            if (! $hasTransactions) {
-                $openingBalance = $newCurrent;
-                $currentBalance = $newCurrent;
-            } else {
-                $currentBalance = $newCurrent;
-            }
+            $openingBalance = (float) $validated['opening_balance'];
         }
 
         $customer->update([
@@ -350,10 +338,12 @@ class CustomerController extends Controller
             'pricing_tier' => $validated['pricing_tier'],
             'credit_limit' => (float) ($validated['credit_limit'] ?? 0.00),
             'opening_balance' => $openingBalance,
-            'current_balance' => $currentBalance,
             'notes' => filled($validated['notes'] ?? null) ? trim($validated['notes']) : null,
             'is_active' => $request->has('is_active') ? $request->boolean('is_active') : $customer->is_active,
         ]);
+
+        // Always recalculate customer current balance so it stays in 100% agreement with the statement ledger
+        $customer->recalculateCurrentBalance();
 
         return redirect()->route('customers.index')->with('success', 'تم تحديث بيانات العميل بنجاح.');
     }

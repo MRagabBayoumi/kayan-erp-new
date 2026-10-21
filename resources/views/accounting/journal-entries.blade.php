@@ -27,6 +27,8 @@
 
 @section('content')
     <div data-page="journal-entries">
+        @include('accounting.nav-tabs')
+
         @if(session('message'))
             <div class="erp-alert erp-alert-success mb-4" role="alert">
                 <x-icon name="check-circle" size="18" />

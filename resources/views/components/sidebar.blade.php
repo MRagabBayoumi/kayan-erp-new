@@ -249,10 +249,22 @@
                     <span class="erp-nav-label">قيود اليومية العامة</span>
                 </div>
             </a>
-            <a href="#" class="erp-nav-item opacity-60 cursor-not-allowed" title="قريباً: التقارير المالية والأرباح">
+            <a href="{{ route('accounting.reports.trial-balance') }}" class="erp-nav-item {{ request()->is('accounting/reports/trial-balance*') ? 'active' : '' }}" title="ميزان المراجعة بالأرصدة والمجاميع">
+                <div class="erp-nav-content">
+                    <span class="erp-nav-icon"><x-icon name="layers" size="18" /></span>
+                    <span class="erp-nav-label">ميزان المراجعة</span>
+                </div>
+            </a>
+            <a href="{{ route('accounting.reports.income-statement') }}" class="erp-nav-item {{ request()->is('accounting/reports/income-statement*') ? 'active' : '' }}" title="قائمة الدخل والأرباح والخسائر">
                 <div class="erp-nav-content">
                     <span class="erp-nav-icon"><x-icon name="trending-up" size="18" /></span>
-                    <span class="erp-nav-label">التقارير المالية والأرباح</span>
+                    <span class="erp-nav-label">قائمة الدخل والأرباح</span>
+                </div>
+            </a>
+            <a href="{{ route('accounting.reports.balance-sheet') }}" class="erp-nav-item {{ request()->is('accounting/reports/balance-sheet*') ? 'active' : '' }}" title="الميزانية العمومية وقائمة المركز المالي">
+                <div class="erp-nav-content">
+                    <span class="erp-nav-icon"><x-icon name="pie-chart" size="18" /></span>
+                    <span class="erp-nav-label">الميزانية العمومية</span>
                 </div>
             </a>
         </div>

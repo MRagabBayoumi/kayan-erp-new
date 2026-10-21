@@ -57,8 +57,13 @@ class StatementService
 
             $priorInvoices = (clone $invoicesQuery)->where('invoice_date', '<', $from)->get();
             foreach ($priorInvoices as $inv) {
-                $subsequentPaymentsSum = (float) $inv->payments->where('payment_date', '<', $from)->sum('amount');
-                $initialDownpayment = max(0.00, (float) $inv->paid_amount - $subsequentPaymentsSum);
+                $initialDownpayment = 0.00;
+                if ($inv->payment_type === SalesInvoice::PAYMENT_CASH) {
+                    $initialDownpayment = (float) $inv->total_amount;
+                } elseif ($inv->payment_type === SalesInvoice::PAYMENT_PARTIAL) {
+                    $subsequentPaymentsSum = (float) $inv->payments->where('payment_date', '<', $from)->sum('amount');
+                    $initialDownpayment = max(0.00, (float) $inv->paid_amount - $subsequentPaymentsSum);
+                }
                 $prePeriodBalance += ((float) $inv->total_amount - $initialDownpayment);
             }
 
@@ -103,8 +108,13 @@ class StatementService
 
             // Invoice line credits only the initial downpayment made at creation time.
             // Subsequent installments appear as distinct receipt voucher lines.
-            $subsequentPaymentsSum = (float) $inv->payments->sum('amount');
-            $initialDownpayment = max(0.00, (float) $inv->paid_amount - $subsequentPaymentsSum);
+            $initialDownpayment = 0.00;
+            if ($inv->payment_type === SalesInvoice::PAYMENT_CASH) {
+                $initialDownpayment = (float) $inv->total_amount;
+            } elseif ($inv->payment_type === SalesInvoice::PAYMENT_PARTIAL) {
+                $subsequentPaymentsSum = (float) $inv->payments->sum('amount');
+                $initialDownpayment = max(0.00, (float) $inv->paid_amount - $subsequentPaymentsSum);
+            }
 
             $rows->push([
                 'id' => 'inv-'.$inv->id,
@@ -404,10 +414,15 @@ class StatementService
             foreach ($priorPurchases as $p) {
                 // Supplier normal balance is credit: purchases increase debt to supplier (+)
                 // Check if this prior purchase had subsequent payments
-                $priorSubsequentPayments = SupplierPayment::where('purchase_invoice_id', $p->id)
-                    ->where('payment_date', '<', $from)
-                    ->sum('amount');
-                $initialDownpayment = max(0.00, (float) $p->paid_amount - (float) $priorSubsequentPayments);
+                $initialDownpayment = 0.00;
+                if ($p->payment_type === PurchaseInvoice::PAYMENT_CASH) {
+                    $initialDownpayment = (float) $p->total_amount;
+                } elseif ($p->payment_type === PurchaseInvoice::PAYMENT_PARTIAL) {
+                    $priorSubsequentPayments = SupplierPayment::where('purchase_invoice_id', $p->id)
+                        ->where('payment_date', '<', $from)
+                        ->sum('amount');
+                    $initialDownpayment = max(0.00, (float) $p->paid_amount - (float) $priorSubsequentPayments);
+                }
                 $prePeriodBalance += ((float) $p->total_amount - $initialDownpayment);
             }
 
@@ -451,8 +466,13 @@ class StatementService
                 default => 'نقدي',
             };
 
-            $subsequentPaymentsForInvoice = (float) SupplierPayment::where('purchase_invoice_id', $p->id)->sum('amount');
-            $initialDownpayment = max(0.00, (float) $p->paid_amount - $subsequentPaymentsForInvoice);
+            $initialDownpayment = 0.00;
+            if ($p->payment_type === PurchaseInvoice::PAYMENT_CASH) {
+                $initialDownpayment = (float) $p->total_amount;
+            } elseif ($p->payment_type === PurchaseInvoice::PAYMENT_PARTIAL) {
+                $subsequentPaymentsForInvoice = (float) SupplierPayment::where('purchase_invoice_id', $p->id)->sum('amount');
+                $initialDownpayment = max(0.00, (float) $p->paid_amount - $subsequentPaymentsForInvoice);
+            }
 
             $rows->push([
                 'id' => 'pur-'.$p->id,

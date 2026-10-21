@@ -133,6 +133,13 @@
 
             <!-- Action Buttons -->
             <div class="flex items-center gap-1">
+                <!-- View Account General Ledger -->
+                <a href="{{ route('accounting.accounts.ledger', $account->id) }}" 
+                   class="p-1 rounded text-muted hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors" 
+                   title="كشف حساب الأستاذ العام [{{ $account->name }}]">
+                    <x-icon name="eye" size="14" />
+                </a>
+
                 <!-- View Account Entries in Journal -->
                 <a href="{{ route('accounting.journal-entries', ['search' => $account->code]) }}" 
                    class="p-1 rounded text-muted hover:text-primary hover:bg-surface-active transition-colors" 

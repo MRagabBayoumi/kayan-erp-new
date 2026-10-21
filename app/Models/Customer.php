@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\StatementService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -183,5 +184,17 @@ class Customer extends Model
     public function installments(): HasMany
     {
         return $this->hasMany(CustomerInstallment::class)->orderBy('due_date');
+    }
+
+    /**
+     * Recalculate customer's running balance from all posted ledger transactions and sync record.
+     */
+    public function recalculateCurrentBalance(): float
+    {
+        $statement = app(StatementService::class)->getCustomerStatement($this);
+        $finalBalance = (float) ($statement['final_balance'] ?? 0.00);
+        $this->updateQuietly(['current_balance' => $finalBalance]);
+
+        return $finalBalance;
     }
 }

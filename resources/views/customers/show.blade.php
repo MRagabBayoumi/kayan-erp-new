@@ -200,22 +200,22 @@
                         </div>
                     </div>
                     <div class="p-3 bg-[var(--bg-surface)] rounded border border-[var(--border-color)]">
-                        <div class="text-xs text-[var(--text-muted)] font-medium mb-1">إجمالي المسدد نقداً</div>
+                        <div class="text-xs text-[var(--text-muted)] font-medium mb-1">إجمالي المسدد والمتحصلات</div>
                         <div class="font-numeric font-bold text-lg text-[var(--success)]">
-                            {{ number_format($salesInvoices->where('status', 'posted')->sum('paid_amount'), 2) }} ج.م
+                            {{ number_format((float) ($statement['total_credits'] ?? $payments->sum('amount')), 2) }} ج.م
                         </div>
                     </div>
                     <div class="p-3 bg-[var(--bg-surface)] rounded border border-[var(--border-color)]">
-                        <div class="text-xs text-[var(--text-muted)] font-medium mb-1">الرصيد الآجل المعلق</div>
-                        <div class="font-numeric font-bold text-lg text-[var(--danger)]">
-                            {{ number_format($customer->current_balance, 2) }} ج.م
+                        <div class="text-xs text-[var(--text-muted)] font-medium mb-1">المتبقي الآجل على الفواتير</div>
+                        <div class="font-numeric font-bold text-lg {{ $salesInvoices->where('status', 'posted')->sum('remaining_amount') > 0 ? 'text-[var(--danger)]' : 'text-[var(--text-muted)]' }}">
+                            {{ number_format($salesInvoices->where('status', 'posted')->sum('remaining_amount'), 2) }} ج.م
                         </div>
                     </div>
                     <div class="p-3 bg-[var(--bg-surface)] rounded border border-[var(--border-color)]">
                         <div class="text-xs text-[var(--text-muted)] font-medium mb-1">المتاح من حد الائتمان</div>
-                        <div class="font-numeric font-bold text-lg {{ ($customer->credit_limit > 0 && ($customer->credit_limit - $customer->current_balance) <= 0) ? 'text-[var(--danger)]' : 'text-[var(--primary)]' }}">
+                        <div class="font-numeric font-bold text-lg {{ ($customer->credit_limit > 0 && ($customer->credit_limit - max(0, $customer->current_balance)) <= 0) ? 'text-[var(--danger)]' : 'text-[var(--primary)]' }}">
                             @if($customer->credit_limit > 0)
-                                {{ number_format(max(0, $customer->credit_limit - $customer->current_balance), 2) }} ج.م
+                                {{ number_format(max(0, $customer->credit_limit - max(0, $customer->current_balance)), 2) }} ج.م
                             @else
                                 <span class="text-xs text-[var(--text-muted)]">مفتوح (بدون سقف)</span>
                             @endif
@@ -306,7 +306,11 @@
                                         </td>
                                         <td class="text-center">
                                             @if($invoice->status === \App\Models\SalesInvoice::STATUS_POSTED)
-                                                <span class="erp-badge erp-badge-success text-xs">مرحلة للمخزن</span>
+                                                @if((float) $invoice->remaining_amount <= 0.001)
+                                                    <span class="erp-badge erp-badge-success text-xs">مسددة بالكامل</span>
+                                                @else
+                                                    <span class="erp-badge erp-badge-info text-xs">مرحلة (آجل)</span>
+                                                @endif
                                             @elseif($invoice->status === \App\Models\SalesInvoice::STATUS_VOIDED)
                                                 <span class="erp-badge erp-badge-danger text-xs">ملغاة</span>
                                             @else
@@ -322,6 +326,84 @@
                                                     <x-icon name="printer" size="14" />
                                                 </a>
                                             </div>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endif
+            </div>
+        </div>
+
+        <!-- Customer Payments / Receipt Vouchers Dossier -->
+        <div class="erp-card mt-6">
+            <div class="erp-card-header flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <x-icon name="credit-card" size="18" class="text-emerald-600" />
+                    <h3 class="erp-card-title m-0">سجل سندات القبض والدفعات المالية للعميل</h3>
+                    <span class="erp-badge erp-badge-neutral text-xs font-numeric">{{ $payments->count() }} سندات</span>
+                </div>
+                <button type="button" class="erp-btn erp-btn-success erp-btn-sm text-white" data-action="open-customer-payment-modal">
+                    <x-icon name="plus" size="14" />
+                    <span>سند قبض جديد</span>
+                </button>
+            </div>
+            <div class="erp-card-body p-0">
+                @if($payments->isEmpty())
+                    <div class="text-center py-8">
+                        <x-icon name="dollar-sign" size="36" class="text-[var(--text-muted)] mb-2 inline-block opacity-40" />
+                        <h4 class="font-bold text-sm text-[var(--text-muted)] m-0">لا توجد سندات قبض مسجلة لهذا العميل حتى الآن</h4>
+                    </div>
+                @else
+                    <div class="erp-table-responsive">
+                        <table class="erp-table">
+                            <thead>
+                                <tr>
+                                    <th class="w-12 text-center">#</th>
+                                    <th>رقم السند</th>
+                                    <th>تاريخ التحصيل</th>
+                                    <th class="text-center">طريقة السداد</th>
+                                    <th class="text-center">المبلغ المحصل</th>
+                                    <th>المرجع / الشيك</th>
+                                    <th>تخصيص السند</th>
+                                    <th>المحصل</th>
+                                    <th class="w-20 text-center">إجراءات</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($payments as $pIdx => $pay)
+                                    <tr>
+                                        <td class="text-center font-numeric text-xs text-[var(--text-muted)]">{{ $pIdx + 1 }}</td>
+                                        <td class="font-numeric font-bold text-xs text-[var(--primary)]">
+                                            <a href="{{ route('sales.payments.receipt', $pay) }}" target="_blank" class="hover:underline">
+                                                {{ $pay->payment_number }}
+                                            </a>
+                                        </td>
+                                        <td class="text-xs font-numeric">
+                                            {{ $pay->payment_date ? \Carbon\Carbon::parse($pay->payment_date)->format('Y-m-d') : '—' }}
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="erp-badge erp-badge-info text-xs">{{ $pay->payment_method_label }}</span>
+                                        </td>
+                                        <td class="text-center font-numeric font-bold text-xs text-emerald-600">
+                                            {{ number_format((float) $pay->amount, 2) }} ج.م
+                                        </td>
+                                        <td class="text-xs text-[var(--text-muted)]">{{ $pay->reference_number ?: '—' }}</td>
+                                        <td class="text-xs">
+                                            @if($pay->salesInvoice)
+                                                <a href="{{ route('sales.show', $pay->salesInvoice) }}" class="text-[var(--primary)] hover:underline font-numeric font-semibold">
+                                                    فاتورة #{{ $pay->salesInvoice->invoice_number }}
+                                                </a>
+                                            @else
+                                                <span class="text-[var(--text-muted)]">سداد عام على الحساب</span>
+                                            @endif
+                                        </td>
+                                        <td class="text-xs text-[var(--text-muted)]">{{ $pay->creator?->name ?? '—' }}</td>
+                                        <td class="text-center">
+                                            <a href="{{ route('sales.payments.receipt', $pay) }}" target="_blank" class="erp-btn erp-btn-ghost erp-btn-xs" title="طباعة سند القبض">
+                                                <x-icon name="printer" size="14" />
+                                            </a>
                                         </td>
                                     </tr>
                                 @endforeach

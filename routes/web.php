@@ -11,6 +11,7 @@ use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\CustomerInstallmentController;
 use App\Http\Controllers\CustomerPaymentController;
 use App\Http\Controllers\ExpenseController;
+use App\Http\Controllers\FinancialReportController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\PortalAttendanceController;
@@ -322,6 +323,16 @@ Route::middleware('auth')->group(function () {
         Route::get('/accounting/journal-entries/{entry}', [AccountingController::class, 'journalEntryShow'])->name('accounting.journal-entries.show');
         Route::get('/accounting/journal-entries/{entry}/print', [AccountingController::class, 'journalEntryPrint'])->name('accounting.journal-entries.print');
         Route::post('/accounting/recalculate-balances', [AccountingController::class, 'recalculateBalances'])->name('accounting.recalculate-balances');
+
+        // Financial Reports & General Ledger (التقارير المالية الختامية والأستاذ العام)
+        Route::get('/accounting/reports/trial-balance', [FinancialReportController::class, 'trialBalance'])->name('accounting.reports.trial-balance');
+        Route::get('/accounting/reports/trial-balance/print', [FinancialReportController::class, 'trialBalancePrint'])->name('accounting.reports.trial-balance.print');
+        Route::get('/accounting/reports/income-statement', [FinancialReportController::class, 'incomeStatement'])->name('accounting.reports.income-statement');
+        Route::get('/accounting/reports/income-statement/print', [FinancialReportController::class, 'incomeStatementPrint'])->name('accounting.reports.income-statement.print');
+        Route::get('/accounting/reports/balance-sheet', [FinancialReportController::class, 'balanceSheet'])->name('accounting.reports.balance-sheet');
+        Route::get('/accounting/reports/balance-sheet/print', [FinancialReportController::class, 'balanceSheetPrint'])->name('accounting.reports.balance-sheet.print');
+        Route::get('/accounting/accounts/{account}/ledger', [FinancialReportController::class, 'accountLedger'])->whereNumber('account')->name('accounting.accounts.ledger');
+        Route::get('/accounting/accounts/{account}/ledger/print', [FinancialReportController::class, 'accountLedgerPrint'])->whereNumber('account')->name('accounting.accounts.ledger.print');
     });
 
     // Sales Representatives Management & Performance Analytics (Admin)
