@@ -251,3 +251,135 @@
     font-weight: 700;
     color: var(--danger);
 }
+
+/* ==========================================================================
+   Chart of Accounts (دليل الحسابات الشجري الهرمي)
+   ========================================================================== */
+
+.coa-tree-container {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+}
+
+.coa-header-row {
+    background: var(--bg-surface-alt);
+    border-bottom: 2px solid var(--border-color);
+    padding: 12px 18px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+/* Tree Rows */
+.coa-node-row {
+    position: relative;
+    border-bottom: 1px solid rgba(var(--border-rgb, 226, 232, 240), 0.5);
+    transition: background-color 0.15s ease;
+}
+
+.coa-node-row:hover {
+    background-color: var(--bg-surface-alt);
+}
+
+.coa-node-row.level-1 {
+    background-color: rgba(var(--primary-rgb, 113, 75, 103), 0.03);
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.coa-node-row.level-1:hover {
+    background-color: rgba(var(--primary-rgb, 113, 75, 103), 0.06);
+}
+
+.coa-node-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 8px;
+    padding-bottom: 8px;
+    padding-left: 16px;
+    font-size: 13px;
+    gap: 12px;
+}
+
+/* Children indentation container with tree guide line */
+.coa-children {
+    position: relative;
+    margin-right: 22px;
+    border-right: 2px dashed rgba(var(--primary-rgb, 113, 75, 103), 0.2);
+    transition: all 0.2s ease-in-out;
+}
+
+.coa-children .coa-node-row::before {
+    content: '';
+    position: absolute;
+    right: -2px;
+    top: 50%;
+    width: 14px;
+    height: 1px;
+    border-top: 1px dashed rgba(var(--primary-rgb, 113, 75, 103), 0.35);
+}
+
+/* Node Toggle Buttons */
+.coa-toggle-btn {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-surface);
+    color: var(--text-muted);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+}
+
+.coa-toggle-btn:hover {
+    background: var(--primary);
+    color: #FFFFFF;
+    border-color: var(--primary);
+}
+
+.coa-toggle-btn.is-collapsed .erp-icon {
+    transform: rotate(90deg);
+}
+
+/* Account Code Pill */
+.coa-code-pill {
+    font-family: var(--font-mono, monospace);
+    font-weight: 700;
+    font-size: 11px;
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: var(--bg-surface-alt);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.coa-code-pill:hover {
+    border-color: var(--primary);
+    background: var(--bg-surface);
+}
+
+/* Type Accent Strips */
+.coa-type-asset { border-right: 4px solid #0284c7 !important; }
+.coa-type-liability { border-right: 4px solid #f59e0b !important; }
+.coa-type-equity { border-right: 4px solid #6366f1 !important; }
+.coa-type-revenue { border-right: 4px solid #10b981 !important; }
+.coa-type-expense { border-right: 4px solid #f43f5e !important; }
+
