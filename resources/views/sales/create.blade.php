@@ -70,6 +70,10 @@
                     </span>
                 </div>
                 <div class="pos-shift-actions">
+                    <a href="{{ route('shifts.index') }}" class="erp-btn erp-btn-warning erp-btn-sm text-slate-900 font-bold" title="تسجيل مصروف يومي من درج الكاشير">
+                        <x-icon name="receipt" size="14" />
+                        <span>مصاريف الوردية</span>
+                    </a>
                     <a href="{{ route('shifts.show', $activeShift) }}" class="erp-btn erp-btn-ghost erp-btn-sm" title="سجل حركة الخزينة">
                         <x-icon name="list" size="14" />
                         <span>كشف الدرج</span>

@@ -97,6 +97,7 @@ class ExpenseController extends Controller
             'payment_method' => ['required', 'in:cash,bank_transfer,cheque,card'],
             'treasury_id' => ['nullable', 'exists:treasuries,id'],
             'pay_from_shift' => ['nullable', 'boolean'],
+            'cashier_shift_id' => ['nullable', 'exists:cashier_shifts,id'],
             'paid_to' => ['nullable', 'string', 'max:150'],
             'reference_number' => ['nullable', 'string', 'max:100'],
             'notes' => ['nullable', 'string', 'max:1000'],
@@ -109,7 +110,12 @@ class ExpenseController extends Controller
 
             $activeShift = null;
             if (! empty($validated['pay_from_shift'])) {
-                $activeShift = CashierShift::getActiveShiftForUser(auth()->id());
+                if (! empty($validated['cashier_shift_id'])) {
+                    $activeShift = CashierShift::open()->find($validated['cashier_shift_id']);
+                }
+                if (! $activeShift) {
+                    $activeShift = CashierShift::getActiveShiftForUser(auth()->id());
+                }
                 if (! $activeShift) {
                     throw new \InvalidArgumentException('لا توجد وردية كاشير نشطة ومفتوحة لك حالياً للصرف منها.');
                 }

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Account;
+use App\Models\CompanySetting;
 use App\Models\JournalEntry;
 use App\Services\AccountingService;
 use Illuminate\Http\JsonResponse;
@@ -124,15 +125,43 @@ class AccountingController extends Controller
     }
 
     /**
-     * Return JSON details for an individual journal entry modal.
+     * Display a dedicated view page for an individual journal entry voucher.
      */
-    public function journalEntryShow(JournalEntry $entry): JsonResponse
+    public function journalEntryShow(Request $request, JournalEntry $entry): View|JsonResponse
     {
         $entry->load(['creator', 'lines.account', 'lines.customer', 'lines.supplier']);
 
-        return response()->json([
-            'success' => true,
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'entry' => $entry,
+            ]);
+        }
+
+        $company = CompanySetting::first();
+
+        return view('accounting.journal-entries.show', [
+            'title' => 'سند قيد يومية: '.$entry->entry_number,
+            'moduleName' => 'الإدارة المالية والحسابات العامة',
             'entry' => $entry,
+            'company' => $company,
+        ]);
+    }
+
+    /**
+     * Display an official printable voucher for a journal entry.
+     */
+    public function journalEntryPrint(Request $request, JournalEntry $entry): View
+    {
+        $entry->load(['creator', 'lines.account', 'lines.customer', 'lines.supplier']);
+        $company = CompanySetting::first();
+        $format = $request->input('format', 'a4');
+
+        return view('accounting.journal-entries.print', [
+            'title' => 'طباعة سند قيد يومية - '.$entry->entry_number,
+            'entry' => $entry,
+            'company' => $company,
+            'format' => $format,
         ]);
     }
 

@@ -160,11 +160,22 @@ test('chart of accounts and journal entries pages load successfully', function (
     $resJe->assertSee('دفتر قيود اليومية العامة');
     $resJe->assertSee($entry->entry_number);
 
-    // Test JSON endpoint for entry
+    // Test HTML show page
     $resShow = $this->get(route('accounting.journal-entries.show', $entry));
     $resShow->assertStatus(200);
-    $resShow->assertJsonPath('success', true);
-    $resShow->assertJsonPath('entry.id', $entry->id);
+    $resShow->assertSee('سند قيد يومية');
+    $resShow->assertSee($entry->entry_number);
+
+    // Test Printable voucher page
+    $resPrint = $this->get(route('accounting.journal-entries.print', $entry));
+    $resPrint->assertStatus(200);
+    $resPrint->assertSee('طباعة سند القيد');
+
+    // Test JSON endpoint when requested as JSON
+    $resJson = $this->getJson(route('accounting.journal-entries.show', $entry));
+    $resJson->assertStatus(200);
+    $resJson->assertJsonPath('success', true);
+    $resJson->assertJsonPath('entry.id', $entry->id);
 });
 
 test('can create a sub-account under an existing parent', function () {

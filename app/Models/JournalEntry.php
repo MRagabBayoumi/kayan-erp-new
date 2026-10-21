@@ -143,4 +143,24 @@ class JournalEntry extends Model
             default => $this->status,
         };
     }
+
+    /**
+     * Resolve URL for the source business document if applicable.
+     */
+    public function getSourceDocumentUrlAttribute(): ?string
+    {
+        if (! $this->reference_id) {
+            return null;
+        }
+
+        return match ($this->reference_type) {
+            self::REF_SALES_INVOICE => route('sales.show', $this->reference_id),
+            self::REF_PURCHASE_INVOICE => route('purchases.show', $this->reference_id),
+            self::REF_SALES_RETURN => route('sales-returns.show', $this->reference_id),
+            self::REF_PURCHASE_RETURN => route('purchase-returns.show', $this->reference_id),
+            self::REF_EXPENSE => route('expenses.voucher', $this->reference_id),
+            self::REF_SUPPLIER_PAYMENT => route('supplier-payments.receipt', $this->reference_id),
+            default => null,
+        };
+    }
 }

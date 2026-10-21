@@ -318,6 +318,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/accounting/accounts', [AccountingController::class, 'storeAccount'])->name('accounting.accounts.store');
         Route::get('/accounting/journal-entries', [AccountingController::class, 'journalEntries'])->name('accounting.journal-entries');
         Route::get('/accounting/journal-entries/{entry}', [AccountingController::class, 'journalEntryShow'])->name('accounting.journal-entries.show');
+        Route::get('/accounting/journal-entries/{entry}/print', [AccountingController::class, 'journalEntryPrint'])->name('accounting.journal-entries.print');
         Route::post('/accounting/recalculate-balances', [AccountingController::class, 'recalculateBalances'])->name('accounting.recalculate-balances');
     });
 

@@ -124,6 +124,41 @@ function initShiftsIndex() {
         });
     });
 
+    // 4. Record Shift Daily Expense Modal
+    const shiftExpenseModal = document.getElementById('shiftExpenseModal');
+    const recordShiftExpenseBtn = document.getElementById('recordShiftExpenseBtn');
+
+    function openShiftExpenseModal() {
+        if (!shiftExpenseModal) return;
+        shiftExpenseModal.classList.remove('hidden');
+        shiftExpenseModal.classList.add('open');
+        const amountInput = document.getElementById('shiftExpenseAmount');
+        if (amountInput) setTimeout(() => amountInput.focus(), 100);
+    }
+
+    if (recordShiftExpenseBtn) {
+        recordShiftExpenseBtn.addEventListener('click', () => {
+            const hasShift = recordShiftExpenseBtn.dataset.hasActiveShift === 'true';
+            if (!hasShift) {
+                const proceed = confirm('تنبيه: لا توجد وردية كاشير مفتوحة لك حالياً لخصم المصروف من درجها.\n\nهل ترغب في فتح وردية جديدة أولاً؟\n(اضغط "موافق" لفتح وردية، أو "إلغاء" للمتابعة وتسجيل مصروف عام)');
+                if (proceed) {
+                    const openShiftModalBtn = document.getElementById('openShiftModalBtn');
+                    if (openShiftModalBtn) {
+                        openShiftModalBtn.click();
+                        return;
+                    }
+                }
+            }
+            openShiftExpenseModal();
+        });
+    }
+
+    document.querySelectorAll('.trigger-shift-expense-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            openShiftExpenseModal();
+        });
+    });
+
     // Close any modal
     document.querySelectorAll('.close-modal-btn').forEach(btn => {
         btn.addEventListener('click', () => {

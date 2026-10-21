@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\CashierCashMovement;
 use App\Models\CashierShift;
 use App\Models\CompanySetting;
+use App\Models\ExpenseCategory;
 use App\Models\SalesInvoice;
 use App\Models\User;
 use App\Models\Warehouse;
@@ -48,6 +49,7 @@ class CashierShiftController extends Controller
         $cashiers = User::orderBy('name')->get();
         $isManager = auth()->user()?->isAdmin() || auth()->user()?->can('close-shifts');
         $eligibleCashiers = User::active()->orderBy('name')->get();
+        $expenseCategories = ExpenseCategory::active()->orderBy('name')->get();
 
         $metrics = [
             'open_shifts_count' => CashierShift::open()->count(),
@@ -65,6 +67,7 @@ class CashierShiftController extends Controller
             'warehouses' => $warehouses,
             'cashiers' => $cashiers,
             'eligibleCashiers' => $eligibleCashiers,
+            'expenseCategories' => $expenseCategories,
             'isManager' => $isManager,
             'metrics' => $metrics,
             'currentActiveShift' => $currentActiveShift,

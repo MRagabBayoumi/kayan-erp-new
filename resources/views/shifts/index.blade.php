@@ -8,7 +8,20 @@
                     <x-icon name="plus" size="16" />
                     <span>فتح وردية جديدة</span>
                 </button>
-            @else
+            @endif
+
+            <!-- Dedicated Cashier Daily Expense Button -->
+            <button type="button" id="recordShiftExpenseBtn" class="erp-btn erp-btn-warning text-slate-900 font-bold"
+                data-has-active-shift="{{ $currentActiveShift ? 'true' : 'false' }}"
+                data-shift-id="{{ $currentActiveShift?->id }}"
+                data-shift-number="{{ $currentActiveShift?->shift_number }}"
+                data-expected-cash="{{ $currentActiveShift?->expected_closing_balance }}"
+                title="تسجيل مصروف يومي من عهدة ودرج الكاشير">
+                <x-icon name="receipt" size="16" />
+                <span>مصاريف يوم (من الوردية)</span>
+            </button>
+
+            @if($currentActiveShift)
                 <button type="button" id="recordMovementModalBtn" class="erp-btn erp-btn-secondary">
                     <x-icon name="dollar-sign" size="16" />
                     <span>حركة نقدية (سحب/إيداع)</span>
@@ -85,6 +98,10 @@
                     </div>
                 </div>
                 <div class="pos-shift-actions">
+                    <button type="button" class="erp-btn erp-btn-sm erp-btn-warning text-slate-900 font-bold trigger-shift-expense-btn" title="تسجيل صرف مصروف من الدرج">
+                        <x-icon name="receipt" size="14" />
+                        <span>تسجيل مصروف</span>
+                    </button>
                     <button type="button" class="erp-btn erp-btn-sm erp-btn-secondary record-movement-trigger-btn" data-shift-id="{{ $currentActiveShift->id }}">
                         <x-icon name="plus-circle" size="14" />
                         <span>سحب / إيداع</span>
@@ -151,46 +168,58 @@
             </div>
         </div>
 
-        <!-- Filter Card -->
-        <div class="erp-card mb-4 p-4">
-            <form method="GET" action="{{ route('shifts.index') }}" class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
-                <div class="erp-form-group mb-0">
-                    <label class="erp-form-label text-xs">الحالة</label>
-                    <select name="status" class="erp-input text-xs">
-                        <option value="">جميع الحالات</option>
+        <!-- Search & Filter Bar -->
+        <div class="erp-card p-3 mb-4">
+            <form method="GET" action="{{ route('shifts.index') }}" class="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-center">
+                <!-- Status Filter -->
+                <div class="sm:col-span-6 lg:col-span-3">
+                    <select name="status" class="erp-input text-xs sm:text-sm">
+                        <option value="">-- كل الحالات --</option>
                         <option value="open" {{ $currentStatus === 'open' ? 'selected' : '' }}>نشطة (مفتوحة)</option>
                         <option value="closed" {{ $currentStatus === 'closed' ? 'selected' : '' }}>مغلقة</option>
                     </select>
                 </div>
 
-                <div class="erp-form-group mb-0">
-                    <label class="erp-form-label text-xs">المستودع / الفرع</label>
-                    <select name="warehouse_id" class="erp-input text-xs">
-                        <option value="">جميع المستودعات</option>
+                <!-- Warehouse Filter -->
+                <div class="sm:col-span-6 lg:col-span-3">
+                    <select name="warehouse_id" class="erp-input text-xs sm:text-sm">
+                        <option value="">-- كل الفروع والمستودعات --</option>
                         @foreach($warehouses as $wh)
-                            <option value="{{ $wh->id }}" {{ (string)$currentWarehouseId === (string)$wh->id ? 'selected' : '' }}>{{ $wh->name }}</option>
+                            <option value="{{ $wh->id }}" {{ (string)$currentWarehouseId === (string)$wh->id ? 'selected' : '' }}>
+                                {{ $wh->name }}
+                            </option>
                         @endforeach
                     </select>
                 </div>
 
-                <div class="erp-form-group mb-0">
-                    <label class="erp-form-label text-xs">الكاشير / الموظف</label>
-                    <select name="user_id" class="erp-input text-xs">
-                        <option value="">جميع الموظفين</option>
+                <!-- Cashier Filter -->
+                <div class="sm:col-span-6 lg:col-span-3">
+                    <select name="user_id" class="erp-input text-xs sm:text-sm">
+                        <option value="">-- كل الموظفين والكاشير --</option>
                         @foreach($cashiers as $c)
-                            <option value="{{ $c->id }}" {{ (string)$currentUserId === (string)$c->id ? 'selected' : '' }}>{{ $c->name }}</option>
+                            <option value="{{ $c->id }}" {{ (string)$currentUserId === (string)$c->id ? 'selected' : '' }}>
+                                {{ $c->name }}
+                            </option>
                         @endforeach
                     </select>
                 </div>
 
-                <div class="flex items-center gap-2">
-                    <button type="submit" class="erp-btn erp-btn-secondary text-xs flex-1 justify-center">
+                <!-- Date Filter -->
+                <div class="sm:col-span-6 lg:col-span-2">
+                    <input type="date" name="date" value="{{ $currentDate }}" class="erp-input text-xs sm:text-sm" placeholder="تاريخ الوردية">
+                </div>
+
+                <!-- Actions -->
+                <div class="sm:col-span-12 lg:col-span-1 flex items-center gap-1.5">
+                    <button type="submit" class="erp-btn erp-btn-secondary text-xs sm:text-sm font-bold flex-1 justify-center" title="تصفية">
                         <x-icon name="filter" size="14" />
                         <span>تصفية</span>
                     </button>
-                    <a href="{{ route('shifts.index') }}" class="erp-btn erp-btn-ghost text-xs" title="إعادة تعيين">
-                        <x-icon name="rotate-ccw" size="14" />
-                    </a>
+                    @if($currentStatus || $currentWarehouseId || $currentUserId || $currentDate)
+                        <a href="{{ route('shifts.index') }}" class="erp-btn erp-btn-ghost text-xs text-rose-600 hover:bg-rose-50 px-2" title="إعادة تعيين الفلاتر">
+                            <x-icon name="rotate-ccw" size="14" />
+                        </a>
+                    @endif
                 </div>
             </form>
         </div>
@@ -532,6 +561,127 @@
                         <button type="submit" class="erp-btn erp-btn-primary">
                             <x-icon name="check" size="16" />
                             <span>تسجيل الحركة</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- 4. Cashier Shift Daily Expense Modal -->
+        <div id="shiftExpenseModal" class="erp-modal-overlay hidden" role="dialog" aria-modal="true">
+            <div class="erp-modal-container max-w-lg">
+                <div class="erp-modal-header bg-amber-500/10 border-b border-amber-500/20">
+                    <div class="erp-modal-title flex items-center gap-2 text-amber-800">
+                        <x-icon name="receipt" size="18" class="text-amber-600" />
+                        <span>تسجيل مصروف يومي من درج الكاشير</span>
+                    </div>
+                    <button type="button" class="erp-modal-close close-modal-btn" aria-label="إغلاق">
+                        <x-icon name="x" size="16" />
+                    </button>
+                </div>
+                <form id="shiftExpenseForm" method="POST" action="{{ route('expenses.store') }}">
+                    @csrf
+                    <input type="hidden" name="pay_from_shift" value="1">
+                    <input type="hidden" name="payment_method" value="cash">
+                    <input type="hidden" name="expense_date" value="{{ now()->format('Y-m-d') }}">
+                    <input type="hidden" name="cashier_shift_id" id="shiftExpenseShiftId" value="{{ $currentActiveShift?->id }}">
+
+                    <div class="erp-modal-body space-y-4">
+                        <!-- Shift Info Callout -->
+                        @if($currentActiveShift)
+                            <div class="p-3 rounded-lg bg-[var(--surface-muted)] border border-[var(--border-color)] flex items-center justify-between text-xs">
+                                <div>
+                                    <span class="text-[var(--text-muted)] block">الصرف من الوردية الحالية:</span>
+                                    <strong class="font-numeric text-sm text-[var(--text-main)]" id="modalShiftNumber">
+                                        {{ $currentActiveShift->shift_number }} ({{ $currentActiveShift->warehouse?->name }})
+                                    </strong>
+                                </div>
+                                <div class="text-left font-numeric">
+                                    <span class="text-[var(--text-muted)] block">رصيد الدرج المتوقع:</span>
+                                    <strong class="text-emerald-600 text-sm" id="modalShiftCash">
+                                        {{ number_format($currentActiveShift->expected_closing_balance, 2) }} ج.م
+                                    </strong>
+                                </div>
+                            </div>
+                        @else
+                            <div class="p-3 rounded-lg bg-amber-50 text-amber-800 border border-amber-200 text-xs flex items-center gap-2">
+                                <x-icon name="alert-circle" size="16" class="text-amber-600 shrink-0" />
+                                <span>تنبيه: لا توجد وردية كاشير مفتوحة لك حالياً. سيتم تسجيل المصروف كـ "مصروف عام" بالخزينة الرئيسية.</span>
+                            </div>
+                        @endif
+
+                        <!-- Expense Category -->
+                        <div class="erp-form-group mb-0">
+                            <label for="shiftExpenseCategory" class="erp-form-label text-xs">
+                                <span>بند / تصنيف المصروف</span>
+                                <span class="required">*</span>
+                            </label>
+                            <select id="shiftExpenseCategory" name="expense_category_id" class="erp-input text-xs" required>
+                                <option value="">-- اختر نوع المصروف (بوفية، نظافة، نثرية...) --</option>
+                                @foreach($expenseCategories as $cat)
+                                    <option value="{{ $cat->id }}">{{ $cat->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <!-- Expense Amount -->
+                        <div class="erp-form-group mb-0">
+                            <label for="shiftExpenseAmount" class="erp-form-label text-xs">
+                                <span>قيمة المبلغ المصروف (ج.م)</span>
+                                <span class="required">*</span>
+                            </label>
+                            <div class="relative">
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0.01"
+                                    id="shiftExpenseAmount"
+                                    name="amount"
+                                    class="erp-input font-numeric text-base font-bold pl-12"
+                                    placeholder="0.00"
+                                    required
+                                >
+                                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-[var(--text-muted)] font-bold">ج.م</span>
+                            </div>
+                            <span class="text-[11px] text-[var(--text-muted)] mt-1 block">
+                                سيتم خصم هذا المبلغ فورياً من رصيد الدرج المتوقع للوردية الحالية.
+                            </span>
+                        </div>
+
+                        <!-- Recipient (Paid To) -->
+                        <div class="erp-form-group mb-0">
+                            <label for="shiftExpensePaidTo" class="erp-form-label text-xs">
+                                <span>المستلم / الصرف إلى (اختياري)</span>
+                            </label>
+                            <input
+                                type="text"
+                                id="shiftExpensePaidTo"
+                                name="paid_to"
+                                class="erp-input text-xs"
+                                placeholder="مثال: عامل النظافة / كافيه الضيافة / السائق"
+                            >
+                        </div>
+
+                        <!-- Notes / Description -->
+                        <div class="erp-form-group mb-0">
+                            <label for="shiftExpenseNotes" class="erp-form-label text-xs">
+                                <span>البيان / سبب الصرف</span>
+                            </label>
+                            <textarea
+                                id="shiftExpenseNotes"
+                                name="notes"
+                                rows="2"
+                                class="erp-input text-xs"
+                                placeholder="اكتب وصفاً مختصراً للمصروف (مثال: شاي وسكر ومستلزمات بوفية)"
+                            ></textarea>
+                        </div>
+                    </div>
+
+                    <div class="erp-modal-footer">
+                        <button type="button" class="erp-btn erp-btn-secondary close-modal-btn">إلغاء</button>
+                        <button type="submit" class="erp-btn erp-btn-warning text-slate-900 font-bold">
+                            <x-icon name="check" size="16" />
+                            <span>تأكيد صرف المصروف من الدرج</span>
                         </button>
                     </div>
                 </form>
