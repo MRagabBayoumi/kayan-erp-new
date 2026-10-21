@@ -23,7 +23,7 @@
 @endsection
 
 @section('content')
-    <div data-page="income-statement">
+    <div data-page="income-statement" class="space-y-6">
         @include('accounting.nav-tabs')
 
         <!-- KPI Summary Cards -->
@@ -72,7 +72,7 @@
                     <x-icon name="{{ $report['net_profit'] >= 0 ? 'award' : 'alert-octagon' }}" size="22" />
                 </div>
                 <div class="finance-kpi-info">
-                    <div class="finance-kpi-label">صافي الربح النهائي</div>
+                    <div class="finance-kpi-label">صافي ربح النشاط النهائي</div>
                     <div class="finance-kpi-value font-numeric {{ $report['net_profit'] >= 0 ? 'text-[var(--success-text)]' : 'text-[var(--danger)]' }}">
                         {{ number_format($report['net_profit'], 2) }} <span class="text-xs font-normal text-[var(--text-muted)]">ج.م</span>
                     </div>
@@ -82,163 +82,368 @@
         </div>
 
         <!-- Filter Toolbar -->
-        <div class="finance-filter-bar mb-4">
-            <form method="GET" action="{{ route('accounting.reports.income-statement') }}" class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
-                <div>
+        <div class="finance-filter-bar">
+            <form method="GET" action="{{ route('accounting.reports.income-statement') }}" class="flex flex-wrap items-end gap-3">
+                <div class="w-full sm:w-48">
                     <label class="block text-xs font-semibold mb-1 text-[var(--text-muted)]">من تاريخ</label>
                     <input type="date" name="date_from" value="{{ $currentDateFrom }}" class="finance-filter-input w-full font-numeric text-xs">
                 </div>
 
-                <div>
+                <div class="w-full sm:w-48">
                     <label class="block text-xs font-semibold mb-1 text-[var(--text-muted)]">إلى تاريخ</label>
                     <input type="date" name="date_to" value="{{ $currentDateTo }}" class="finance-filter-input w-full font-numeric text-xs">
                 </div>
 
-                <div class="flex gap-2">
-                    <button type="submit" class="erp-btn erp-btn-primary flex-1 justify-center text-xs">
+                <div class="flex items-center gap-2">
+                    <button type="submit" class="erp-btn erp-btn-primary text-xs px-4">
                         <x-icon name="filter" size="14" />
                         <span>تحديث القائمة</span>
                     </button>
-                    <a href="{{ route('accounting.reports.income-statement') }}" class="erp-btn erp-btn-secondary text-xs" title="إعادة ضبط">
+                    <a href="{{ route('accounting.reports.income-statement') }}" class="erp-btn erp-btn-secondary text-xs px-3" title="إعادة ضبط">
                         <x-icon name="rotate-ccw" size="14" />
+                        <span>إعادة ضبط</span>
                     </a>
                 </div>
             </form>
         </div>
 
-        <!-- Income Statement Financial Document -->
-        <div class="erp-card overflow-hidden">
-            <div class="p-4 bg-[var(--bg-surface-alt)] border-b border-[var(--border-color)] flex justify-between items-center">
-                <h3 class="font-bold text-sm text-[var(--text-main)]">قائمة الدخل والأرباح والخسائر التشغيلية للفترة</h3>
-                <span class="text-xs text-[var(--text-muted)]">
-                    الفترة: من {{ $currentDateFrom ?: 'بداية النشاط' }} إلى {{ $currentDateTo }}
-                </span>
-            </div>
-
-            <div class="divide-y divide-[var(--border-color)] text-xs">
-                <!-- Section 1: Operating Revenues -->
-                <div class="p-4">
-                    <div class="font-bold text-sm text-[var(--primary)] mb-3 flex items-center justify-between">
-                        <span>1. إيرادات النشاط والمبيعات (Operating Revenues)</span>
-                        <span class="font-numeric text-xs text-[var(--text-muted)]">حسابات الفئة (4)</span>
-                    </div>
-
-                    <div class="space-y-2 pr-4">
-                        @foreach($report['gross_sales'] as $sale)
-                            <div class="flex justify-between items-center py-1 border-b border-dashed border-[var(--border-light)]">
-                                <span class="text-[var(--text-secondary)]">{{ $sale['name'] }} [{{ $sale['code'] }}]</span>
-                                <span class="font-numeric font-semibold text-[var(--text-main)]">{{ number_format($sale['amount'], 2) }} ج.م</span>
-                            </div>
-                        @endforeach
-
-                        @if(count($report['sales_deductions']) > 0)
-                            <div class="pt-2 text-[var(--text-muted)] font-semibold text-[11px]">يخصم: المردودات والخصومات المسموحة:</div>
-                            @foreach($report['sales_deductions'] as $ded)
-                                <div class="flex justify-between items-center py-1 text-[var(--danger)] border-b border-dashed border-[var(--border-light)]">
-                                    <span>(-) {{ $ded['name'] }} [{{ $ded['code'] }}]</span>
-                                    <span class="font-numeric">({{ number_format($ded['amount'], 2) }}) ج.م</span>
-                                </div>
-                            @endforeach
-                        @endif
-
-                        <div class="flex justify-between items-center pt-2 font-bold text-sm text-[var(--info-text)]">
-                            <span>صافي الإيرادات (Net Revenue):</span>
-                            <span class="font-numeric">{{ number_format($report['net_revenue'], 2) }} ج.م</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Section 2: Cost of Goods Sold -->
-                <div class="p-4 bg-[var(--warning-soft)]/30">
-                    <div class="font-bold text-sm text-[var(--warning-text)] mb-3 flex items-center justify-between">
-                        <span>2. تكلفة المبيعات والبضاعة المباعة (Cost of Goods Sold - FIFO)</span>
-                        <span class="font-numeric text-xs text-[var(--text-muted)]">حسابات الفئة (51)</span>
-                    </div>
-
-                    <div class="space-y-2 pr-4">
-                        @forelse($report['cogs'] as $cg)
-                            <div class="flex justify-between items-center py-1 border-b border-dashed border-[var(--border-light)]">
-                                <span class="text-[var(--text-secondary)]">{{ $cg['name'] }} [{{ $cg['code'] }}]</span>
-                                <span class="font-numeric font-semibold text-[var(--text-main)]">(-) {{ number_format($cg['amount'], 2) }} ج.م</span>
-                            </div>
-                        @empty
-                            <div class="text-[var(--text-muted)] italic">لا توجد تكاليف بضاعة مسجلة خلال الفترة.</div>
-                        @endforelse
-
-                        <div class="flex justify-between items-center pt-3 font-bold text-sm text-[var(--success-text)] border-t border-[var(--border-color)]">
-                            <div>
-                                <span>مجمل الربح التجاري (Gross Profit):</span>
-                                <span class="text-xs font-normal text-[var(--text-muted)] mr-2">(هامش {{ $report['gross_margin_pct'] }}%)</span>
-                            </div>
-                            <span class="font-numeric text-base">{{ number_format($report['gross_profit'], 2) }} ج.م</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Section 3: Operating Expenses -->
-                <div class="p-4">
-                    <div class="font-bold text-sm text-[var(--text-main)] mb-3 flex items-center justify-between">
-                        <span>3. المصروفات التشغيلية والعمومية والتسويقية (Operating Expenses)</span>
-                        <span class="font-numeric text-xs text-[var(--text-muted)]">حسابات الفئة (52, 53)</span>
-                    </div>
-
-                    <div class="space-y-2 pr-4">
-                        @forelse($report['operating_expenses'] as $exp)
-                            <div class="flex justify-between items-center py-1 border-b border-dashed border-[var(--border-light)]">
-                                <span class="text-[var(--text-secondary)]">{{ $exp['name'] }} [{{ $exp['code'] }}]</span>
-                                <span class="font-numeric font-semibold text-[var(--text-main)]">(-) {{ number_format($exp['amount'], 2) }} ج.م</span>
-                            </div>
-                        @empty
-                            <div class="text-[var(--text-muted)] italic py-1">لا توجد مصروفات عمومية مسجلة في هذه الفترة.</div>
-                        @endforelse
-
-                        <div class="flex justify-between items-center pt-2 font-bold text-xs text-[var(--text-muted)]">
-                            <span>إجمالي المصروفات التشغيلية:</span>
-                            <span class="font-numeric">(-) {{ number_format($report['total_operating_expenses'], 2) }} ج.م</span>
-                        </div>
-
-                        <div class="flex justify-between items-center pt-2 font-bold text-sm text-[var(--info-text)] border-t border-[var(--border-color)]">
-                            <span>صافي الربح التشغيلي (Operating Profit):</span>
-                            <span class="font-numeric">{{ number_format($report['operating_profit'], 2) }} ج.م</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Section 4: Other Revenues/Expenses -->
-                @if(count($report['other_items']) > 0)
-                    <div class="p-4 bg-[var(--bg-surface-alt)]">
-                        <div class="font-bold text-sm text-[var(--text-main)] mb-3">
-                            4. إيرادات وتكاليف أخرى (Other Income / Expenses)
-                        </div>
-
-                        <div class="space-y-2 pr-4">
-                            @foreach($report['other_items'] as $other)
-                                <div class="flex justify-between items-center py-1 border-b border-dashed border-[var(--border-light)]">
-                                    <span class="text-[var(--text-secondary)]">{{ $other['name'] }} [{{ $other['code'] }}]</span>
-                                    <span class="font-numeric font-semibold text-[var(--success-text)]">(+) {{ number_format($other['amount'], 2) }} ج.م</span>
-                                </div>
-                            @endforeach
-                        </div>
-                    </div>
-                @endif
-
-                <!-- Final Net Profit / Loss Banner -->
-                <div class="p-5 {{ $report['net_profit'] >= 0 ? 'bg-[var(--success)] text-white' : 'bg-[var(--danger)] text-white' }}">
-                    <div class="flex flex-col sm:flex-row justify-between items-center gap-3">
+        <!-- Professional Financial Statement Sheet (Centered & Structured) -->
+        <div class="max-w-5xl mx-auto">
+            <div class="erp-card overflow-hidden shadow-sm border border-[var(--border-color)]">
+                
+                <!-- Sheet Header / Letterhead -->
+                <div class="p-6 bg-[var(--bg-surface-alt)] border-b border-[var(--border-color)]">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                         <div>
-                            <div class="text-base font-extrabold flex items-center gap-2">
-                                <x-icon name="{{ $report['net_profit'] >= 0 ? 'award' : 'alert-octagon' }}" size="20" />
-                                <span>صافي الربح / الخسارة النهائي للفترة (Net Profit / Loss):</span>
-                            </div>
-                            <div class="text-xs opacity-90 mt-0.5">
-                                يمثل النتيجة الصافية بعد كافة التكاليف والمصروفات، ويُرحل إلى حقوق الملكية بالميزانية.
+                            <div class="flex items-center gap-2">
+                                <span class="w-8 h-8 rounded-lg bg-[var(--primary-soft)] text-[var(--primary)] flex items-center justify-center font-bold">
+                                    <x-icon name="trending-up" size="18" />
+                                </span>
+                                <div>
+                                    <h2 class="text-base font-extrabold text-[var(--text-main)]">
+                                        قائمة الدخل والأرباح والخسائر
+                                    </h2>
+                                    <p class="text-xs text-[var(--text-muted)] mt-0.5">
+                                        نظام كيان لإدارة الموارد &bull; الإدارة المالية والحسابات الختامية
+                                    </p>
+                                </div>
                             </div>
                         </div>
-                        <div class="text-2xl font-black font-numeric">
-                            {{ number_format($report['net_profit'], 2) }} <span class="text-sm font-normal">ج.م</span>
+
+                        <div class="text-left sm:text-right flex flex-col items-start sm:items-end text-xs">
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[var(--bg-surface)] border border-[var(--border-color)] text-[var(--text-secondary)] font-medium">
+                                <x-icon name="calendar" size="13" class="text-[var(--text-muted)]" />
+                                <span>الفترة: من <strong class="font-numeric">{{ $currentDateFrom ?: 'بداية النشاط' }}</strong> إلى <strong class="font-numeric">{{ $currentDateTo }}</strong></span>
+                            </span>
+                            <span class="text-[11px] text-[var(--text-muted)] mt-1">العملة: الجنيه المصري (EGP)</span>
                         </div>
                     </div>
                 </div>
+
+                <!-- Financial Statement Tabular Representation -->
+                <div class="erp-table-responsive">
+                    <table class="erp-table w-full text-xs">
+                        <thead>
+                            <tr class="bg-[var(--bg-surface-alt)] border-b border-[var(--border-color)] text-[var(--text-muted)] font-bold">
+                                <th class="w-28 text-right p-3.5">كود الحساب</th>
+                                <th class="text-right p-3.5">البيان / الحساب المحاسبي</th>
+                                <th class="w-40 text-left font-numeric p-3.5">مبلغ جزئي (ج.م)</th>
+                                <th class="w-44 text-left font-numeric p-3.5">إجمالي البند (ج.م)</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-[var(--border-light)]">
+
+                            <!-- ========================================== -->
+                            <!-- SECTION 1: REVENUE / SALES                 -->
+                            <!-- ========================================== -->
+                            <tr class="bg-[var(--primary-soft)]/40 font-bold border-t-2 border-[var(--primary)]/30">
+                                <td colspan="4" class="p-3 text-[var(--primary)] text-sm">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-2">
+                                            <x-icon name="chevron-left" size="14" />
+                                            <span>1. إيرادات النشاط والمبيعات (Operating Revenues)</span>
+                                        </div>
+                                        <span class="text-xs font-normal text-[var(--text-muted)]">حسابات الفئة (4)</span>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            @foreach($report['gross_sales'] as $sale)
+                                <tr class="erp-table-row hover:bg-[var(--bg-hover)]">
+                                    <td class="font-numeric p-3">
+                                        <span class="inline-block font-mono text-[11px] px-2 py-0.5 rounded bg-[var(--bg-surface-alt)] border border-[var(--border-color)] text-[var(--text-muted)]">
+                                            {{ $sale['code'] }}
+                                        </span>
+                                    </td>
+                                    <td class="p-3">
+                                        @if(!empty($sale['id']))
+                                            <a href="{{ route('accounting.accounts.ledger', $sale['id']) }}" class="text-[var(--text-main)] hover:text-[var(--primary)] font-semibold transition-colors">
+                                                {{ $sale['name'] }}
+                                            </a>
+                                        @else
+                                            <span class="text-[var(--text-main)] font-semibold">{{ $sale['name'] }}</span>
+                                        @endif
+                                    </td>
+                                    <td class="p-3 text-left font-numeric font-medium text-[var(--text-secondary)]">
+                                        {{ number_format($sale['amount'], 2) }}
+                                    </td>
+                                    <td class="p-3 text-left font-numeric text-[var(--text-light)]">—</td>
+                                </tr>
+                            @endforeach
+
+                            @if(count($report['sales_deductions']) > 0)
+                                <tr class="bg-[var(--bg-surface-alt)]/50 text-[11px] font-semibold text-[var(--text-muted)]">
+                                    <td colspan="4" class="px-4 py-1.5">
+                                        يخصم: المردودات والخصومات المسموحة للمبيعات:
+                                    </td>
+                                </tr>
+                                @foreach($report['sales_deductions'] as $ded)
+                                    <tr class="erp-table-row hover:bg-[var(--bg-hover)] text-[var(--danger)]">
+                                        <td class="font-numeric p-3">
+                                            <span class="inline-block font-mono text-[11px] px-2 py-0.5 rounded bg-[var(--danger-soft)] text-[var(--danger)]">
+                                                {{ $ded['code'] }}
+                                            </span>
+                                        </td>
+                                        <td class="p-3">
+                                            @if(!empty($ded['id']))
+                                                <a href="{{ route('accounting.accounts.ledger', $ded['id']) }}" class="text-[var(--danger)] hover:underline font-semibold">
+                                                    (-) {{ $ded['name'] }}
+                                                </a>
+                                            @else
+                                                <span class="font-semibold">(-) {{ $ded['name'] }}</span>
+                                            @endif
+                                        </td>
+                                        <td class="p-3 text-left font-numeric font-medium text-[var(--danger)]">
+                                            ({{ number_format($ded['amount'], 2) }})
+                                        </td>
+                                        <td class="p-3 text-left font-numeric text-[var(--text-light)]">—</td>
+                                    </tr>
+                                @endforeach
+                            @endif
+
+                            <!-- Subtotal: Net Revenue -->
+                            <tr class="bg-[var(--info-soft)]/40 font-bold border-t border-b border-[var(--info-border)]">
+                                <td colspan="2" class="p-3 text-[var(--info-text)] text-xs">
+                                    <span class="mr-4">&bull; صافي الإيرادات والمبيعات (Net Revenue)</span>
+                                </td>
+                                <td class="p-3 text-left font-numeric text-[var(--text-muted)]">—</td>
+                                <td class="p-3 text-left font-numeric text-[var(--info-text)] text-sm">
+                                    {{ number_format($report['net_revenue'], 2) }} ج.م
+                                </td>
+                            </tr>
+
+                            <!-- ========================================== -->
+                            <!-- SECTION 2: COGS                            -->
+                            <!-- ========================================== -->
+                            <tr class="bg-[var(--warning-soft)]/40 font-bold border-t-2 border-[var(--warning)]/30">
+                                <td colspan="4" class="p-3 text-[var(--warning-text)] text-sm">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-2">
+                                            <x-icon name="chevron-left" size="14" />
+                                            <span>2. تكلفة المبيعات والبضاعة المباعة (Cost of Goods Sold - FIFO)</span>
+                                        </div>
+                                        <span class="text-xs font-normal text-[var(--text-muted)]">حسابات الفئة (51)</span>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            @forelse($report['cogs'] as $cg)
+                                <tr class="erp-table-row hover:bg-[var(--bg-hover)]">
+                                    <td class="font-numeric p-3">
+                                        <span class="inline-block font-mono text-[11px] px-2 py-0.5 rounded bg-[var(--bg-surface-alt)] border border-[var(--border-color)] text-[var(--text-muted)]">
+                                            {{ $cg['code'] }}
+                                        </span>
+                                    </td>
+                                    <td class="p-3">
+                                        @if(!empty($cg['id']))
+                                            <a href="{{ route('accounting.accounts.ledger', $cg['id']) }}" class="text-[var(--text-main)] hover:text-[var(--primary)] font-semibold transition-colors">
+                                                (-) {{ $cg['name'] }}
+                                            </a>
+                                        @else
+                                            <span class="text-[var(--text-main)] font-semibold">(-) {{ $cg['name'] }}</span>
+                                        @endif
+                                    </td>
+                                    <td class="p-3 text-left font-numeric font-medium text-[var(--warning-text)]">
+                                        ({{ number_format($cg['amount'], 2) }})
+                                    </td>
+                                    <td class="p-3 text-left font-numeric text-[var(--text-light)]">—</td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="4" class="p-3 text-center text-[var(--text-muted)] italic">
+                                        لا توجد تكاليف بضاعة مباعة مقيدة خلال الفترة.
+                                    </td>
+                                </tr>
+                            @endforelse
+
+                            <!-- Subtotal: Gross Profit -->
+                            <tr class="bg-[var(--success-soft)] font-black border-t border-b border-[var(--success-border)]">
+                                <td colspan="2" class="p-3 text-[var(--success-text)] text-xs">
+                                    <div class="flex items-center gap-2">
+                                        <span class="mr-4">&bull; مجمل الربح التجاري (Gross Profit)</span>
+                                        <span class="erp-badge erp-badge-success text-[10px] py-0.5 px-2">هامش ربح {{ $report['gross_margin_pct'] }}%</span>
+                                    </div>
+                                </td>
+                                <td class="p-3 text-left font-numeric text-[var(--text-muted)]">—</td>
+                                <td class="p-3 text-left font-numeric text-[var(--success-text)] text-base">
+                                    {{ number_format($report['gross_profit'], 2) }} ج.م
+                                </td>
+                            </tr>
+
+                            <!-- ========================================== -->
+                            <!-- SECTION 3: OPERATING EXPENSES              -->
+                            <!-- ========================================== -->
+                            <tr class="bg-[var(--bg-surface-alt)] font-bold border-t-2 border-[var(--border-color)]">
+                                <td colspan="4" class="p-3 text-[var(--text-main)] text-sm">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-2">
+                                            <x-icon name="chevron-left" size="14" />
+                                            <span>3. المصروفات التشغيلية والعمومية (Operating Expenses)</span>
+                                        </div>
+                                        <span class="text-xs font-normal text-[var(--text-muted)]">حسابات الفئة (52, 53)</span>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            @forelse($report['operating_expenses'] as $exp)
+                                <tr class="erp-table-row hover:bg-[var(--bg-hover)]">
+                                    <td class="font-numeric p-3">
+                                        <span class="inline-block font-mono text-[11px] px-2 py-0.5 rounded bg-[var(--bg-surface-alt)] border border-[var(--border-color)] text-[var(--text-muted)]">
+                                            {{ $exp['code'] }}
+                                        </span>
+                                    </td>
+                                    <td class="p-3">
+                                        @if(!empty($exp['id']))
+                                            <a href="{{ route('accounting.accounts.ledger', $exp['id']) }}" class="text-[var(--text-main)] hover:text-[var(--primary)] font-semibold transition-colors">
+                                                (-) {{ $exp['name'] }}
+                                            </a>
+                                        @else
+                                            <span class="text-[var(--text-main)] font-semibold">(-) {{ $exp['name'] }}</span>
+                                        @endif
+                                    </td>
+                                    <td class="p-3 text-left font-numeric font-medium text-[var(--danger)]">
+                                        ({{ number_format($exp['amount'], 2) }})
+                                    </td>
+                                    <td class="p-3 text-left font-numeric text-[var(--text-light)]">—</td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="4" class="p-3 text-center text-[var(--text-muted)] italic">
+                                        لا توجد مصروفات عمومية مسجلة في هذه الفترة.
+                                    </td>
+                                </tr>
+                            @endforelse
+
+                            <!-- Subtotal: Operating Expenses -->
+                            <tr class="bg-[var(--bg-surface-alt)]/60 text-[var(--text-muted)] font-semibold border-t border-[var(--border-light)]">
+                                <td colspan="2" class="p-2.5">
+                                    <span class="mr-4">&bull; إجمالي المصروفات التشغيلية والعمومية</span>
+                                </td>
+                                <td class="p-2.5 text-left font-numeric">—</td>
+                                <td class="p-2.5 text-left font-numeric text-[var(--danger)]">
+                                    (-) {{ number_format($report['total_operating_expenses'], 2) }} ج.م
+                                </td>
+                            </tr>
+
+                            <!-- Subtotal: Operating Profit -->
+                            <tr class="bg-[var(--info-soft)]/20 font-bold border-t border-b border-[var(--info-border)]/50">
+                                <td colspan="2" class="p-3 text-[var(--info-text)] text-xs">
+                                    <span class="mr-4">&bull; صافي الربح التشغيلي (Operating Profit)</span>
+                                </td>
+                                <td class="p-3 text-left font-numeric text-[var(--text-muted)]">—</td>
+                                <td class="p-3 text-left font-numeric text-[var(--info-text)] text-sm">
+                                    {{ number_format($report['operating_profit'], 2) }} ج.م
+                                </td>
+                            </tr>
+
+                            <!-- ========================================== -->
+                            <!-- SECTION 4: OTHER REVENUE / EXPENSES        -->
+                            <!-- ========================================== -->
+                            @if(count($report['other_items']) > 0)
+                                <tr class="bg-[var(--bg-surface-alt)] font-bold border-t-2 border-[var(--border-color)]">
+                                    <td colspan="4" class="p-3 text-[var(--text-main)] text-sm">
+                                        <div class="flex items-center gap-2">
+                                            <x-icon name="chevron-left" size="14" />
+                                            <span>4. إيرادات وتكاليف أخرى (Other Income / Expenses)</span>
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                @foreach($report['other_items'] as $other)
+                                    <tr class="erp-table-row hover:bg-[var(--bg-hover)]">
+                                        <td class="font-numeric p-3">
+                                            <span class="inline-block font-mono text-[11px] px-2 py-0.5 rounded bg-[var(--bg-surface-alt)] border border-[var(--border-color)] text-[var(--text-muted)]">
+                                                {{ $other['code'] }}
+                                            </span>
+                                        </td>
+                                        <td class="p-3">
+                                            <a href="{{ route('accounting.accounts.ledger', $other['id']) }}" class="text-[var(--text-main)] hover:text-[var(--primary)] font-semibold transition-colors">
+                                                (+) {{ $other['name'] }}
+                                            </a>
+                                        </td>
+                                        <td class="p-3 text-left font-numeric font-medium text-[var(--success-text)]">
+                                            {{ number_format($other['amount'], 2) }}
+                                        </td>
+                                        <td class="p-3 text-left font-numeric text-[var(--text-light)]">—</td>
+                                    </tr>
+                                @endforeach
+                            @endif
+
+                        </tbody>
+
+                        <!-- ========================================== -->
+                        <!-- GRAND TOTAL: NET PROFIT / LOSS FOOTER      -->
+                        <!-- ========================================== -->
+                        <tfoot>
+                            <tr class="border-t-4 border-[var(--primary)] {{ $report['net_profit'] >= 0 ? 'bg-[var(--success-soft)]' : 'bg-[var(--danger-soft)]' }}">
+                                <td colspan="2" class="p-5">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-10 h-10 rounded-xl {{ $report['net_profit'] >= 0 ? 'bg-[var(--success)] text-white' : 'bg-[var(--danger)] text-white' }} flex items-center justify-center flex-shrink-0 shadow-sm">
+                                            <x-icon name="{{ $report['net_profit'] >= 0 ? 'award' : 'alert-octagon' }}" size="24" />
+                                        </div>
+                                        <div>
+                                            <div class="text-base font-black {{ $report['net_profit'] >= 0 ? 'text-[var(--success-text)]' : 'text-[var(--danger)]' }}">
+                                                صافي الربح / الخسارة النهائي للفترة (Net Profit / Loss):
+                                            </div>
+                                            <div class="text-[11px] text-[var(--text-muted)] mt-0.5 font-normal">
+                                                النتيجة الختامية بعد كافة التكاليف والمصروفات &bull; يُرحل تلقائياً إلى بند حقوق الملكية بالميزانية العمومية
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="p-5 text-left font-numeric text-[var(--text-muted)]">—</td>
+                                <td class="p-5 text-left font-numeric font-black text-2xl {{ $report['net_profit'] >= 0 ? 'text-[var(--success-text)]' : 'text-[var(--danger)]' }}">
+                                    {{ number_format($report['net_profit'], 2) }} <span class="text-xs font-bold text-[var(--text-muted)]">ج.م</span>
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <!-- Signatures Section at the base of the sheet -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 p-6 border-t border-[var(--border-color)] bg-[var(--bg-surface-alt)]/30 text-center text-xs">
+                    <div class="space-y-8">
+                        <div class="font-bold text-[var(--text-muted)]">المحاسب المسؤول (إعداد)</div>
+                        <div class="border-t border-[var(--border-color)] pt-1.5 font-semibold text-[var(--text-main)]">
+                            {{ auth()->user()->name ?? 'قسم الحسابات' }}
+                        </div>
+                    </div>
+
+                    <div class="space-y-8">
+                        <div class="font-bold text-[var(--text-muted)]">المراجعة والتدقيق المالي</div>
+                        <div class="border-t border-[var(--border-color)] pt-1.5 text-[var(--text-muted)]">
+                            التوقيع والاعتماد
+                        </div>
+                    </div>
+
+                    <div class="space-y-8">
+                        <div class="font-bold text-[var(--text-muted)]">المدير المالي / اعتماد الإدارة</div>
+                        <div class="border-t border-[var(--border-color)] pt-1.5 text-[var(--text-muted)]">
+                            الختم الرسمي
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>

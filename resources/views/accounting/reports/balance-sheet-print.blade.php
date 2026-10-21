@@ -78,9 +78,10 @@
                     <span class="font-numeric">{{ number_format($report['total_current_assets'], 2) }}</span>
                 </div>
                 @forelse($report['current_assets'] as $asset)
+                    @php $b = (float)$asset['balance']; @endphp
                     <div class="item-row">
                         <span>{{ $asset['name'] }} [{{ $asset['code'] }}]</span>
-                        <span class="font-numeric">{{ number_format($asset['balance'], 2) }} ج.م</span>
+                        <span class="font-numeric {{ $b < -0.001 ? 'text-danger' : '' }}">{{ $b < -0.001 ? '('.number_format(abs($b), 2).')' : number_format($b, 2) }} ج.م</span>
                     </div>
                 @empty
                     <div class="item-row" style="color: #64748b; font-style: italic;">لا توجد أصول متداولة.</div>
@@ -91,9 +92,10 @@
                     <span class="font-numeric">{{ number_format($report['total_non_current_assets'], 2) }}</span>
                 </div>
                 @forelse($report['non_current_assets'] as $asset)
+                    @php $b = (float)$asset['balance']; @endphp
                     <div class="item-row">
                         <span>{{ $asset['name'] }} [{{ $asset['code'] }}]</span>
-                        <span class="font-numeric">{{ number_format($asset['balance'], 2) }} ج.م</span>
+                        <span class="font-numeric {{ $b < -0.001 ? 'text-danger' : '' }}">{{ $b < -0.001 ? '('.number_format(abs($b), 2).')' : number_format($b, 2) }} ج.م</span>
                     </div>
                 @empty
                     <div class="item-row" style="color: #64748b; font-style: italic;">لا توجد أصول ثابتة.</div>

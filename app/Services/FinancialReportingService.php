@@ -260,31 +260,31 @@ class FinancialReportingService
             // Group according to system roles and code prefixes
             if ($acc->code === '4101' || $acc->system_role === 'sales_revenue') {
                 $amount = round($cred - $deb, 2);
-                $grossSales[] = ['code' => $acc->code, 'name' => $acc->name, 'amount' => $amount];
+                $grossSales[] = ['id' => $acc->id, 'code' => $acc->code, 'name' => $acc->name, 'amount' => $amount];
                 $totalGrossSales += $amount;
             } elseif (in_array($acc->code, ['4102', '4103']) || in_array($acc->system_role, ['sales_returns', 'sales_discounts'])) {
                 // Contra-revenue accounts: debit nature increases deduction
                 $amount = round($deb - $cred, 2);
-                $salesDeductions[] = ['code' => $acc->code, 'name' => $acc->name, 'amount' => $amount];
+                $salesDeductions[] = ['id' => $acc->id, 'code' => $acc->code, 'name' => $acc->name, 'amount' => $amount];
                 $totalSalesDeductions += $amount;
             } elseif ($acc->code === '5101' || $acc->system_role === 'cost_of_goods_sold' || str_starts_with($acc->code, '51')) {
                 $amount = round($deb - $cred, 2);
-                $cogs[] = ['code' => $acc->code, 'name' => $acc->name, 'amount' => $amount];
+                $cogs[] = ['id' => $acc->id, 'code' => $acc->code, 'name' => $acc->name, 'amount' => $amount];
                 $totalCogs += $amount;
             } elseif ($acc->code === '5401' || $acc->system_role === 'purchase_discounts') {
                 // Purchase discount received (credit nature income)
                 $amount = round($cred - $deb, 2);
-                $otherItems[] = ['code' => $acc->code, 'name' => $acc->name, 'amount' => $amount, 'is_income' => true];
+                $otherItems[] = ['id' => $acc->id, 'code' => $acc->code, 'name' => $acc->name, 'amount' => $amount, 'is_income' => true];
                 $totalOther += $amount;
             } elseif ($acc->type === Account::TYPE_REVENUE) {
                 // Other revenues (e.g. 4201 shipping services)
                 $amount = round($cred - $deb, 2);
-                $grossSales[] = ['code' => $acc->code, 'name' => $acc->name, 'amount' => $amount];
+                $grossSales[] = ['id' => $acc->id, 'code' => $acc->code, 'name' => $acc->name, 'amount' => $amount];
                 $totalGrossSales += $amount;
             } elseif ($acc->type === Account::TYPE_EXPENSE) {
                 // General & operating expenses (52, 53)
                 $amount = round($deb - $cred, 2);
-                $operatingExpenses[] = ['code' => $acc->code, 'name' => $acc->name, 'amount' => $amount];
+                $operatingExpenses[] = ['id' => $acc->id, 'code' => $acc->code, 'name' => $acc->name, 'amount' => $amount];
                 $totalOperatingExpenses += $amount;
             }
         }
