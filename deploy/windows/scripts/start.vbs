@@ -14,8 +14,9 @@ projectPath = appDir & "\kayan-erp"
 ' 1. Start MariaDB Database service silently if not already running
 WshShell.Run "cmd /c tasklist | find /i ""mysqld.exe"" || """ & mysqlPath & """ --defaults-file=""" & appDir & "\server\mariadb\my.ini""", 0, False
 
-' 2. Start PHP Built-in Server silently on 127.0.0.1:8000
-WshShell.Run "cmd /c tasklist | find /i ""php.exe"" || """ & phpPath & """ -S 127.0.0.1:8000 -t """ & projectPath & "\public""", 0, False
+' 2. Start PHP Built-in Server silently on 0.0.0.0:8000 with multi-worker support
+WshShell.Environment("PROCESS")("PHP_CLI_SERVER_WORKERS") = "6"
+WshShell.Run "cmd /c tasklist | find /i ""php.exe"" || """ & phpPath & """ -S 0.0.0.0:8000 -t """ & projectPath & "\public""", 0, False
 
 WScript.Sleep 1500
 

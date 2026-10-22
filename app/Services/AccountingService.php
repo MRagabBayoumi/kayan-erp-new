@@ -150,6 +150,15 @@ class AccountingService
         $discountAmount = round((float) $invoice->discount_amount, 2);
         $totalCogs = round((float) $invoice->total_cogs, 2);
 
+        // Safeguard: Fallback if amounts are zero on a non-zero invoice
+        if ($paidAmount <= 0.0 && $remainingAmount <= 0.0 && (float) $invoice->total_amount > 0.0) {
+            if ($invoice->payment_type === SalesInvoice::PAYMENT_CASH) {
+                $paidAmount = round((float) $invoice->total_amount, 2);
+            } else {
+                $remainingAmount = round((float) $invoice->total_amount, 2);
+            }
+        }
+
         // Credit to Sales Revenue = (paid + remaining) + discount = total_amount + discount_amount
         $grossSalesAmount = round($paidAmount + $remainingAmount + $discountAmount, 2);
 

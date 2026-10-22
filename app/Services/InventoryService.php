@@ -6,6 +6,7 @@ use App\Models\BatchCostMovement;
 use App\Models\CashierShift;
 use App\Models\Customer;
 use App\Models\InventoryBatch;
+use App\Models\JournalEntry;
 use App\Models\Product;
 use App\Models\SalesInvoice;
 use App\Models\SalesInvoiceItemBatch;
@@ -895,6 +896,14 @@ class InventoryService
 
             // 6.2 Cancel sales rep commission
             app(CommissionService::class)->cancelInvoiceCommission($invoice);
+
+            // 6.3 Reverse general ledger journal entry linked to this invoice
+            app(AccountingService::class)->voidEntry(
+                JournalEntry::REF_SALES_INVOICE,
+                $invoice->id,
+                'فك ترحيل فاتورة البيع للتعديل: '.$invoice->invoice_number.($reason ? ' | '.$reason : ''),
+                $userId
+            );
 
             // 7. Mark invoice as DRAFT
             $invoice->update([

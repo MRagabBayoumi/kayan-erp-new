@@ -2,9 +2,15 @@
 
 use App\Models\Account;
 use App\Models\CompanySetting;
+use App\Models\Customer;
 use App\Models\JournalEntry;
 use App\Models\JournalEntryLine;
+use App\Models\SalesInvoice;
 use App\Models\User;
+use App\Models\Warehouse;
+use App\Services\AccountingService;
+use App\Services\FinancialReportingService;
+use App\Services\InventoryService;
 use Database\Seeders\ChartOfAccountsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -226,4 +232,65 @@ test('account ledger tracks individual movements and running balance', function 
     $printResponse->assertOk();
     $printResponse->assertSee('كشف حساب الأستاذ العام');
     $printResponse->assertSee($cashAccount->name);
+});
+
+test('cash sales invoice records full revenue even if paid amount is omitted and unposting voids entry', function () {
+    $this->actingAs($this->admin);
+
+    $customer = Customer::create([
+        'name' => 'عميل نقدي تجريبي',
+        'phone' => '01011223344',
+        'pricing_tier' => 'retail',
+        'is_active' => true,
+    ]);
+
+    $warehouse = Warehouse::create([
+        'code' => 'WH-TEST',
+        'name' => 'المخزن التجريبي',
+        'is_active' => true,
+    ]);
+
+    $invoice = SalesInvoice::create([
+        'invoice_number' => 'INV-TEST-CASH-01',
+        'customer_id' => $customer->id,
+        'warehouse_id' => $warehouse->id,
+        'invoice_date' => now()->toDateString(),
+        'price_tier' => 'retail',
+        'payment_type' => SalesInvoice::PAYMENT_CASH,
+        'status' => SalesInvoice::STATUS_POSTED,
+        'subtotal' => 500.00,
+        'discount_amount' => 0.00,
+        'shipping_cost' => 0.00,
+        'total_amount' => 500.00,
+        'paid_amount' => 0.00,
+        'remaining_amount' => 0.00,
+        'total_cogs' => 350.00,
+        'total_profit' => 150.00,
+        'created_by' => $this->admin->id,
+    ]);
+
+    $accounting = app(AccountingService::class);
+    $entry = $accounting->recordSalesInvoice($invoice);
+
+    expect($entry)->not->toBeNull();
+    expect((float) $entry->total_debit)->toBe(850.00); // 500 cash + 350 cogs
+    expect((float) $entry->total_credit)->toBe(850.00); // 500 sales + 350 inventory
+
+    $reporting = app(FinancialReportingService::class);
+    $statement = $reporting->getIncomeStatement();
+
+    expect((float) $statement['net_revenue'])->toBe(500.00);
+    expect((float) $statement['total_cogs'])->toBe(350.00);
+    expect((float) $statement['gross_profit'])->toBe(150.00);
+
+    // Now test that unposting reverses the journal entry
+    $inventoryService = app(InventoryService::class);
+    $inventoryService->unpostSalesInvoice($invoice, $this->admin->id, 'تعديل الفاتورة');
+
+    $entry->refresh();
+    expect($entry->status)->toBe(JournalEntry::STATUS_REVERSED);
+
+    // After unposting, income statement should be empty
+    $statementAfter = $reporting->getIncomeStatement();
+    expect((float) $statementAfter['gross_profit'])->toBe(0.00);
 });

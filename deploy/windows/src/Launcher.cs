@@ -70,19 +70,20 @@ namespace KayanERP
                 }
                 catch { }
 
-                // 3. Start PHP Server if not running
+                // 3. Start PHP Server if not running on 0.0.0.0:8000 for LAN/Wi-Fi access
                 if (!serverListening)
                 {
                     string publicDir = Path.Combine(projectPath, "public");
                     ProcessStartInfo phpInfo = new ProcessStartInfo
                     {
                         FileName = phpPath,
-                        Arguments = "-S 127.0.0.1:8000 -t \"" + publicDir + "\"",
+                        Arguments = "-S 0.0.0.0:8000 -t \"" + publicDir + "\"",
                         WindowStyle = ProcessWindowStyle.Hidden,
                         CreateNoWindow = true,
                         UseShellExecute = false,
                         WorkingDirectory = projectPath
                     };
+                    phpInfo.EnvironmentVariables["PHP_CLI_SERVER_WORKERS"] = "6";
                     try { Process.Start(phpInfo); } catch { }
                     Thread.Sleep(1200);
                 }
