@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\EnsureActiveAttendanceSession;
 use App\Http\Middleware\EnsureSalesRepScopedToPortal;
+use App\Http\Middleware\SecurityHeadersMiddleware;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -29,6 +30,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'attendance.required' => EnsureActiveAttendanceSession::class,
         ]);
         $middleware->web(append: [
+            SecurityHeadersMiddleware::class,
             EnsureSalesRepScopedToPortal::class,
         ]);
     })
