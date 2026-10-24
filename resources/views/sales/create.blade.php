@@ -223,10 +223,10 @@
 
                     <div class="flex items-center gap-2">
                         <!-- Fast-Scan Mode Toggle Pill -->
-                        <label for="fastScanToggle" id="fastScanBadge" class="pos-fast-scan-badge active" title="عند التفعيل: مسح الباركود يدرج الصنف فوراً أو يزيد كميته تلقائياً">
-                            <input type="checkbox" id="fastScanToggle" class="hidden" checked>
+                        <label for="fastScanToggle" id="fastScanBadge" class="pos-fast-scan-badge" title="عند التفعيل: مسح الباركود يدرج الصنف فوراً أو يزيد كميته تلقائياً">
+                            <input type="checkbox" id="fastScanToggle" class="hidden">
                             <x-icon name="barcode" size="14" />
-                            <span>المسح المباشر السريع (مفعل)</span>
+                            <span>المسح المباشر السريع (معطل)</span>
                         </label>
 
                         <div class="purchases-quick-entry-shortcuts hidden md:flex">

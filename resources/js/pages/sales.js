@@ -316,7 +316,7 @@ function initSalesPOS(posPage = null) {
     // Fast-Scan Mode Toggle
     if (fastScanToggle && fastScanBadge) {
         const savedFastScan = localStorage.getItem('pos_fast_scan');
-        const isFastScanEnabled = savedFastScan !== null ? (savedFastScan === 'true') : true;
+        const isFastScanEnabled = savedFastScan !== null ? (savedFastScan === 'true') : false;
         fastScanToggle.checked = isFastScanEnabled;
         fastScanBadge.classList.toggle('active', isFastScanEnabled);
         const scanLabel = fastScanBadge.querySelector('span');
@@ -330,7 +330,7 @@ function initSalesPOS(posPage = null) {
             if (scanLabel) {
                 scanLabel.textContent = fastScanToggle.checked ? 'المسح المباشر السريع (مفعل)' : 'المسح المباشر السريع (معطل)';
             }
-            if (quickProductInput) quickProductInput.focus();
+            if (quickProductInput) quickProductInput.focus({ preventScroll: true });
         });
     }
 
@@ -605,13 +605,13 @@ function initSalesPOS(posPage = null) {
             return;
         }
 
-        // Otherwise follow POS keyboard flow: focus Quantity & select for instant editing
+        // Otherwise follow POS keyboard flow: focus Quantity & select for instant editing without scrolling
         lastProductSelectTime = Date.now();
         if (quickQtyInput) {
             setTimeout(() => {
-                quickQtyInput.focus();
+                quickQtyInput.focus({ preventScroll: true });
                 quickQtyInput.select();
-            }, 40);
+            }, 30);
         }
     }
 
@@ -734,13 +734,12 @@ function initSalesPOS(posPage = null) {
                 }
 
                 if (matched) {
-                    const isFastScan = !(fastScanToggle && !fastScanToggle.checked);
+                    const isFastScan = !!(fastScanToggle && fastScanToggle.checked);
                     if (isFastScan) {
-                        // High-speed POS scan: Immediately select and commit to invoice table!
-                        selectProduct(matched, false);
-                        commitQuickAdd();
+                        // High-speed POS scan (only if explicitly enabled by user):
+                        selectProduct(matched, true);
                     } else {
-                        // Manual step mode: select and focus quantity
+                        // Default POS workflow: select product and jump directly to Quantity field without committing/dropping!
                         selectProduct(matched, false);
                     }
                 } else {
@@ -772,7 +771,7 @@ function initSalesPOS(posPage = null) {
             if (e.key === 'Tab' && !e.shiftKey) {
                 e.preventDefault();
                 if (quickQtyInput) {
-                    quickQtyInput.focus();
+                    quickQtyInput.focus({ preventScroll: true });
                     quickQtyInput.select();
                 }
             } else if (e.key === 'Enter') {
@@ -801,16 +800,16 @@ function initSalesPOS(posPage = null) {
             if (e.key === 'Tab' && !e.shiftKey) {
                 e.preventDefault();
                 if (canEditPrice && quickPriceInput) {
-                    quickPriceInput.focus();
+                    quickPriceInput.focus({ preventScroll: true });
                     quickPriceInput.select();
                 } else if (quickLineDiscountInput) {
-                    quickLineDiscountInput.focus();
+                    quickLineDiscountInput.focus({ preventScroll: true });
                     quickLineDiscountInput.select();
                 }
             } else if (e.key === 'Tab' && e.shiftKey) {
                 e.preventDefault();
                 if (quickUnitSelect) {
-                    quickUnitSelect.focus();
+                    quickUnitSelect.focus({ preventScroll: true });
                 }
             } else if (e.key === 'Enter') {
                 e.preventDefault();
@@ -825,7 +824,7 @@ function initSalesPOS(posPage = null) {
             if (e.key === 'Tab' && !e.shiftKey) {
                 e.preventDefault();
                 if (quickLineDiscountInput) {
-                    quickLineDiscountInput.focus();
+                    quickLineDiscountInput.focus({ preventScroll: true });
                     quickLineDiscountInput.select();
                 }
             } else if (e.key === 'Enter') {
@@ -942,7 +941,7 @@ function initSalesPOS(posPage = null) {
 
         // ALWAYS RETURN FOCUS TO SEARCH INPUT FOR NEXT ITEM
         if (quickProductInput) {
-            quickProductInput.focus();
+            quickProductInput.focus({ preventScroll: true });
         }
 
         recalculateTotals();
